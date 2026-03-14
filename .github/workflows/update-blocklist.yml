@@ -1,41 +1,28 @@
 name: Update Dynamic Blocklist
 
 on:
-  # Запускается каждые 30 минут
   schedule:
-    - cron: "*/30 * * * *"
-  # Можно запустить вручную из GitHub UI
+    - cron: "0 */1 * * *"
   workflow_dispatch:
 
 jobs:
   update:
     runs-on: ubuntu-latest
     permissions:
-      contents: write  # нужно для git push
+      contents: write
 
     steps:
-      - name: Checkout репозитория
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Установка Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      - name: Запуск сборщика блок-листа
-        run: python update_blocklist.py
+      - run: python update_blocklist.py
 
-      - name: Проверка изменений
-        id: check_changes
-        run: |
-          git diff --quiet dynamic-blocklist.txt || echo "changed=true" >> $GITHUB_OUTPUT
-
-      - name: Коммит и пуш если есть изменения
-        if: steps.check_changes.outputs.changed == 'true'
-        run: |
-          git config user.name  "github-actions[bot]"
+      - run: |
+          git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add dynamic-blocklist.txt
-          DOMAINS=$(grep -c "^0.0.0.0" dynamic-blocklist.txt || true)
-          git commit -m "auto: update blocklist — ${DOMAINS} domains [$(date -u '+%Y-%m-%d %H:%M UTC')]"
+          git diff --staged --quiet || git commit -m "auto: update blocklist"
           git push
