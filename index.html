@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DNS Blocklist - Control Panel</title>
+    <title>DNS Blocklist - Панель управления</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     
@@ -496,69 +496,64 @@
 <body>
     <header>
         <div class="logo">
-            <span class="logo-icon">🛡️</span> DNS Blocklist Control Panel
+            <span class="logo-icon">🛡️</span> Панель управления DNS Blocklist
         </div>
         <div class="header-right">
             <div class="status">
                 <div class="status-dot"></div>
-                Active
+                Активна
             </div>
             <div class="time" id="time">00:00:00</div>
         </div>
     </header>
 
     <main>
-        <h1 class="page-title">Dashboard</h1>
-
-        <!-- AUTO LOAD INFO -->
-        <div class="info-box">
-            🔄 <strong>Автоматическое обновление:</strong> Панель загружает и анализирует `dynamic-blocklist.txt` с GitHub каждые 30 секунд. Статистика обновляется в реальном времени.
-        </div>
+        <h1 class="page-title">Панель управления</h1>
 
         <!-- STATS -->
         <div class="grid grid-4">
             <div class="card">
                 <div class="card-icon">📄</div>
-                <div class="card-title">Total Domains</div>
+                <div class="card-title">Всего доменов</div>
                 <div class="card-value" id="totalDomains" class="loading">-</div>
-                <div class="card-label">Blocked domains</div>
+                <div class="card-label">Заблокировано доменов</div>
             </div>
 
             <div class="card">
                 <div class="card-icon">⚡</div>
-                <div class="card-title">Execution Time</div>
+                <div class="card-title">Время выполнения</div>
                 <div class="card-value" id="execTime" class="loading">-</div>
-                <div class="card-label">Process speed</div>
+                <div class="card-label">Скорость обработки</div>
             </div>
 
             <div class="card">
                 <div class="card-icon">💾</div>
-                <div class="card-title">File Size</div>
+                <div class="card-title">Размер файла</div>
                 <div class="card-value" id="fileSize" class="loading">-</div>
-                <div class="card-label">Blocklist size</div>
+                <div class="card-label">Размер блокиста</div>
             </div>
 
             <div class="card">
                 <div class="card-icon">🔄</div>
-                <div class="card-title">Cache Hit Rate</div>
+                <div class="card-title">Эффективность кэша</div>
                 <div class="card-value" id="cacheRate" class="loading">-</div>
-                <div class="card-label">Efficiency</div>
+                <div class="card-label">Производительность</div>
             </div>
         </div>
 
         <!-- CHARTS -->
         <div class="section">
-            <h2 class="section-title">Analytics</h2>
+            <h2 class="section-title">Аналитика</h2>
             <div class="grid grid-2">
                 <div class="card">
-                    <div class="card-title">Threat Distribution</div>
+                    <div class="card-title">Распределение угроз</div>
                     <div class="chart-wrapper">
                         <canvas id="chartDist"></canvas>
                     </div>
                 </div>
 
                 <div class="card">
-                    <div class="card-title">Source Performance</div>
+                    <div class="card-title">Производительность источников</div>
                     <div class="chart-wrapper">
                         <canvas id="chartPerf"></canvas>
                     </div>
@@ -568,22 +563,22 @@
 
         <!-- SOURCES -->
         <div class="section">
-            <h2 class="section-title">Data Sources</h2>
+            <h2 class="section-title">Источники данных</h2>
             <div class="table-card">
                 <table>
                     <thead>
                         <tr>
-                            <th>Source</th>
-                            <th>Category</th>
-                            <th>Domains</th>
-                            <th>Response Time</th>
-                            <th>Status</th>
+                            <th>Источник</th>
+                            <th>Категория</th>
+                            <th>Домены</th>
+                            <th>Время ответа</th>
+                            <th>Статус</th>
                         </tr>
                     </thead>
                     <tbody id="sourcesTable">
                         <tr>
                             <td colspan="5" style="text-align: center; padding: 2rem; color: #94a3b8;">
-                                Загрузи файл чтобы увидеть данные источников
+                                Загрузка данных...
                             </td>
                         </tr>
                     </tbody>
@@ -593,15 +588,15 @@
 
         <!-- ACTIVITY -->
         <div class="section">
-            <h2 class="section-title">Recent Activity</h2>
+            <h2 class="section-title">Последняя активность</h2>
             <div class="activity-list" id="activity"></div>
         </div>
     </main>
 
     <footer>
-        <p>🛡️ DNS Blocklist Builder Control Panel</p>
+        <p>🛡️ Панель управления DNS Blocklist</p>
         <p style="margin-top: 1rem;">
-            <a href="https://github.com/somafix/dns-blocklist">GitHub Repository</a>
+            <a href="https://github.com/somafix/dns-blocklist">GitHub репозиторий</a>
         </p>
     </footer>
 
@@ -785,14 +780,14 @@
                 updateTable();
                 updateCharts();
 
-                const lastUpdateTime = state.lastUpdate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-                addActivity('✅', 'Analysis complete', `${state.totalDomains.toLocaleString()} domains (${lastUpdateTime})`);
+                const lastUpdateTime = state.lastUpdate.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                addActivity('✅', 'Анализ завершен', `${state.totalDomains.toLocaleString()} доменов (${lastUpdateTime})`);
 
                 return true;
 
             } catch (error) {
-                console.error('❌ Error loading blocklist:', error);
-                addActivity('❌', 'Load failed', error.message);
+                console.error('❌ Ошибка загрузки blocklist:', error);
+                addActivity('❌', 'Ошибка загрузки', error.message);
                 return false;
             }
         }
@@ -800,7 +795,7 @@
         // UPDATE TABLE
         function updateTable() {
             const tbody = document.getElementById('sourcesTable');
-            const categories = ['Malware', 'Phishing', 'Infrastructure', 'Malware', 'Tracking'];
+            const categories = ['Вредоносные', 'Фишинг', 'Инфраструктура', 'Вредоносные', 'Отслеживание'];
             const badgeTypes = ['badge-danger', 'badge-warning', 'badge-danger', 'badge-danger', 'badge-blue'];
 
             tbody.innerHTML = state.sources.map((source, idx) => `
@@ -809,7 +804,7 @@
                     <td><span class="badge ${badgeTypes[idx]}">${categories[idx]}</span></td>
                     <td>${source.domains.toLocaleString()}</td>
                     <td>${source.time}s</td>
-                    <td><span class="badge badge-success">Online</span></td>
+                    <td><span class="badge badge-success">В сети</span></td>
                 </tr>
             `).join('');
         }
