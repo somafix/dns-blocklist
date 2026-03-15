@@ -1,115 +1,249 @@
-# 🛡️ personalDNSfilter — Оптимизированная конфигурация + Динамический блок-лист
+Dynamic DNS Blocklist Builder
 
-Готовая конфигурация для приложения [personalDNSfilter](https://www.zenz-solutions.de/personaldnsfilter-wp/) с автоматически обновляемым блок-листом трекеров, рекламы и малвари в реальном времени.
+"Python" (https://img.shields.io/badge/python-3.8%2B-blue)
+"License" (https://img.shields.io/badge/license-MIT-green)
+"Security" (https://img.shields.io/badge/focus-threat%20intelligence-red)
+"Blocklist" (https://img.shields.io/badge/type-dns%20blocklist-black)
+"Automation" (https://img.shields.io/badge/automation-github%20actions-blue)
 
----
+Dynamic DNS Blocklist Builder — это инструмент агрегации threat-intelligence, который автоматически собирает домены вредоносных сайтов, фишинга, трекеров и рекламы из нескольких публичных источников и генерирует единый "hosts"-блоклист.
 
-## 🔥 Что это даёт
+Проект предназначен для использования с:
 
-- **Блокировка рекламы и трекеров** — 17 источников фильтров включая HaGeZi, OISD, AdAway, StevenBlack
-- **Защита от малвари и фишинга** — URLhaus, ThreatFox, OpenPhish, CERT.PL
-- **Перехват hardcoded DNS** — приложения вроде Facebook, Instagram которые игнорируют системный DNS и обращаются напрямую к Google/Cloudflare — теперь тоже фильтруются
-- **Автообновление каждый час** — новые трекеры и угрозы попадают в блок-лист автоматически через GitHub Actions
-- **Совместимость** — работает на любых Android устройствах включая MIUI, One UI, ColorOS
-
----
-
-## 📁 Файлы репозитория
-
-| Файл | Описание |
-|---|---|
-| `personalDNSfilter_FINAL.conf` | Готовый конфиг для приложения на телефоне |
-| `update_blocklist.py` | Python скрипт сборки динамического блок-листа |
-| `.github/workflows/update-blocklist.yml` | GitHub Actions — запускает скрипт каждый час |
-| `dynamic-blocklist.txt` | Готовый блок-лист (генерируется автоматически) |
+- DNS фильтрами
+- сетевыми фильтрами
+- Pi-hole
+- personalDNSfilter
+- AdGuard
+- системными "hosts" файлами
 
 ---
 
-## 🚀 Установка
+Основные возможности
 
-### Шаг 1 — Установи приложение
+Threat Intelligence Aggregation
 
-Скачай [personalDNSfilter](https://play.google.com/store/apps/details?id=dnsfilter.android) из Google Play.
+Сбор доменов из нескольких источников угроз.
 
-### Шаг 2 — Загрузи конфиг
+Smart HTTP Caching
 
-1. Скачай файл `personalDNSfilter_FINAL.conf` из этого репозитория
-2. Помести его в папку на телефоне:
-```
-/storage/emulated/0/Android/media/dnsfilter.android/
-```
-3. Открой приложение → **Advanced settings** → **Edit configuration** → загрузи файл
+Поддержка:
 
-### Шаг 3 — Готово
+- "ETag"
+- "Last-Modified"
 
-Запусти приложение — оно автоматически скачает все фильтры при первом старте.
+Позволяет не скачивать списки повторно, если они не изменились.
 
----
+Duplicate Analysis
 
-## 📋 Источники фильтров
+Автоматический анализ пересечений между источниками.
 
-| Источник | Тип | Обновление |
-|---|---|---|
-| [HaGeZi Pro++](https://github.com/hagezi/dns-blocklists) | Реклама / трекеры | 1-2 раза в сутки |
-| [HaGeZi Ultimate](https://github.com/hagezi/dns-blocklists) | Максимальная блокировка | 1-2 раза в сутки |
-| [OISD Big](https://oisd.nl) | Реклама / трекеры | Ежедневно |
-| [AdAway](https://adaway.org) | Реклама | Ежедневно |
-| [StevenBlack](https://github.com/StevenBlack/hosts) | Реклама / малварь | Ежедневно |
-| [URLhaus](https://urlhaus.abuse.ch) | Малварь / C2 серверы | Каждые минуты |
-| [ThreatFox](https://threatfox.abuse.ch) | IOC / малварь | Каждые минуты |
-| [OpenPhish](https://openphish.com) | Фишинг | Каждые часы |
-| [CERT.PL](https://hole.cert.pl) | Угрозы UA/EU | Несколько раз в сутки |
-| HaGeZi Native (Amazon, Apple, Samsung, Xiaomi, Windows) | Телеметрия производителей | 1-2 раза в сутки |
-| [Peter Lowe](https://pgl.yoyo.org) | Реклама | Ежедневно |
-| [GoodbyeAds](https://github.com/jerryn70/GoodbyeAds) | Реклама | Ежедневно |
+Performance Metrics
+
+Показывает:
+
+- время загрузки каждого источника
+- статистику доменов
+- итоговую производительность.
+
+Automatic Git Hygiene
+
+Скрипт автоматически создаёт ".gitignore" для кэша.
 
 ---
 
-## ⚙️ Ключевые настройки конфига
+Архитектура
 
-| Параметр | Значение | Описание |
-|---|---|---|
-| `fallbackDNS` | Cloudflare 1.1.1.2 + Quad9 9953 | Cloudflare с блокировкой малвари, Quad9 на альтернативном порту |
-| `ipVersionSupport` | `46` | Поддержка IPv4 и IPv6 |
-| `routeIPs` | Google + Cloudflare + Quad9 | Перехват hardcoded DNS в приложениях |
-| `routeUnderlyingDNS` | `true` | Перехват DNS браузеров (Chrome и др.) |
-| `androidKeepAwake` | `true` | Защита от убийства сервиса в фоне |
-| `dnsRequestTimeout` | `5000` | Увеличен таймаут для медленных устройств |
-| `reloadIntervalDays` | `1` | Обновление фильтров каждые сутки |
+                ┌────────────────────┐
+                │ Threat Sources     │
+                │                    │
+                │ URLhaus            │
+                │ OpenPhish          │
+                │ ThreatFox          │
+                │ CERT.PL            │
+                │ HaGeZi DNS lists   │
+                └─────────┬──────────┘
+                          │
+                          ▼
+                ┌────────────────────┐
+                │ HTTP Fetch Layer   │
+                │                    │
+                │ ETag caching       │
+                │ Last-Modified      │
+                └─────────┬──────────┘
+                          │
+                          ▼
+                ┌────────────────────┐
+                │ Domain Extraction  │
+                │                    │
+                │ URL parsing        │
+                │ hosts parsing      │
+                └─────────┬──────────┘
+                          │
+                          ▼
+                ┌────────────────────┐
+                │ Validation Engine  │
+                │                    │
+                │ domain checks      │
+                │ whitelist filter   │
+                └─────────┬──────────┘
+                          │
+                          ▼
+                ┌────────────────────┐
+                │ Deduplication      │
+                │ & Analytics        │
+                └─────────┬──────────┘
+                          │
+                          ▼
+                ┌────────────────────┐
+                │ Blocklist Output   │
+                │ dynamic-blocklist  │
+                └────────────────────┘
 
 ---
 
-## 🤖 Как работает автообновление
+Источники Threat Intelligence
 
-```
-GitHub Actions (каждый час)
-        ↓
-update_blocklist.py
-        ↓
-Скачивает свежие данные из URLhaus, ThreatFox, OpenPhish, CERT.PL, HaGeZi
-        ↓
-Генерирует dynamic-blocklist.txt
-        ↓
-Пушит в репозиторий
-        ↓
-personalDNSfilter на телефоне скачивает обновление раз в сутки
-```
+Проект агрегирует данные из публичных threat-intel проектов:
+
+Source| Тип
+URLhaus| Malware / C2
+OpenPhish| Phishing
+ThreatFox| Malware infrastructure
+CERT.PL| Malware domains
+HaGeZi| Ads / Tracking
+
+Эти источники регулярно публикуют списки вредоносных доменов.
 
 ---
 
-## ❓ Частые вопросы
+Установка
 
-**Что-то перестало работать после установки конфига?**
-Убедись что в настройках Android отключён **Private DNS** (Настройки → Сеть → Дополнительно → Private DNS → Выключить). Иначе система обходит personalDNSfilter.
+Клонировать репозиторий:
 
-**Приложение останавливается в фоне?**
-Добавь personalDNSfilter в исключения оптимизации батареи (Настройки → Батарея → Оптимизация → personalDNSfilter → Не оптимизировать).
-
-**Блокируется нужный сайт?**
-В приложении нажми на заблокированный домен в логе → **Whitelist** — он больше не будет блокироваться.
+git clone https://github.com/yourname/dynamic-dns-blocklist-builder.git
+cd dynamic-dns-blocklist-builder
 
 ---
 
-## 📄 Лицензия
+Требования
 
-MIT — используй свободно.
+Python:
+
+3.8+
+
+Скрипт использует только стандартную библиотеку Python.
+
+---
+
+Запуск
+
+python3 blocklist_builder.py
+
+После выполнения создаётся файл:
+
+dynamic-blocklist.txt
+
+Пример строки:
+
+0.0.0.0 malicious-domain.com
+
+---
+
+GitHub Actions (автообновление блоклиста)
+
+Создай файл:
+
+.github/workflows/update-blocklist.yml
+
+Содержимое:
+
+name: Update DNS Blocklist
+
+on:
+  schedule:
+    - cron: "0 */12 * * *"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Run builder
+        run: python3 blocklist_builder.py
+
+      - name: Commit blocklist
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "actions@github.com"
+          git add dynamic-blocklist.txt
+          git commit -m "auto update blocklist" || echo "no changes"
+          git push
+
+Теперь GitHub будет обновлять блоклист автоматически каждые 12 часов.
+
+---
+
+Пример вывода
+
+🚀 Blocklist build started
+
+Source: URLhaus
+Domains: 4320
+
+Source: OpenPhish
+Domains: 1103
+
+Source: ThreatFox
+Domains: 2480
+
+Total unique domains: 7693
+
+---
+
+Использование
+
+Подходит для:
+
+- Pi-hole
+- personalDNSfilter
+- AdGuard
+- системного "hosts"
+- локальных DNS серверов
+
+---
+
+Безопасность
+
+Проект:
+
+- не выполняет удалённый код
+- не передает пользовательские данные
+- использует только публичные threat-intel источники
+
+Но возможны false positives.
+
+---
+
+Лицензия
+
+MIT License
+
+Свободно используйте, модифицируйте и распространяйте.
+
+---
+
+Contribution
+
+Pull requests приветствуются.
+
+Если вы нашли новый источник threat-intel — создайте issue.
