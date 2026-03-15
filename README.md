@@ -5,129 +5,34 @@
 [![Python](https://img.shields.io/badge/Python-3.8+-3776ab?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge&logo=opensourceinitiative&logoColor=white)](LICENSE)
 [![Status](https://img.shields.io/badge/Status-Active-brightgreen?style=for-the-badge&logo=github&logoColor=white)]()
-[![Updates](https://img.shields.io/badge/Updates-Every%206h-blueviolet?style=for-the-badge&logo=clock&logoColor=white)]()
+[![Build](https://img.shields.io/github/actions/workflow/status/somafix/dns-blocklist/update.yml?style=for-the-badge&logo=githubactions&logoColor=white&label=Auto%20Update)](https://github.com/somafix/dns-blocklist/actions)
+[![Last Updated](https://img.shields.io/badge/dynamic/json?url=https://api.github.com/repos/somafix/dns-blocklist/commits/main&query=$[0].commit.committer.date&style=for-the-badge&logo=clock&logoColor=white&label=Last%20Update)](https://github.com/somafix/dns-blocklist/commits/main)
 
 ---
 
-**Единственная Python-утилита, которая автоматически обновляет списки блокировки без участия человека**
+**Автоматическая агрегация блоклистов угроз с обновлением каждые 6 часов**
 
-Скрипт работает по расписанию, загружает актуальные данные об угрозах и обновляет список на GitHub. Просто скопируйте конфиг или список в ваш DNS-фильтр — и всё!
+Агрегирует проверенные источники угроз, дедуплицирует и публикует в форматах для популярных DNS-фильтров. Просто добавьте URL — обновления придут автоматически.
 
 </div>
+
+---
+
+## 📋 Быстрые ссылки
+
+| Фильтр | Формат | URL для импорта | Размер |
+|--------|--------|----------------|--------|
+| **AdGuard Home** | Plain text | `https://raw.githubusercontent.com/somafix/dns-blocklist/main/dynamic-blocklist.txt` | ~2.5 MB |
+| **Pi-hole** | Plain text | `https://raw.githubusercontent.com/somafix/dns-blocklist/main/dynamic-blocklist.txt` | ~2.5 MB |
+| **personalDNSfilter** | hosts | `https://raw.githubusercontent.com/somafix/dns-blocklist/main/personalDNSfilter_FINAL.conf` | ~2.4 MB |
+
+**~62,000 уникальных доменов** после дедупликации и валидации
 
 ---
 
 ## 🚀 Как использовать
 
-### 📱 personalDNSfilter (Android)
-
-1. Откройте приложение
-2. **Settings → Custom hosts → Import URL**
-3. Вставьте:
-   ```
-   https://raw.githubusercontent.com/somafix/dns-blocklist/main/personalDNSfilter_FINAL.conf
-   ```
-4. Готово! Обновляется автоматически
-
----
-
 ### 🛡️ AdGuard Home
 
-1. **Settings → Filters → DNS blocklists**
-2. **Add blocklist**
-3. Вставьте:
-   ```
-   https://raw.githubusercontent.com/somafix/dns-blocklist/main/dynamic-blocklist.txt
-   ```
-4. Готово!
-
----
-
-### 🏠 Pi-hole
-
-1. **Admin Dashboard → Adlists**
-2. **Add new adlist**
-3. Вставьте:
-   ```
-   https://raw.githubusercontent.com/somafix/dns-blocklist/main/dynamic-blocklist.txt
-   ```
-4. Готово!
-
----
-
-### 💻 Локально
-
-```bash
-# Linux/macOS
-sudo cp /etc/hosts /etc/hosts.backup
-sudo cat dynamic-blocklist.txt >> /etc/hosts
-sudo systemctl restart systemd-resolved
-```
-
----
-
-## 📊 Что входит
-
-| Файл | Для кого | Размер |
-|------|----------|--------|
-| `personalDNSfilter_FINAL.conf` | 📱 personalDNSfilter | 2.4 MB |
-| `dynamic-blocklist.txt` | 🛡️ AdGuard, Pi-hole | 2.5 MB |
-
-**62,000+ уникальных опасных доменов**
-
----
-
-## 🔄 Как это работает
-
-```
-📅 Каждые 6 часов:
-GitHub Actions → Загружает данные → Обновляет файлы на GitHub
-                                    ↓
-                            Ваш DNS-фильтр
-                         загружает сам!
-```
-
-Никакого ручного вмешательства не требуется.
-
----
-
-## 📥 Установка (опционально)
-
-```bash
-git clone https://github.com/somafix/dns-blocklist.git
-cd dns-blocklist
-python3 update_blocklist.py
-```
-
----
-
-## 📋 Требования
-
-- **Python 3.8+** (если запускаете локально)
-- Интернет-соединение
-- Один из поддерживаемых DNS-фильтров
-
----
-
-## 🔒 Безопасность
-
-✅ Не требует администратора  
-✅ Открытый исходный код  
-✅ Только HTTPS загрузки  
-✅ Встроенные библиотеки Python  
-
----
-
-## 📝 Лицензия
-
-MIT License © 2024
-
----
-
-<div align="center">
-
-**Всегда актуальная защита. Без ручных обновлений.** 🚀
-
-[GitHub](https://github.com/somafix/dns-blocklist)
-
-</div>
+1. **Filters → DNS blocklists → Add blocklist**
+2. Вставьте URL:
