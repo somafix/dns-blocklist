@@ -1,0 +1,1 @@
+mkdir -p docs && cp dashboard_working.html docs/index.html && git add docs/ && git commit -m "Add dashboard" && git push
