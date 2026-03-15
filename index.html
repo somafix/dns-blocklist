@@ -3,10 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DNS Blocklist Builder - Premium Dashboard</title>
+    <title>DNS Blocklist - Control Panel</title>
     
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     
     <style>
         * {
@@ -15,956 +14,404 @@
             box-sizing: border-box;
         }
 
-        :root {
-            --bg-dark: #0a0e27;
-            --bg-darker: #050812;
-            --bg-card: #111827;
-            --text-primary: #f9fafb;
-            --text-secondary: #d1d5db;
-            --text-tertiary: #9ca3af;
-            --accent-blue: #3b82f6;
-            --accent-cyan: #06b6d4;
-            --accent-purple: #8b5cf6;
-            --accent-pink: #ec4899;
-            --accent-green: #10b981;
-            --border-color: rgba(255, 255, 255, 0.05);
-        }
-
-        html {
-            scroll-behavior: smooth;
-        }
-
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: linear-gradient(135deg, var(--bg-darker) 0%, var(--bg-dark) 100%);
-            color: var(--text-primary);
-            line-height: 1.6;
-            overflow-x: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f1419;
+            color: #e3e8ef;
+            line-height: 1.5;
         }
 
-        /* ═══════════════════════════════════════════════════════════════ */
-        /* ANIMATED BACKGROUND */
-        /* ═══════════════════════════════════════════════════════════════ */
-
-        body::before {
-            content: '';
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: 
-                radial-gradient(circle at 20% 50%, rgba(59, 130, 246, 0.15) 0%, transparent 50%),
-                radial-gradient(circle at 80% 80%, rgba(139, 92, 246, 0.1) 0%, transparent 50%),
-                radial-gradient(circle at 40% 0%, rgba(6, 182, 212, 0.08) 0%, transparent 50%);
-            pointer-events: none;
-            z-index: 1;
-            animation: shift 20s ease-in-out infinite;
-        }
-
-        @keyframes shift {
-            0%, 100% { transform: translate(0, 0); opacity: 1; }
-            50% { transform: translate(30px, -30px); opacity: 0.8; }
-        }
-
-        body > * {
-            position: relative;
-            z-index: 2;
-        }
-
-        /* ═══════════════════════════════════════════════════════════════ */
-        /* HEADER WITH ANIMATIONS */
-        /* ═══════════════════════════════════════════════════════════════ */
-
+        /* HEADER */
         header {
-            backdrop-filter: blur(20px);
-            background: rgba(5, 8, 18, 0.6);
-            border-bottom: 1px solid var(--border-color);
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            animation: slideDown 0.6s ease-out;
-        }
-
-        @keyframes slideDown {
-            from {
-                opacity: 0;
-                transform: translateY(-20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .header-content {
-            max-width: 1600px;
-            margin: 0 auto;
-            padding: 1.5rem 2rem;
+            background: #1a1f2e;
+            border-bottom: 1px solid #2a3142;
+            padding: 1rem 2rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 10;
         }
 
-        .header-logo {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            font-size: 1.4rem;
-            font-weight: 700;
-            background: linear-gradient(135deg, var(--accent-blue) 0%, var(--accent-cyan) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            text-decoration: none;
+        .logo {
+            font-weight: 600;
+            font-size: 1rem;
             letter-spacing: -0.5px;
-            animation: fadeInLeft 0.6s ease-out;
         }
 
-        @keyframes fadeInLeft {
-            from {
-                opacity: 0;
-                transform: translateX(-20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
+        .logo-icon {
+            margin-right: 0.5rem;
         }
 
-        .header-logo span {
-            font-size: 1.8rem;
-            animation: rotate 3s ease-in-out infinite;
-            display: inline-block;
-        }
-
-        @keyframes rotate {
-            0%, 100% { transform: rotate(0deg) scale(1); }
-            50% { transform: rotate(10deg) scale(1.05); }
-        }
-
-        .header-status {
+        .header-right {
             display: flex;
-            align-items: center;
             gap: 1.5rem;
-            animation: fadeInRight 0.6s ease-out;
+            align-items: center;
         }
 
-        @keyframes fadeInRight {
-            from {
-                opacity: 0;
-                transform: translateX(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
-        }
-
-        .status-badge {
+        .status {
             display: flex;
             align-items: center;
-            gap: 0.6rem;
-            padding: 0.8rem 1.4rem;
-            background: rgba(16, 185, 129, 0.1);
-            border: 1px solid rgba(16, 185, 129, 0.2);
-            border-radius: 999px;
+            gap: 0.5rem;
             font-size: 0.9rem;
-            font-weight: 500;
-            color: var(--accent-green);
-            backdrop-filter: blur(10px);
-            animation: pulseIn 0.8s ease-out;
+            color: #4ade80;
         }
 
-        @keyframes pulseIn {
-            0% {
-                opacity: 0;
-                transform: scale(0.8);
-            }
-            100% {
-                opacity: 1;
-                transform: scale(1);
-            }
-        }
-
-        .status-pulse {
-            width: 8px;
-            height: 8px;
-            background: var(--accent-green);
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            background: #4ade80;
             border-radius: 50%;
-            animation: pulse 2s infinite, glow 2s infinite;
         }
 
-        @keyframes pulse {
-            0%, 100% {
-                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
-            }
-            50% {
-                box-shadow: 0 0 0 10px rgba(16, 185, 129, 0);
-            }
-        }
-
-        @keyframes glow {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-
-        .header-time {
-            color: var(--text-tertiary);
-            font-weight: 500;
+        .time {
             font-size: 0.9rem;
-            min-width: 70px;
-            animation: fadeInRight 0.6s ease-out 0.1s both;
+            color: #94a3b8;
+            min-width: 60px;
+            text-align: right;
         }
 
-        /* ═══════════════════════════════════════════════════════════════ */
-        /* MAIN LAYOUT */
-        /* ═══════════════════════════════════════════════════════════════ */
-
+        /* MAIN */
         main {
-            max-width: 1600px;
+            max-width: 1400px;
             margin: 0 auto;
-            padding: 4rem 2rem;
+            padding: 2rem;
         }
 
-        /* ─────────────────────────────────────────────────────────────── */
-        /* HERO SECTION */
-        /* ─────────────────────────────────────────────────────────────── */
-
-        .hero {
-            margin-bottom: 5rem;
-            text-align: center;
+        .page-title {
+            font-size: 1.8rem;
+            font-weight: 600;
+            margin-bottom: 2rem;
         }
 
-        .hero-title {
-            font-size: clamp(2.5rem, 8vw, 4rem);
-            font-weight: 800;
-            line-height: 1.1;
-            margin-bottom: 1.5rem;
-            letter-spacing: -2px;
-            background: linear-gradient(135deg, 
-                var(--accent-blue) 0%, 
-                var(--accent-cyan) 25%,
-                var(--accent-purple) 50%,
-                var(--accent-pink) 75%,
-                var(--accent-blue) 100%);
-            background-size: 300% 300%;
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            animation: gradientShift 8s ease infinite, fadeInUp 0.8s ease-out;
-        }
-
-        @keyframes gradientShift {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
-        }
-
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .hero-subtitle {
-            font-size: 1.3rem;
-            color: var(--text-secondary);
-            max-width: 700px;
-            margin: 0 auto;
-            font-weight: 300;
-            letter-spacing: 0.5px;
-            animation: fadeInUp 0.8s ease-out 0.2s both;
-        }
-
-        /* ─────────────────────────────────────────────────────────────── */
-        /* STATS SHOWCASE */
-        /* ─────────────────────────────────────────────────────────────── */
-
-        .stats-showcase {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 2rem;
-            margin-bottom: 5rem;
-        }
-
-        .stat-showcase {
-            position: relative;
-            padding: 2.5rem;
-            border-radius: 2rem;
-            border: 1px solid var(--border-color);
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.02) 0%, rgba(255, 255, 255, 0.05) 100%);
-            backdrop-filter: blur(20px);
-            overflow: hidden;
-            cursor: pointer;
-            transition: all 0.4s cubic-bezier(0.23, 1, 0.320, 1);
-            animation: slideUp 0.6s ease-out both;
-        }
-
-        .stat-showcase:nth-child(1) { animation-delay: 0.1s; }
-        .stat-showcase:nth-child(2) { animation-delay: 0.2s; }
-        .stat-showcase:nth-child(3) { animation-delay: 0.3s; }
-        .stat-showcase:nth-child(4) { animation-delay: 0.4s; }
-
-        @keyframes slideUp {
-            from {
-                opacity: 0;
-                transform: translateY(40px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .stat-showcase::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(135deg, 
-                rgba(59, 130, 246, 0.1) 0%, 
-                transparent 50%,
-                rgba(139, 92, 246, 0.1) 100%);
-            opacity: 0;
-            transition: opacity 0.4s ease;
-        }
-
-        .stat-showcase:hover {
-            transform: translateY(-12px);
-            border-color: rgba(255, 255, 255, 0.1);
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.08) 100%);
-            box-shadow: 0 20px 40px rgba(59, 130, 246, 0.2);
-        }
-
-        .stat-showcase:hover::before {
-            opacity: 1;
-        }
-
-        .stat-showcase:hover .stat-value {
-            animation: bounce 0.6s ease;
-        }
-
-        @keyframes bounce {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.1); }
-        }
-
-        .stat-showcase-content {
-            position: relative;
-            z-index: 2;
-        }
-
-        .stat-label {
-            font-size: 0.9rem;
-            color: var(--text-tertiary);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            font-weight: 500;
-            margin-bottom: 1rem;
-            animation: fadeInDown 0.6s ease-out 0.3s both;
-        }
-
-        @keyframes fadeInDown {
-            from {
-                opacity: 0;
-                transform: translateY(-10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .stat-value {
-            font-size: 3rem;
-            font-weight: 800;
-            margin-bottom: 0.5rem;
-            background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            animation: countUp 1s ease-out 0.4s both;
-        }
-
-        @keyframes countUp {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .stat-subtitle {
-            font-size: 0.95rem;
-            color: var(--text-tertiary);
-        }
-
-        .stat-icon {
-            position: absolute;
-            top: -20px;
-            right: -20px;
-            font-size: 8rem;
-            opacity: 0.05;
-            animation: float 6s ease-in-out infinite;
-        }
-
-        @keyframes float {
-            0%, 100% { transform: translate(0, 0) rotate(0deg); }
-            25% { transform: translate(20px, -20px) rotate(5deg); }
-            50% { transform: translate(0, -40px) rotate(0deg); }
-            75% { transform: translate(-20px, -20px) rotate(-5deg); }
-        }
-
-        /* ─────────────────────────────────────────────────────────────── */
-        /* SECTION */
-        /* ─────────────────────────────────────────────────────────────── */
-
-        .section {
-            margin-bottom: 5rem;
-            animation: fadeInUp 0.8s ease-out;
-        }
-
-        .section:nth-of-type(1) { animation-delay: 0.2s; }
-        .section:nth-of-type(2) { animation-delay: 0.4s; }
-        .section:nth-of-type(3) { animation-delay: 0.6s; }
-
-        .section-header {
-            margin-bottom: 2.5rem;
-        }
-
-        .section-title {
-            font-size: 2.2rem;
-            font-weight: 700;
-            margin-bottom: 1rem;
-            letter-spacing: -1px;
-            animation: slideInLeft 0.6s ease-out;
-        }
-
-        @keyframes slideInLeft {
-            from {
-                opacity: 0;
-                transform: translateX(-30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
-        }
-
-        .section-title span {
-            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        /* ─────────────────────────────────────────────────────────────── */
         /* GRID */
-        /* ─────────────────────────────────────────────────────────────── */
-
         .grid {
             display: grid;
-            gap: 2rem;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
         }
 
-        .grid-3 {
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+        .grid-4 {
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
         }
 
-        .grid > * {
-            animation: scaleIn 0.6s ease-out both;
+        .grid-2 {
+            grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
         }
 
-        .grid > :nth-child(1) { animation-delay: 0s; }
-        .grid > :nth-child(2) { animation-delay: 0.1s; }
-        .grid > :nth-child(3) { animation-delay: 0.2s; }
-        .grid > :nth-child(4) { animation-delay: 0.3s; }
-        .grid > :nth-child(5) { animation-delay: 0.4s; }
-
-        @keyframes scaleIn {
-            from {
-                opacity: 0;
-                transform: scale(0.9) translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: scale(1) translateY(0);
-            }
+        .grid-1 {
+            grid-template-columns: 1fr;
         }
 
-        @media (max-width: 1024px) {
-            .grid-3 {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-
-        @media (max-width: 640px) {
-            .grid-3 {
+        @media (max-width: 1200px) {
+            .grid-2 {
                 grid-template-columns: 1fr;
             }
         }
 
-        /* ─────────────────────────────────────────────────────────────── */
-        /* CARD */
-        /* ─────────────────────────────────────────────────────────────── */
-
-        .card {
-            padding: 2rem;
-            border-radius: 1.5rem;
-            border: 1px solid var(--border-color);
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.02) 0%, rgba(255, 255, 255, 0.05) 100%);
-            backdrop-filter: blur(20px);
-            transition: all 0.4s ease;
-            overflow: hidden;
-            position: relative;
+        @media (max-width: 768px) {
+            .grid-4 {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            main {
+                padding: 1rem;
+            }
         }
 
-        .card::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(135deg, rgba(59, 130, 246, 0.05), transparent, rgba(139, 92, 246, 0.05));
-            opacity: 0;
-            transition: opacity 0.4s ease;
+        @media (max-width: 480px) {
+            .grid-4 {
+                grid-template-columns: 1fr;
+            }
+            .page-title {
+                font-size: 1.5rem;
+            }
+        }
+
+        /* CARD */
+        .card {
+            background: #1a1f2e;
+            border: 1px solid #2a3142;
+            border-radius: 6px;
+            padding: 1.5rem;
         }
 
         .card:hover {
-            border-color: rgba(255, 255, 255, 0.1);
-            transform: translateY(-8px);
-            box-shadow: 0 20px 40px rgba(59, 130, 246, 0.15);
-        }
-
-        .card:hover::before {
-            opacity: 1;
-        }
-
-        .card-content {
-            position: relative;
-            z-index: 2;
+            border-color: #3b82f6;
         }
 
         .card-title {
-            font-size: 1.1rem;
+            font-size: 0.9rem;
+            color: #94a3b8;
+            margin-bottom: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .card-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #3b82f6;
+            margin-bottom: 0.5rem;
+        }
+
+        .card-label {
+            font-size: 0.85rem;
+            color: #64748b;
+        }
+
+        .card-icon {
+            font-size: 2.5rem;
+            float: right;
+            opacity: 0.3;
+        }
+
+        /* SECTION */
+        .section {
+            margin-bottom: 2.5rem;
+        }
+
+        .section-title {
+            font-size: 1.3rem;
             font-weight: 600;
             margin-bottom: 1.5rem;
-            color: var(--text-primary);
         }
 
-        /* ─────────────────────────────────────────────────────────────── */
-        /* CHART */
-        /* ─────────────────────────────────────────────────────────────── */
-
-        .chart-wrapper {
-            position: relative;
-            height: 320px;
-            animation: fadeIn 1s ease-out 0.3s both;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-
-        /* ─────────────────────────────────────────────────────────────── */
         /* TABLE */
-        /* ─────────────────────────────────────────────────────────────── */
-
         .table-card {
-            border-radius: 1.5rem;
+            background: #1a1f2e;
+            border: 1px solid #2a3142;
+            border-radius: 6px;
             overflow: hidden;
         }
 
-        .table {
+        table {
             width: 100%;
             border-collapse: collapse;
         }
 
-        .table thead {
-            background: rgba(255, 255, 255, 0.02);
-            border-bottom: 1px solid var(--border-color);
+        thead {
+            background: #0f1419;
+            border-bottom: 1px solid #2a3142;
         }
 
-        .table th {
-            padding: 1.5rem 2rem;
+        th {
+            padding: 1rem;
             text-align: left;
             font-weight: 600;
             font-size: 0.85rem;
-            color: var(--text-tertiary);
+            color: #64748b;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
 
-        .table td {
-            padding: 1.5rem 2rem;
-            border-top: 1px solid var(--border-color);
-            font-size: 0.95rem;
-            color: var(--text-secondary);
+        td {
+            padding: 1rem;
+            border-bottom: 1px solid #2a3142;
+            font-size: 0.9rem;
         }
 
-        .table tbody tr {
-            transition: all 0.3s ease;
-            animation: slideInLeft 0.6s ease-out both;
+        tbody tr:hover {
+            background: rgba(59, 130, 246, 0.05);
         }
 
-        .table tbody tr:nth-child(1) { animation-delay: 0s; }
-        .table tbody tr:nth-child(2) { animation-delay: 0.1s; }
-        .table tbody tr:nth-child(3) { animation-delay: 0.2s; }
-        .table tbody tr:nth-child(4) { animation-delay: 0.3s; }
-        .table tbody tr:nth-child(5) { animation-delay: 0.4s; }
-
-        .table tbody tr:hover {
-            background: rgba(255, 255, 255, 0.02);
-            transform: translateX(10px);
+        tbody tr:last-child td {
+            border-bottom: none;
         }
 
+        /* BADGE */
         .badge {
             display: inline-block;
-            padding: 0.5rem 1rem;
-            border-radius: 8px;
-            font-size: 0.8rem;
+            padding: 0.3rem 0.8rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            animation: popIn 0.4s ease-out both;
-        }
-
-        @keyframes popIn {
-            from {
-                opacity: 0;
-                transform: scale(0);
-            }
-            to {
-                opacity: 1;
-                transform: scale(1);
-            }
         }
 
         .badge-danger {
-            background: rgba(239, 68, 68, 0.1);
+            background: rgba(239, 68, 68, 0.2);
             color: #fca5a5;
         }
 
         .badge-warning {
-            background: rgba(245, 158, 11, 0.1);
+            background: rgba(245, 158, 11, 0.2);
             color: #fcd34d;
         }
 
         .badge-blue {
-            background: rgba(59, 130, 246, 0.1);
+            background: rgba(59, 130, 246, 0.2);
             color: #93c5fd;
         }
 
         .badge-success {
-            background: rgba(16, 185, 129, 0.1);
+            background: rgba(16, 185, 129, 0.2);
             color: #86efac;
         }
 
-        /* ─────────────────────────────────────────────────────────────── */
-        /* ACTIVITY FEED */
-        /* ─────────────────────────────────────────────────────────────── */
+        /* CHART */
+        .chart-wrapper {
+            position: relative;
+            height: 280px;
+        }
 
+        /* ACTIVITY */
         .activity-list {
-            display: flex;
-            flex-direction: column;
-            gap: 1.5rem;
+            background: #1a1f2e;
+            border: 1px solid #2a3142;
+            border-radius: 6px;
+            overflow: hidden;
         }
 
         .activity-item {
             display: flex;
-            gap: 1.5rem;
-            padding: 1.5rem;
-            border-radius: 1rem;
-            border: 1px solid var(--border-color);
-            background: rgba(255, 255, 255, 0.01);
-            backdrop-filter: blur(10px);
-            transition: all 0.3s ease;
-            animation: slideInRight 0.6s ease-out both;
+            gap: 1rem;
+            padding: 1rem;
+            border-bottom: 1px solid #2a3142;
         }
 
-        .activity-item:nth-child(1) { animation-delay: 0s; }
-        .activity-item:nth-child(2) { animation-delay: 0.1s; }
-        .activity-item:nth-child(3) { animation-delay: 0.2s; }
-        .activity-item:nth-child(4) { animation-delay: 0.3s; }
-        .activity-item:nth-child(5) { animation-delay: 0.4s; }
-
-        @keyframes slideInRight {
-            from {
-                opacity: 0;
-                transform: translateX(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
+        .activity-item:last-child {
+            border-bottom: none;
         }
 
         .activity-item:hover {
-            border-color: rgba(255, 255, 255, 0.05);
-            background: rgba(255, 255, 255, 0.02);
-            transform: translateX(5px);
+            background: rgba(59, 130, 246, 0.05);
         }
 
         .activity-icon {
-            font-size: 1.8rem;
+            font-size: 1.3rem;
             flex-shrink: 0;
+            width: 36px;
+            height: 36px;
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 50px;
-            height: 50px;
-            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(139, 92, 246, 0.1));
-            border-radius: 1rem;
-            animation: spin 2s linear infinite;
-        }
-
-        @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
-
-        .activity-item:hover .activity-icon {
-            animation: pulse-scale 0.6s ease;
-        }
-
-        @keyframes pulse-scale {
-            0%, 100% { transform: scale(1) rotate(0deg); }
-            50% { transform: scale(1.1) rotate(10deg); }
+            background: rgba(59, 130, 246, 0.1);
+            border-radius: 4px;
         }
 
         .activity-content {
             flex: 1;
+            min-width: 0;
         }
 
         .activity-title {
             font-weight: 600;
-            margin-bottom: 0.3rem;
-            font-size: 0.95rem;
+            font-size: 0.9rem;
+            margin-bottom: 0.2rem;
         }
 
         .activity-desc {
             font-size: 0.85rem;
-            color: var(--text-tertiary);
+            color: #94a3b8;
         }
 
         .activity-time {
             font-size: 0.75rem;
-            color: var(--text-tertiary);
-            margin-top: 0.5rem;
+            color: #64748b;
+            margin-top: 0.3rem;
         }
 
-        /* ─────────────────────────────────────────────────────────────── */
         /* FOOTER */
-        /* ─────────────────────────────────────────────────────────────── */
-
         footer {
-            border-top: 1px solid var(--border-color);
-            padding: 3rem 2rem;
+            border-top: 1px solid #2a3142;
+            padding: 2rem;
             text-align: center;
-            color: var(--text-tertiary);
-            backdrop-filter: blur(20px);
-            background: rgba(5, 8, 18, 0.3);
-            margin-top: 5rem;
-            animation: fadeIn 1s ease-out 0.8s both;
+            color: #64748b;
+            font-size: 0.9rem;
+            margin-top: 2rem;
         }
 
         footer a {
-            color: var(--accent-cyan);
+            color: #3b82f6;
             text-decoration: none;
-            font-weight: 500;
-            transition: all 0.3s ease;
-            position: relative;
-        }
-
-        footer a::after {
-            content: '';
-            position: absolute;
-            bottom: -2px;
-            left: 0;
-            width: 0;
-            height: 2px;
-            background: var(--accent-cyan);
-            transition: width 0.3s ease;
-        }
-
-        footer a:hover::after {
-            width: 100%;
         }
 
         footer a:hover {
-            color: var(--accent-blue);
-        }
-
-        /* ─────────────────────────────────────────────────────────────── */
-        /* SCROLLBAR */
-        /* ─────────────────────────────────────────────────────────────── */
-
-        ::-webkit-scrollbar {
-            width: 10px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: rgba(59, 130, 246, 0.3);
-            border-radius: 5px;
-            animation: scrollPulse 2s ease-in-out infinite;
-        }
-
-        @keyframes scrollPulse {
-            0%, 100% { opacity: 0.3; }
-            50% { opacity: 0.7; }
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: rgba(59, 130, 246, 0.6);
-        }
-
-        /* ─────────────────────────────────────────────────────────────── */
-        /* RESPONSIVE */
-        /* ─────────────────────────────────────────────────────────────── */
-
-        @media (max-width: 768px) {
-            main {
-                padding: 2rem 1rem;
-            }
-
-            .hero-title {
-                font-size: 2rem;
-            }
-
-            .section-title {
-                font-size: 1.5rem;
-            }
-
-            .stat-showcase {
-                gap: 1.5rem;
-            }
+            text-decoration: underline;
         }
     </style>
 </head>
 <body>
-    <!-- HEADER -->
     <header>
-        <div class="header-content">
-            <a href="#" class="header-logo">
-                <span>🛡️</span>
-                DNS Blocklist
-            </a>
-            <div class="header-status">
-                <div class="status-badge">
-                    <div class="status-pulse"></div>
-                    Active
-                </div>
-                <div class="header-time" id="headerTime">00:00:00</div>
+        <div class="logo">
+            <span class="logo-icon">🛡️</span> DNS Blocklist Control Panel
+        </div>
+        <div class="header-right">
+            <div class="status">
+                <div class="status-dot"></div>
+                Active
             </div>
+            <div class="time" id="time">00:00:00</div>
         </div>
     </header>
 
-    <!-- MAIN -->
     <main>
-        <!-- HERO -->
-        <section class="hero">
-            <h1 class="hero-title">Threat Intelligence in <span>Real-Time</span></h1>
-            <p class="hero-subtitle">Enterprise-grade blocklist aggregation with advanced analytics and insights</p>
-        </section>
+        <h1 class="page-title">Dashboard</h1>
 
-        <!-- STATS SHOWCASE -->
-        <div class="stats-showcase">
-            <div class="stat-showcase">
-                <div class="stat-icon">📊</div>
-                <div class="stat-showcase-content">
-                    <div class="stat-label">Total Domains</div>
-                    <div class="stat-value">62,461</div>
-                    <div class="stat-subtitle">Unique malicious domains</div>
-                </div>
+        <!-- STATS -->
+        <div class="grid grid-4">
+            <div class="card">
+                <div class="card-icon">📄</div>
+                <div class="card-title">Total Domains</div>
+                <div class="card-value">62,461</div>
+                <div class="card-label">Blocked domains</div>
             </div>
 
-            <div class="stat-showcase">
-                <div class="stat-icon">⚡</div>
-                <div class="stat-showcase-content">
-                    <div class="stat-label">Execution Time</div>
-                    <div class="stat-value">5.06s</div>
-                    <div class="stat-subtitle">Average processing time</div>
-                </div>
+            <div class="card">
+                <div class="card-icon">⚡</div>
+                <div class="card-title">Execution Time</div>
+                <div class="card-value">5.06s</div>
+                <div class="card-label">Process speed</div>
             </div>
 
-            <div class="stat-showcase">
-                <div class="stat-icon">💾</div>
-                <div class="stat-showcase-content">
-                    <div class="stat-label">File Size</div>
-                    <div class="stat-value">2.5 MB</div>
-                    <div class="stat-subtitle">Optimized blocklist</div>
-                </div>
+            <div class="card">
+                <div class="card-icon">💾</div>
+                <div class="card-title">File Size</div>
+                <div class="card-value">2.5 MB</div>
+                <div class="card-label">Blocklist size</div>
             </div>
 
-            <div class="stat-showcase">
-                <div class="stat-icon">🔄</div>
-                <div class="stat-showcase-content">
-                    <div class="stat-label">Cache Efficiency</div>
-                    <div class="stat-value">80%</div>
-                    <div class="stat-subtitle">Sources from cache</div>
+            <div class="card">
+                <div class="card-icon">🔄</div>
+                <div class="card-title">Cache Hit Rate</div>
+                <div class="card-value">80%</div>
+                <div class="card-label">Efficiency</div>
+            </div>
+        </div>
+
+        <!-- CHARTS -->
+        <div class="section">
+            <h2 class="section-title">Analytics</h2>
+            <div class="grid grid-2">
+                <div class="card">
+                    <div class="card-title">Threat Distribution</div>
+                    <div class="chart-wrapper">
+                        <canvas id="chartDist"></canvas>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">Source Performance</div>
+                    <div class="chart-wrapper">
+                        <canvas id="chartPerf"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- CHARTS SECTION -->
-        <section class="section">
-            <div class="section-header">
-                <h2 class="section-title">Analytics & <span>Insights</span></h2>
-            </div>
-            <div class="grid grid-3">
-                <div class="card table-card">
-                    <div class="card-content">
-                        <h3 class="card-title">Threat Distribution</h3>
-                        <div class="chart-wrapper">
-                            <canvas id="distributionChart"></canvas>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="card table-card">
-                    <div class="card-content">
-                        <h3 class="card-title">Source Performance</h3>
-                        <div class="chart-wrapper">
-                            <canvas id="performanceChart"></canvas>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="card table-card">
-                    <div class="card-content">
-                        <h3 class="card-title">Cache Efficiency</h3>
-                        <div class="chart-wrapper">
-                            <canvas id="cacheChart"></canvas>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- DATA SOURCES -->
-        <section class="section">
-            <div class="section-header">
-                <h2 class="section-title">Data <span>Sources</span></h2>
-            </div>
-            <div class="card table-card">
-                <table class="table">
+        <!-- SOURCES -->
+        <div class="section">
+            <h2 class="section-title">Data Sources</h2>
+            <div class="table-card">
+                <table>
                     <thead>
                         <tr>
                             <th>Source</th>
                             <th>Category</th>
                             <th>Domains</th>
-                            <th>Time</th>
+                            <th>Response Time</th>
                             <th>Status</th>
                         </tr>
                     </thead>
@@ -1007,176 +454,102 @@
                     </tbody>
                 </table>
             </div>
-        </section>
+        </div>
 
         <!-- ACTIVITY -->
-        <section class="section">
-            <div class="section-header">
-                <h2 class="section-title">Live <span>Activity</span></h2>
-            </div>
-            <div class="activity-list" id="activityFeed">
-                <div class="activity-item">
-                    <div class="activity-icon">✅</div>
-                    <div class="activity-content">
-                        <div class="activity-title">Dashboard initialized</div>
-                        <div class="activity-desc">All systems operational and ready</div>
-                        <div class="activity-time">Just now</div>
-                    </div>
-                </div>
-                <div class="activity-item">
-                    <div class="activity-icon">📊</div>
-                    <div class="activity-content">
-                        <div class="activity-title">Analytics rendered</div>
-                        <div class="activity-desc">Real-time charts loaded successfully</div>
-                        <div class="activity-time">A few seconds ago</div>
-                    </div>
-                </div>
-            </div>
-        </section>
+        <div class="section">
+            <h2 class="section-title">Recent Activity</h2>
+            <div class="activity-list" id="activity"></div>
+        </div>
     </main>
 
-    <!-- FOOTER -->
     <footer>
-        <p>🛡️ DNS Blocklist Builder • Enterprise-grade Threat Intelligence Dashboard</p>
-        <p style="margin-top: 1.5rem;">
-            <a href="https://github.com/somafix/dns-blocklist" target="_blank">GitHub</a> • 
-            <a href="https://raw.githubusercontent.com/somafix/dns-blocklist/main/dynamic-blocklist.txt" target="_blank">Download Blocklist</a>
+        <p>🛡️ DNS Blocklist Builder Control Panel</p>
+        <p style="margin-top: 1rem;">
+            <a href="https://github.com/somafix/dns-blocklist">GitHub</a> • 
+            <a href="https://raw.githubusercontent.com/somafix/dns-blocklist/main/dynamic-blocklist.txt">Download</a>
         </p>
     </footer>
 
     <script>
-        // State
-        const app = {
-            activities: []
-        };
-
         // Update time
         function updateTime() {
-            const now = new Date();
-            document.getElementById('headerTime').textContent = now.toLocaleTimeString('en-US');
+            document.getElementById('time').textContent = new Date().toLocaleTimeString('en-US');
         }
+        setInterval(updateTime, 1000);
 
-        // Activity management
+        // Activity log
+        const activities = [];
         function addActivity(icon, title, desc) {
-            const activity = {
-                icon,
-                title,
-                desc,
+            activities.unshift({
+                icon, title, desc,
                 time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
-            };
-
-            app.activities.unshift(activity);
-            if (app.activities.length > 8) app.activities.pop();
-
-            renderActivities();
+            });
+            if (activities.length > 8) activities.pop();
+            render();
         }
 
-        function renderActivities() {
-            const feed = document.getElementById('activityFeed');
-            feed.innerHTML = app.activities.map((activity, index) => `
-                <div class="activity-item" style="animation-delay: ${index * 0.1}s">
-                    <div class="activity-icon">${activity.icon}</div>
-                    <div class="activity-content">
-                        <div class="activity-title">${activity.title}</div>
-                        <div class="activity-desc">${activity.desc}</div>
-                        <div class="activity-time">${activity.time}</div>
-                    </div>
-                </div>
-            `).join('');
+        function render() {
+            document.getElementById('activity').innerHTML = activities
+                .map(a => `<div class="activity-item"><div class="activity-icon">${a.icon}</div><div class="activity-content"><div class="activity-title">${a.title}</div><div class="activity-desc">${a.desc}</div><div class="activity-time">${a.time}</div></div></div>`)
+                .join('');
         }
+
+        // Initialize
+        addActivity('✅', 'Dashboard loaded', 'All systems initialized');
 
         // Charts
-        function initCharts() {
-            const options = {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        labels: {
-                            color: '#d1d5db',
-                            font: { size: 12, weight: '500' },
-                            padding: 15
-                        }
-                    }
-                }
-            };
+        const opts = {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { labels: { color: '#e3e8ef' } } }
+        };
 
-            new Chart(document.getElementById('distributionChart'), {
-                type: 'doughnut',
-                data: {
-                    labels: ['Malware/C2', 'Phishing', 'Tracking'],
-                    datasets: [{
-                        data: [23487, 3245, 45678],
-                        backgroundColor: ['#ef4444', '#f59e0b', '#3b82f6'],
-                        borderColor: '#111827',
-                        borderWidth: 3
-                    }]
-                },
-                options
-            });
-
-            new Chart(document.getElementById('performanceChart'), {
-                type: 'bar',
-                data: {
-                    labels: ['URLhaus', 'OpenPhish', 'ThreatFox', 'CERT.PL', 'HaGeZi'],
-                    datasets: [{
-                        label: 'Time (s)',
-                        data: [0.15, 1.23, 0.89, 0.45, 2.34],
-                        backgroundColor: '#3b82f6',
-                        borderRadius: 8,
-                        borderSkipped: false
-                    }]
-                },
-                options: {
-                    ...options,
-                    indexAxis: 'y',
-                    scales: {
-                        x: {
-                            ticks: { color: '#9ca3af' },
-                            grid: { color: 'rgba(255, 255, 255, 0.05)' }
-                        },
-                        y: {
-                            ticks: { color: '#9ca3af' }
-                        }
-                    }
-                }
-            });
-
-            new Chart(document.getElementById('cacheChart'), {
-                type: 'doughnut',
-                data: {
-                    labels: ['From Cache', 'Fresh'],
-                    datasets: [{
-                        data: [80, 20],
-                        backgroundColor: ['#10b981', '#3b82f6'],
-                        borderColor: '#111827',
-                        borderWidth: 3
-                    }]
-                },
-                options
-            });
-        }
-
-        // Init
-        window.addEventListener('DOMContentLoaded', () => {
-            updateTime();
-            initCharts();
-            addActivity('✅', 'System ready', 'All components loaded');
-            addActivity('📊', 'Charts rendered', 'Data visualization complete');
-            
-            setInterval(updateTime, 1000);
-            
-            setInterval(() => {
-                const messages = [
-                    { icon: '✅', title: 'Health check', desc: 'All systems operational' },
-                    { icon: '🔄', title: 'Cache updated', desc: '4 of 5 sources cached' },
-                    { icon: '📥', title: 'Data synced', desc: 'Blocklist imported' },
-                    { icon: '📊', title: 'Stats refreshed', desc: 'Real-time analytics' }
-                ];
-                const msg = messages[Math.floor(Math.random() * messages.length)];
-                addActivity(msg.icon, msg.title, msg.desc);
-            }, 12000);
+        new Chart(document.getElementById('chartDist'), {
+            type: 'pie',
+            data: {
+                labels: ['Malware', 'Phishing', 'Tracking'],
+                datasets: [{
+                    data: [23487, 3245, 45678],
+                    backgroundColor: ['#ef4444', '#f59e0b', '#3b82f6'],
+                    borderColor: '#1a1f2e',
+                    borderWidth: 2
+                }]
+            },
+            options: opts
         });
+
+        new Chart(document.getElementById('chartPerf'), {
+            type: 'bar',
+            data: {
+                labels: ['URLhaus', 'OpenPhish', 'ThreatFox', 'CERT.PL', 'HaGeZi'],
+                datasets: [{
+                    label: 'Time (s)',
+                    data: [0.15, 1.23, 0.89, 0.45, 2.34],
+                    backgroundColor: '#3b82f6',
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                ...opts,
+                indexAxis: 'y',
+                scales: {
+                    x: { ticks: { color: '#94a3b8' }, grid: { color: '#2a3142' } },
+                    y: { ticks: { color: '#94a3b8' } }
+                }
+            }
+        });
+
+        // Simulate activity
+        setTimeout(() => addActivity('📊', 'Charts rendered', 'Analytics initialized'), 500);
+        setInterval(() => {
+            const msgs = [
+                { icon: '✅', title: 'Health check', desc: 'All systems operational' },
+                { icon: '🔄', title: 'Cache updated', desc: '4 sources cached' },
+                { icon: '📥', title: 'Data synced', desc: 'Blocklist updated' }
+            ];
+            addActivity(msgs[Math.floor(Math.random() * msgs.length)].icon, msgs[Math.floor(Math.random() * msgs.length)].title, msgs[Math.floor(Math.random() * msgs.length)].desc);
+        }, 20000);
     </script>
 </body>
 </html>
