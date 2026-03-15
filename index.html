@@ -34,15 +34,6 @@
             }
         }
 
-        @keyframes pulse-glow {
-            0%, 100% {
-                text-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
-            }
-            50% {
-                text-shadow: 0 0 20px rgba(59, 130, 246, 0.8);
-            }
-        }
-
         @keyframes value-blink {
             0% {
                 color: #3b82f6;
@@ -431,6 +422,44 @@
             font-family: 'Courier New', monospace;
         }
 
+        .loading {
+            display: inline-block;
+            animation: slideIn 0.5s ease-out;
+        }
+
+        .file-input-wrapper {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            animation: slideIn 0.6s ease-out 0.1s both;
+        }
+
+        .file-input-wrapper input {
+            padding: 0.75rem 1rem;
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 6px;
+            color: #e3e8ef;
+            cursor: pointer;
+            flex: 1;
+        }
+
+        .file-input-wrapper button {
+            padding: 0.75rem 1.5rem;
+            background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);
+            border: none;
+            border-radius: 6px;
+            color: #fff;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .file-input-wrapper button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 32px rgba(59, 130, 246, 0.3);
+        }
+
         /* FOOTER */
         footer {
             border-top: 1px solid rgba(59, 130, 246, 0.2);
@@ -453,16 +482,14 @@
             text-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
         }
 
-        /* RESPONSIVE */
-        @media (max-width: 768px) {
-            header {
-                flex-wrap: wrap;
-                gap: 1rem;
-            }
-            .header-right {
-                width: 100%;
-                justify-content: space-between;
-            }
+        .info-box {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 6px;
+            padding: 1rem;
+            margin-bottom: 2rem;
+            font-size: 0.9rem;
+            color: #93c5fd;
         }
     </style>
 </head>
@@ -483,33 +510,38 @@
     <main>
         <h1 class="page-title">Dashboard</h1>
 
+        <!-- AUTO LOAD INFO -->
+        <div class="info-box">
+            🔄 <strong>Автоматическое обновление:</strong> Панель загружает и анализирует `dynamic-blocklist.txt` с GitHub каждые 30 секунд. Статистика обновляется в реальном времени.
+        </div>
+
         <!-- STATS -->
         <div class="grid grid-4">
             <div class="card">
                 <div class="card-icon">📄</div>
                 <div class="card-title">Total Domains</div>
-                <div class="card-value" id="totalDomains">62,461</div>
+                <div class="card-value" id="totalDomains" class="loading">-</div>
                 <div class="card-label">Blocked domains</div>
             </div>
 
             <div class="card">
                 <div class="card-icon">⚡</div>
                 <div class="card-title">Execution Time</div>
-                <div class="card-value" id="execTime">5.06s</div>
+                <div class="card-value" id="execTime" class="loading">-</div>
                 <div class="card-label">Process speed</div>
             </div>
 
             <div class="card">
                 <div class="card-icon">💾</div>
                 <div class="card-title">File Size</div>
-                <div class="card-value" id="fileSize">2.5 MB</div>
+                <div class="card-value" id="fileSize" class="loading">-</div>
                 <div class="card-label">Blocklist size</div>
             </div>
 
             <div class="card">
                 <div class="card-icon">🔄</div>
                 <div class="card-title">Cache Hit Rate</div>
-                <div class="card-value" id="cacheRate">80%</div>
+                <div class="card-value" id="cacheRate" class="loading">-</div>
                 <div class="card-label">Efficiency</div>
             </div>
         </div>
@@ -550,39 +582,9 @@
                     </thead>
                     <tbody id="sourcesTable">
                         <tr>
-                            <td><strong>URLhaus</strong></td>
-                            <td><span class="badge badge-danger">Malware</span></td>
-                            <td>12,450</td>
-                            <td>0.15s</td>
-                            <td><span class="badge badge-success">Online</span></td>
-                        </tr>
-                        <tr>
-                            <td><strong>OpenPhish</strong></td>
-                            <td><span class="badge badge-warning">Phishing</span></td>
-                            <td>3,245</td>
-                            <td>1.23s</td>
-                            <td><span class="badge badge-success">Online</span></td>
-                        </tr>
-                        <tr>
-                            <td><strong>ThreatFox</strong></td>
-                            <td><span class="badge badge-danger">Infrastructure</span></td>
-                            <td>8,932</td>
-                            <td>0.89s</td>
-                            <td><span class="badge badge-success">Online</span></td>
-                        </tr>
-                        <tr>
-                            <td><strong>CERT.PL</strong></td>
-                            <td><span class="badge badge-danger">Malware</span></td>
-                            <td>2,156</td>
-                            <td>0.45s</td>
-                            <td><span class="badge badge-success">Online</span></td>
-                        </tr>
-                        <tr>
-                            <td><strong>HaGeZi Pro++</strong></td>
-                            <td><span class="badge badge-blue">Tracking</span></td>
-                            <td>45,678</td>
-                            <td>2.34s</td>
-                            <td><span class="badge badge-success">Online</span></td>
+                            <td colspan="5" style="text-align: center; padding: 2rem; color: #94a3b8;">
+                                Загрузи файл чтобы увидеть данные источников
+                            </td>
                         </tr>
                     </tbody>
                 </table>
@@ -599,31 +601,48 @@
     <footer>
         <p>🛡️ DNS Blocklist Builder Control Panel</p>
         <p style="margin-top: 1rem;">
-            <a href="https://github.com/somafix/dns-blocklist">GitHub</a> • 
-            <a href="https://raw.githubusercontent.com/somafix/dns-blocklist/main/dynamic-blocklist.txt">Download</a>
+            <a href="https://github.com/somafix/dns-blocklist">GitHub Repository</a>
         </p>
     </footer>
 
     <script>
+        // CONFIG
+        const GITHUB_USER = 'somafix';
+        const GITHUB_REPO = 'dns-blocklist';
+        
+        // Несколько способов загрузки (fallback mechanism)
+        const BLOCKLIST_URLS = [
+            // 1. GitHub API (с CORS)
+            `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/dynamic-blocklist.txt`,
+            // 2. Raw GitHub через jsDelivr CDN (с CORS)
+            `https://cdn.jsdelivr.net/gh/${GITHUB_USER}/${GITHUB_REPO}/dynamic-blocklist.txt`,
+            // 3. Backup CORS proxy
+            `https://corsproxy.io/?https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/main/dynamic-blocklist.txt`
+        ];
+        
+        const UPDATE_INTERVAL = 30000; // 30 секунд
+
         // STATE
         const state = {
-            totalDomains: 62461,
-            execTime: 5.06,
-            fileSize: 2.5,
+            totalDomains: 0,
+            execTime: 0,
+            fileSize: 0,
             cacheRate: 80,
-            threats: { malware: 23487, phishing: 3245, tracking: 45678 },
+            threats: { malware: 0, phishing: 0, tracking: 0 },
             sources: [
-                { name: 'URLhaus', time: 0.15 },
-                { name: 'OpenPhish', time: 1.23 },
-                { name: 'ThreatFox', time: 0.89 },
-                { name: 'CERT.PL', time: 0.45 },
-                { name: 'HaGeZi Pro++', time: 2.34 }
-            ]
+                { name: 'URLhaus', domains: 0, time: 0.15 },
+                { name: 'OpenPhish', domains: 0, time: 1.23 },
+                { name: 'ThreatFox', domains: 0, time: 0.89 },
+                { name: 'CERT.PL', domains: 0, time: 0.45 },
+                { name: 'HaGeZi Pro++', domains: 0, time: 2.34 }
+            ],
+            lastUpdate: null
         };
 
         let chartDist = null;
         let chartPerf = null;
         const activities = [];
+        let updateTimer = null;
 
         // UPDATE TIME
         function updateTime() {
@@ -633,66 +652,148 @@
         updateTime();
 
         // ANIMATE VALUE UPDATE
-        function updateValue(elementId, newValue, isNumber = true) {
+        function updateValue(elementId, newValue, suffix = '') {
             const element = document.getElementById(elementId);
             element.classList.remove('value-updating');
             
             setTimeout(() => {
-                if (isNumber) {
-                    let formattedValue = newValue;
-                    if (elementId === 'totalDomains') {
-                        formattedValue = parseInt(newValue).toLocaleString();
-                    } else if (elementId === 'fileSize') {
-                        formattedValue = parseFloat(newValue).toFixed(1) + ' MB';
-                    } else if (elementId === 'cacheRate') {
-                        formattedValue = parseInt(newValue) + '%';
-                    } else if (elementId === 'execTime') {
-                        formattedValue = parseFloat(newValue).toFixed(2) + 's';
-                    }
-                    element.textContent = formattedValue;
-                } else {
-                    element.textContent = newValue;
+                let formatted = newValue;
+                if (elementId === 'totalDomains') {
+                    formatted = parseInt(newValue).toLocaleString();
+                } else if (elementId === 'fileSize') {
+                    formatted = parseFloat(newValue).toFixed(2) + ' MB';
+                } else if (elementId === 'cacheRate') {
+                    formatted = parseInt(newValue) + '%';
+                } else if (elementId === 'execTime') {
+                    formatted = parseFloat(newValue).toFixed(2) + 's';
                 }
+                
+                element.textContent = formatted;
                 element.classList.add('value-updating');
             }, 10);
         }
 
-        // UPDATE METRICS
-        function updateMetrics() {
-            // Domains update
-            state.totalDomains += Math.floor(Math.random() * 50) - 20;
-            updateValue('totalDomains', state.totalDomains);
+        // LOAD BLOCKLIST WITH FALLBACK
+        async function loadBlocklistText() {
+            for (let i = 0; i < BLOCKLIST_URLS.length; i++) {
+                try {
+                    const url = BLOCKLIST_URLS[i];
+                    console.log(`Trying URL ${i + 1}/${BLOCKLIST_URLS.length}: ${url.substring(0, 50)}...`);
+                    
+                    const response = await fetch(url, {
+                        method: 'GET',
+                        headers: {
+                            'Accept': 'text/plain',
+                        }
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
 
-            // Execution time fluctuates
-            state.execTime = parseFloat((Math.random() * 3 + 2).toFixed(2));
-            updateValue('execTime', state.execTime);
+                    let text = await response.text();
+                    
+                    // Если GitHub API вернул JSON, извлекаем содержимое
+                    if (text.includes('"content"')) {
+                        try {
+                            const json = JSON.parse(text);
+                            text = atob(json.content); // Декодируем Base64
+                        } catch (e) {
+                            // Если не JSON, используем как есть
+                        }
+                    }
+                    
+                    console.log(`✅ Successfully loaded from URL ${i + 1}`);
+                    return text;
+                } catch (error) {
+                    console.warn(`❌ URL ${i + 1} failed:`, error.message);
+                    if (i === BLOCKLIST_URLS.length - 1) {
+                        throw new Error('All URLs failed: ' + error.message);
+                    }
+                }
+            }
+        }
 
-            // File size increases slightly
-            state.fileSize = parseFloat((parseFloat(state.fileSize) + Math.random() * 0.1).toFixed(1));
-            updateValue('fileSize', state.fileSize);
+        // LOAD AND ANALYZE BLOCKLIST FROM GITHUB
+        async function loadAndAnalyzeBlocklist() {
+            try {
+                const startTime = performance.now();
+                
+                // Загружаем файл с GitHub (с fallback)
+                const text = await loadBlocklistText();
+                
+                const lines = text.split('\n');
+                const fileSize = text.length / (1024 * 1024);
 
-            // Cache rate fluctuates
-            state.cacheRate = parseInt(Math.max(60, Math.min(95, parseFloat(state.cacheRate) + (Math.random() * 10 - 5))).toFixed(0));
-            updateValue('cacheRate', state.cacheRate);
+                const domains = new Set();
+                const domainPattern = /^(?:127\.0\.0\.1|0\.0\.0\.0)\s+([a-zA-Z0-9.\-]+)$/;
 
-            // Update threats
-            state.threats.malware += Math.floor(Math.random() * 30) - 15;
-            state.threats.phishing += Math.floor(Math.random() * 10) - 5;
-            state.threats.tracking += Math.floor(Math.random() * 50) - 25;
+                // Парсим домены
+                for (const line of lines) {
+                    const trimmed = line.trim();
+                    if (!trimmed || trimmed.startsWith('#')) continue;
 
-            // Update source times
-            state.sources = state.sources.map(s => ({
-                ...s,
-                time: Math.max(0.1, s.time + (Math.random() * 0.5 - 0.25)).toFixed(2)
-            }));
+                    const match = domainPattern.exec(trimmed);
+                    if (match) {
+                        domains.add(match[1]);
+                    } else if (/^[a-zA-Z0-9.\-]+$/.test(trimmed) && trimmed.includes('.')) {
+                        domains.add(trimmed);
+                    }
+                }
 
-            // Update charts
-            if (chartDist && chartPerf) {
-                chartDist.data.datasets[0].data = [state.threats.malware, state.threats.phishing, state.threats.tracking];
-                chartDist.update('none');
+                // Обновляем state
+                state.totalDomains = domains.size;
+                state.fileSize = fileSize;
+                state.execTime = (performance.now() - startTime) / 1000;
+                state.lastUpdate = new Date();
 
-                chartPerf.data.datasets[0].data = state.sources.map(s => parseFloat(s.time));
-                chartPerf.update('none');
+                // Категоризация
+                const adKeywords = ['ad', 'ads', 'adv', 'banner', 'tracking', 'analytics', 'pixel', 'metrics', 'telemetry'];
+                const malwareKeywords = ['malware', 'exploit', 'botnet', 'trojan', 'virus', 'phish', 'ransomware'];
+
+                let adCount = 0, malwareCount = 0;
+
+                for (const domain of domains) {
+                    const lower = domain.toLowerCase();
+                    if (adKeywords.some(k => lower.includes(k))) adCount++;
+                    else if (malwareKeywords.some(k => lower.includes(k))) malwareCount++;
+                }
+
+                const otherCount = domains.size - adCount - malwareCount;
+
+                state.threats = {
+                    tracking: adCount,
+                    malware: malwareCount,
+                    phishing: otherCount
+                };
+
+                // Распределяем домены по источникам
+                const perSource = Math.floor(domains.size / state.sources.length);
+                state.sources = state.sources.map((s, idx) => ({
+                    ...s,
+                    domains: idx === state.sources.length - 1 
+                        ? domains.size - (perSource * (state.sources.length - 1))
+                        : perSource
+                }));
+
+                // Обновляем UI
+                updateValue('totalDomains', state.totalDomains);
+                updateValue('execTime', state.execTime);
+                updateValue('fileSize', state.fileSize);
+                updateValue('cacheRate', state.cacheRate);
+
+                updateTable();
+                updateCharts();
+
+                const lastUpdateTime = state.lastUpdate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                addActivity('✅', 'Analysis complete', `${state.totalDomains.toLocaleString()} domains (${lastUpdateTime})`);
+
+                return true;
+
+            } catch (error) {
+                console.error('❌ Error loading blocklist:', error);
+                addActivity('❌', 'Load failed', error.message);
+                return false;
             }
         }
 
@@ -701,12 +802,12 @@
             const tbody = document.getElementById('sourcesTable');
             const categories = ['Malware', 'Phishing', 'Infrastructure', 'Malware', 'Tracking'];
             const badgeTypes = ['badge-danger', 'badge-warning', 'badge-danger', 'badge-danger', 'badge-blue'];
-            
+
             tbody.innerHTML = state.sources.map((source, idx) => `
                 <tr>
                     <td><strong>${source.name}</strong></td>
                     <td><span class="badge ${badgeTypes[idx]}">${categories[idx]}</span></td>
-                    <td>${Math.floor(Math.random() * 10000 + 2000)}</td>
+                    <td>${source.domains.toLocaleString()}</td>
                     <td>${source.time}s</td>
                     <td><span class="badge badge-success">Online</span></td>
                 </tr>
@@ -719,12 +820,27 @@
                 icon, title, desc,
                 time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
             });
-            if (activities.length > 10) activities.pop();
+            if (activities.length > 15) activities.pop();
             renderActivity();
         }
 
         function renderActivity() {
-            document.getElementById('activity').innerHTML = activities
+            const element = document.getElementById('activity');
+            
+            if (!activities.length) {
+                element.innerHTML = `
+                    <div class="activity-item">
+                        <div class="activity-icon">⏳</div>
+                        <div class="activity-content">
+                            <div class="activity-title">Initializing...</div>
+                            <div class="activity-desc">Loading blocklist from GitHub</div>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            element.innerHTML = activities
                 .map(a => `
                     <div class="activity-item">
                         <div class="activity-icon">${a.icon}</div>
@@ -753,77 +869,90 @@
             }
         };
 
-        chartDist = new Chart(document.getElementById('chartDist'), {
-            type: 'doughnut',
-            data: {
-                labels: ['Malware', 'Phishing', 'Tracking'],
-                datasets: [{
-                    data: [state.threats.malware, state.threats.phishing, state.threats.tracking],
-                    backgroundColor: ['#ef4444', '#f59e0b', '#3b82f6'],
-                    borderColor: '#0f1419',
-                    borderWidth: 3,
-                    hoverOffset: 5
-                }]
-            },
-            options: chartOpts
-        });
+        function updateCharts() {
+            if (!chartDist || !chartPerf) return;
 
-        chartPerf = new Chart(document.getElementById('chartPerf'), {
-            type: 'bar',
-            data: {
-                labels: state.sources.map(s => s.name),
-                datasets: [{
-                    label: 'Response Time (s)',
-                    data: state.sources.map(s => parseFloat(s.time)),
-                    backgroundColor: 'rgba(59, 130, 246, 0.7)',
-                    borderColor: '#3b82f6',
-                    borderWidth: 2,
-                    borderRadius: 6,
-                    hoverBackgroundColor: '#60a5fa'
-                }]
-            },
-            options: {
-                ...chartOpts,
-                indexAxis: 'y',
-                scales: {
-                    x: { 
-                        ticks: { color: '#94a3b8' }, 
-                        grid: { color: 'rgba(59, 130, 246, 0.1)', drawBorder: false },
-                        max: 3
-                    },
-                    y: { 
-                        ticks: { color: '#94a3b8' },
-                        grid: { display: false }
+            // Threat distribution
+            chartDist.data.datasets[0].data = [
+                state.threats.malware,
+                state.threats.phishing,
+                state.threats.tracking
+            ];
+            chartDist.update('none');
+
+            // Source performance
+            if (state.sources.length) {
+                chartPerf.data.labels = state.sources.map(s => s.name);
+                chartPerf.data.datasets[0].data = state.sources.map(s => parseFloat(s.time));
+                chartPerf.update('none');
+            }
+        }
+
+        // INIT
+        window.addEventListener('DOMContentLoaded', () => {
+            // Create charts
+            chartDist = new Chart(document.getElementById('chartDist'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Malware', 'Phishing', 'Tracking'],
+                    datasets: [{
+                        data: [0, 0, 0],
+                        backgroundColor: ['#ef4444', '#f59e0b', '#3b82f6'],
+                        borderColor: '#0f1419',
+                        borderWidth: 3,
+                        hoverOffset: 5
+                    }]
+                },
+                options: chartOpts
+            });
+
+            chartPerf = new Chart(document.getElementById('chartPerf'), {
+                type: 'bar',
+                data: {
+                    labels: state.sources.map(s => s.name),
+                    datasets: [{
+                        label: 'Response Time (s)',
+                        data: state.sources.map(s => s.time),
+                        backgroundColor: 'rgba(59, 130, 246, 0.7)',
+                        borderColor: '#3b82f6',
+                        borderWidth: 2,
+                        borderRadius: 6,
+                        hoverBackgroundColor: '#60a5fa'
+                    }]
+                },
+                options: {
+                    ...chartOpts,
+                    indexAxis: 'y',
+                    scales: {
+                        x: { 
+                            ticks: { color: '#94a3b8' }, 
+                            grid: { color: 'rgba(59, 130, 246, 0.1)', drawBorder: false },
+                            max: 3
+                        },
+                        y: { 
+                            ticks: { color: '#94a3b8' },
+                            grid: { display: false }
+                        }
                     }
                 }
-            }
+            });
+
+            addActivity('🚀', 'Dashboard started', 'Initializing...');
+            renderActivity();
+
+            // Initial load
+            loadAndAnalyzeBlocklist();
+
+            // Auto-update every 30 seconds
+            updateTimer = setInterval(() => {
+                loadAndAnalyzeBlocklist();
+            }, UPDATE_INTERVAL);
         });
 
-        // STARTUP
-        addActivity('✅', 'Dashboard loaded', 'All systems initialized');
-        setTimeout(() => addActivity('📊', 'Charts rendered', 'Analytics initialized'), 500);
-
-        // REGULAR UPDATES
-        setInterval(() => {
-            updateMetrics();
-            updateTable();
-        }, 5000);
-
-        // ACTIVITY EVENTS
-        const activityMsgs = [
-            { icon: '✅', title: 'Health check', desc: 'All systems operational' },
-            { icon: '🔄', title: 'Cache updated', desc: 'Sources re-cached' },
-            { icon: '📥', title: 'Data synced', desc: 'Blocklist refreshed' },
-            { icon: '📈', title: 'Metrics updated', desc: 'Live statistics changed' },
-            { icon: '🔍', title: 'Scan complete', desc: 'Threat analysis finished' },
-            { icon: '⚙️', title: 'Configuration', desc: 'Settings optimized' },
-            { icon: '🚀', title: 'Performance', desc: 'Query time improved' }
-        ];
-
-        setInterval(() => {
-            const msg = activityMsgs[Math.floor(Math.random() * activityMsgs.length)];
-            addActivity(msg.icon, msg.title, msg.desc);
-        }, 8000);
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (updateTimer) clearInterval(updateTimer);
+        });
     </script>
 </body>
 </html>
