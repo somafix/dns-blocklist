@@ -1,59 +1,58 @@
-Dynamic DNS Blocklist Builder
+# Dynamic DNS Blocklist Builder
 
-"Python" (https://img.shields.io/badge/python-3.8%2B-blue)
-"License" (https://img.shields.io/badge/license-MIT-green)
-"Security" (https://img.shields.io/badge/focus-threat%20intelligence-red)
-"Blocklist" (https://img.shields.io/badge/type-dns%20blocklist-black)
-"Automation" (https://img.shields.io/badge/automation-github%20actions-blue)
+![Python](https://img.shields.io/badge/Python-3.8+-blue)
+![License](https://img.shields.io/badge/License-MIT-green)
+![Security](https://img.shields.io/badge/Focus-Threat%20Intelligence-red)
+![Blocklist](https://img.shields.io/badge/Type-DNS%20Blocklist-black)
+![Automation](https://img.shields.io/badge/Automation-GitHub%20Actions-blue)
 
 Dynamic DNS Blocklist Builder — это инструмент агрегации threat-intelligence, который автоматически собирает домены вредоносных сайтов, фишинга, трекеров и рекламы из нескольких публичных источников и генерирует единый "hosts"-блоклист.
 
 Проект предназначен для использования с:
 
 - DNS фильтрами
-- сетевыми фильтрами
+- Сетевыми фильтрами
 - Pi-hole
 - personalDNSfilter
 - AdGuard
-- системными "hosts" файлами
+- Системными "hosts" файлами
 
 ---
 
-Основные возможности
+## Основные возможности
 
-Threat Intelligence Aggregation
+### Threat Intelligence Aggregation
 
 Сбор доменов из нескольких источников угроз.
 
-Smart HTTP Caching
+### Smart HTTP Caching
 
 Поддержка:
-
-- "ETag"
-- "Last-Modified"
+- ETag
+- Last-Modified
 
 Позволяет не скачивать списки повторно, если они не изменились.
 
-Duplicate Analysis
+### Duplicate Analysis
 
 Автоматический анализ пересечений между источниками.
 
-Performance Metrics
+### Performance Metrics
 
 Показывает:
+- Время загрузки каждого источника
+- Статистику доменов
+- Итоговую производительность
 
-- время загрузки каждого источника
-- статистику доменов
-- итоговую производительность.
+### Automatic Git Hygiene
 
-Automatic Git Hygiene
-
-Скрипт автоматически создаёт ".gitignore" для кэша.
+Скрипт автоматически создаёт `.gitignore` для кэша.
 
 ---
 
-Архитектура
+## Архитектура
 
+```
                 ┌────────────────────┐
                 │ Threat Sources     │
                 │                    │
@@ -99,65 +98,76 @@ Automatic Git Hygiene
                 │ Blocklist Output   │
                 │ dynamic-blocklist  │
                 └────────────────────┘
+```
 
 ---
 
-Источники Threat Intelligence
+## Источники Threat Intelligence
 
 Проект агрегирует данные из публичных threat-intel проектов:
 
-Source| Тип
-URLhaus| Malware / C2
-OpenPhish| Phishing
-ThreatFox| Malware infrastructure
-CERT.PL| Malware domains
-HaGeZi| Ads / Tracking
+| Source | Тип |
+|--------|-----|
+| URLhaus | Malware / C2 |
+| OpenPhish | Phishing |
+| ThreatFox | Malware infrastructure |
+| CERT.PL | Malware domains |
+| HaGeZi | Ads / Tracking |
 
 Эти источники регулярно публикуют списки вредоносных доменов.
 
 ---
 
-Установка
+## Установка
 
 Клонировать репозиторий:
 
+```bash
 git clone https://github.com/yourname/dynamic-dns-blocklist-builder.git
 cd dynamic-dns-blocklist-builder
+```
 
 ---
 
-Требования
+## Требования
 
-Python:
-
-3.8+
+**Python:** 3.8+
 
 Скрипт использует только стандартную библиотеку Python.
 
 ---
 
-Запуск
+## Запуск
 
+```bash
 python3 blocklist_builder.py
+```
 
 После выполнения создаётся файл:
 
+```
 dynamic-blocklist.txt
+```
 
 Пример строки:
 
+```
 0.0.0.0 malicious-domain.com
+```
 
 ---
 
-GitHub Actions (автообновление блоклиста)
+## GitHub Actions (автообновление блоклиста)
 
 Создай файл:
 
+```
 .github/workflows/update-blocklist.yml
+```
 
 Содержимое:
 
+```yaml
 name: Update DNS Blocklist
 
 on:
@@ -188,13 +198,15 @@ jobs:
           git add dynamic-blocklist.txt
           git commit -m "auto update blocklist" || echo "no changes"
           git push
+```
 
 Теперь GitHub будет обновлять блоклист автоматически каждые 12 часов.
 
 ---
 
-Пример вывода
+## Пример вывода
 
+```
 🚀 Blocklist build started
 
 Source: URLhaus
@@ -207,34 +219,35 @@ Source: ThreatFox
 Domains: 2480
 
 Total unique domains: 7693
+```
 
 ---
 
-Использование
+## Использование
 
 Подходит для:
 
 - Pi-hole
 - personalDNSfilter
 - AdGuard
-- системного "hosts"
-- локальных DNS серверов
+- Системного "hosts"
+- Локальных DNS серверов
 
 ---
 
-Безопасность
+## Безопасность
 
 Проект:
 
-- не выполняет удалённый код
-- не передает пользовательские данные
-- использует только публичные threat-intel источники
+- Не выполняет удалённый код
+- Не передаёт пользовательские данные
+- Использует только публичные threat-intel источники
 
 Но возможны false positives.
 
 ---
 
-Лицензия
+## Лицензия
 
 MIT License
 
@@ -242,7 +255,7 @@ MIT License
 
 ---
 
-Contribution
+## Contribution
 
 Pull requests приветствуются.
 
