@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🛡️ Dynamic DNS Blocklist Builder - Real-time Dashboard</title>
+    <title>DNS Blocklist Builder - Premium Dashboard</title>
     
-    <!-- Chart.js -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     
     <style>
         * {
@@ -15,730 +15,926 @@
             box-sizing: border-box;
         }
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-            color: #e2e8f0;
-            line-height: 1.6;
+        :root {
+            --bg-dark: #0a0e27;
+            --bg-darker: #050812;
+            --bg-card: #111827;
+            --bg-hover: #1f2937;
+            --text-primary: #f9fafb;
+            --text-secondary: #d1d5db;
+            --text-tertiary: #9ca3af;
+            --accent-blue: #3b82f6;
+            --accent-cyan: #06b6d4;
+            --accent-purple: #8b5cf6;
+            --accent-pink: #ec4899;
+            --accent-green: #10b981;
+            --border-color: rgba(255, 255, 255, 0.05);
         }
 
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, var(--bg-darker) 0%, var(--bg-dark) 100%);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Animated background particles */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 50%, rgba(59, 130, 246, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(139, 92, 246, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 40% 0%, rgba(6, 182, 212, 0.08) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 1;
+            animation: shift 20s ease-in-out infinite;
+        }
+
+        @keyframes shift {
+            0%, 100% { 
+                opacity: 1;
+            }
+            50% { 
+                opacity: 0.8;
+            }
+        }
+
+        body > * {
+            position: relative;
+            z-index: 2;
+        }
+
+        /* ═══════════════════════════════════════════════════════════════ */
+        /* HEADER */
+        /* ═══════════════════════════════════════════════════════════════ */
+
         header {
-            background: rgba(15, 23, 42, 0.95);
-            backdrop-filter: blur(10px);
-            border-bottom: 1px solid rgba(100, 116, 139, 0.2);
-            padding: 1rem 0;
+            backdrop-filter: blur(20px);
+            background: rgba(5, 8, 18, 0.6);
+            border-bottom: 1px solid var(--border-color);
             position: sticky;
             top: 0;
-            z-index: 1000;
+            z-index: 100;
         }
 
         .header-content {
-            max-width: 1400px;
+            max-width: 1600px;
             margin: 0 auto;
-            padding: 0 2rem;
+            padding: 1.5rem 2rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
 
-        .logo {
-            font-size: 1.5rem;
+        .header-logo {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            font-size: 1.4rem;
             font-weight: 700;
-            background: linear-gradient(135deg, #667eea, #764ba2);
+            background: linear-gradient(135deg, var(--accent-blue) 0%, var(--accent-cyan) 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-decoration: none;
+            letter-spacing: -0.5px;
         }
 
-        .status-info {
+        .header-logo span {
+            font-size: 1.8rem;
+        }
+
+        .header-status {
             display: flex;
-            gap: 1.5rem;
             align-items: center;
+            gap: 1.5rem;
         }
 
         .status-badge {
             display: flex;
             align-items: center;
-            gap: 0.5rem;
-            padding: 0.5rem 1rem;
+            gap: 0.6rem;
+            padding: 0.8rem 1.4rem;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.2);
             border-radius: 999px;
             font-size: 0.9rem;
-            border: 1px solid;
-            background: rgba(16, 185, 129, 0.1);
-            border-color: #10b981;
-            color: #10b981;
+            font-weight: 500;
+            color: var(--accent-green);
+            backdrop-filter: blur(10px);
         }
 
-        .status-dot {
+        .status-pulse {
             width: 8px;
             height: 8px;
-            background: #10b981;
+            background: var(--accent-green);
             border-radius: 50%;
             animation: pulse 2s infinite;
         }
 
         @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
+            0%, 100% {
+                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+            }
+            50% {
+                box-shadow: 0 0 0 8px rgba(16, 185, 129, 0);
+            }
         }
 
-        .hero {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 3rem 2rem;
-            text-align: center;
+        .header-time {
+            color: var(--text-tertiary);
+            font-weight: 500;
+            font-size: 0.9rem;
+            min-width: 70px;
         }
 
-        .hero h1 {
-            font-size: 2.5rem;
-            font-weight: 800;
-            margin-bottom: 0.5rem;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .hero p {
-            font-size: 1rem;
-            color: #cbd5e1;
-        }
+        /* ═══════════════════════════════════════════════════════════════ */
+        /* MAIN LAYOUT */
+        /* ═══════════════════════════════════════════════════════════════ */
 
         main {
-            max-width: 1400px;
+            max-width: 1600px;
             margin: 0 auto;
-            padding: 0 2rem 3rem;
+            padding: 4rem 2rem;
         }
 
-        .section {
-            margin-bottom: 3rem;
-        }
+        /* ─────────────────────────────────────────────────────────────── */
+        /* HERO */
+        /* ─────────────────────────────────────────────────────────────── */
 
-        .section-title {
-            font-size: 1.5rem;
-            font-weight: 700;
-            margin-bottom: 1.5rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-        }
-
-        .stat-card {
-            background: linear-gradient(135deg, rgba(100, 116, 139, 0.1) 0%, rgba(71, 85, 105, 0.1) 100%);
-            border: 1px solid rgba(100, 116, 139, 0.3);
-            border-radius: 12px;
-            padding: 1.5rem;
+        .hero {
+            margin-bottom: 5rem;
             text-align: center;
-            backdrop-filter: blur(10px);
-            transition: all 0.3s ease;
         }
 
-        .stat-card:hover {
-            transform: translateY(-5px);
-            border-color: #6366f1;
+        .hero-title {
+            font-size: clamp(2.5rem, 8vw, 4rem);
+            font-weight: 800;
+            line-height: 1.1;
+            margin-bottom: 1.5rem;
+            letter-spacing: -2px;
+            background: linear-gradient(135deg, 
+                var(--accent-blue) 0%, 
+                var(--accent-cyan) 25%,
+                var(--accent-purple) 50%,
+                var(--accent-pink) 75%,
+                var(--accent-blue) 100%);
+            background-size: 200% 200%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: gradientShift 15s ease infinite;
         }
 
-        .stat-icon {
-            font-size: 2rem;
-            margin-bottom: 0.5rem;
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
         }
 
-        .stat-value {
-            font-size: 1.8rem;
-            font-weight: 700;
-            color: #6366f1;
+        .hero-subtitle {
+            font-size: 1.3rem;
+            color: var(--text-secondary);
+            max-width: 700px;
+            margin: 0 auto;
+            font-weight: 300;
+            letter-spacing: 0.5px;
+        }
+
+        /* ─────────────────────────────────────────────────────────────── */
+        /* STATS SHOWCASE */
+        /* ─────────────────────────────────────────────────────────────── */
+
+        .stats-showcase {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+            margin-bottom: 5rem;
+        }
+
+        .stat-showcase {
+            position: relative;
+            padding: 2.5rem;
+            border-radius: 2rem;
+            border: 1px solid var(--border-color);
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.02) 0%, rgba(255, 255, 255, 0.05) 100%);
+            backdrop-filter: blur(20px);
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.23, 1, 0.320, 1);
+            group: 'stat-showcase';
+        }
+
+        .stat-showcase::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, 
+                rgba(59, 130, 246, 0.1) 0%, 
+                transparent 50%,
+                rgba(139, 92, 246, 0.1) 100%);
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+
+        .stat-showcase:hover {
+            transform: translateY(-8px);
+            border-color: rgba(255, 255, 255, 0.1);
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.08) 100%);
+        }
+
+        .stat-showcase:hover::before {
+            opacity: 1;
+        }
+
+        .stat-showcase-content {
+            position: relative;
+            z-index: 2;
         }
 
         .stat-label {
-            color: #94a3b8;
-            font-size: 0.85rem;
-            margin-top: 0.3rem;
+            font-size: 0.9rem;
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 500;
+            margin-bottom: 1rem;
         }
 
-        .charts-grid {
+        .stat-value {
+            font-size: 3rem;
+            font-weight: 800;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .stat-subtitle {
+            font-size: 0.95rem;
+            color: var(--text-tertiary);
+        }
+
+        .stat-icon {
+            position: absolute;
+            top: -20px;
+            right: -20px;
+            font-size: 8rem;
+            opacity: 0.05;
+        }
+
+        /* ─────────────────────────────────────────────────────────────── */
+        /* SECTION */
+        /* ─────────────────────────────────────────────────────────────── */
+
+        .section {
+            margin-bottom: 5rem;
+        }
+
+        .section-header {
+            margin-bottom: 2.5rem;
+        }
+
+        .section-title {
+            font-size: 2.2rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            letter-spacing: -1px;
+        }
+
+        .section-title span {
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* ─────────────────────────────────────────────────────────────── */
+        /* GRID */
+        /* ─────────────────────────────────────────────────────────────── */
+
+        .grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
             gap: 2rem;
         }
 
-        .chart-card {
-            background: linear-gradient(135deg, rgba(100, 116, 139, 0.1) 0%, rgba(71, 85, 105, 0.1) 100%);
-            border: 1px solid rgba(100, 116, 139, 0.3);
-            border-radius: 12px;
-            padding: 1.5rem;
-            backdrop-filter: blur(10px);
+        .grid-3 {
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
         }
 
-        .chart-card h3 {
-            margin-bottom: 1rem;
-            color: #06b6d4;
+        @media (max-width: 1024px) {
+            .grid-3 {
+                grid-template-columns: repeat(2, 1fr);
+            }
         }
 
-        .chart-container {
-            position: relative;
-            height: 300px;
+        @media (max-width: 640px) {
+            .grid-3 {
+                grid-template-columns: 1fr;
+            }
         }
 
-        .commits-container {
-            background: linear-gradient(135deg, rgba(100, 116, 139, 0.1) 0%, rgba(71, 85, 105, 0.1) 100%);
-            border: 1px solid rgba(100, 116, 139, 0.3);
-            border-radius: 12px;
+        /* ─────────────────────────────────────────────────────────────── */
+        /* CARD */
+        /* ─────────────────────────────────────────────────────────────── */
+
+        .card {
+            padding: 2rem;
+            border-radius: 1.5rem;
+            border: 1px solid var(--border-color);
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.02) 0%, rgba(255, 255, 255, 0.05) 100%);
+            backdrop-filter: blur(20px);
+            transition: all 0.4s ease;
             overflow: hidden;
-            backdrop-filter: blur(10px);
+            position: relative;
         }
 
-        .commits-table {
+        .card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.05), transparent, rgba(139, 92, 246, 0.05));
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+
+        .card:hover {
+            border-color: rgba(255, 255, 255, 0.1);
+            transform: translateY(-4px);
+        }
+
+        .card:hover::before {
+            opacity: 1;
+        }
+
+        .card-content {
+            position: relative;
+            z-index: 2;
+        }
+
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            color: var(--text-primary);
+        }
+
+        /* ─────────────────────────────────────────────────────────────── */
+        /* CHART */
+        /* ─────────────────────────────────────────────────────────────── */
+
+        .chart-wrapper {
+            position: relative;
+            height: 320px;
+        }
+
+        /* ─────────────────────────────────────────────────────────────── */
+        /* TABLE */
+        /* ─────────────────────────────────────────────────────────────── */
+
+        .table-card {
+            border-radius: 1.5rem;
+            overflow: hidden;
+        }
+
+        .table {
             width: 100%;
             border-collapse: collapse;
         }
 
-        .commits-table thead {
-            background: rgba(99, 102, 241, 0.1);
+        .table thead {
+            background: rgba(255, 255, 255, 0.02);
+            border-bottom: 1px solid var(--border-color);
         }
 
-        .commits-table th {
-            padding: 1rem;
+        .table th {
+            padding: 1.5rem 2rem;
             text-align: left;
             font-weight: 600;
-            color: #6366f1;
-            border-bottom: 2px solid rgba(100, 116, 139, 0.3);
-        }
-
-        .commits-table td {
-            padding: 1rem;
-            border-bottom: 1px solid rgba(100, 116, 139, 0.2);
-        }
-
-        .commits-table tbody tr:hover {
-            background: rgba(99, 102, 241, 0.05);
-        }
-
-        .commit-message {
-            color: #06b6d4;
-            font-weight: 500;
-            word-break: break-word;
-        }
-
-        .commit-author {
-            color: #94a3b8;
-            font-size: 0.9rem;
-        }
-
-        .commit-time {
-            color: #64748b;
             font-size: 0.85rem;
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
-        .activity-feed {
-            background: linear-gradient(135deg, rgba(100, 116, 139, 0.1) 0%, rgba(71, 85, 105, 0.1) 100%);
-            border: 1px solid rgba(100, 116, 139, 0.3);
-            border-radius: 12px;
-            padding: 1.5rem;
-            backdrop-filter: blur(10px);
-            max-height: 400px;
-            overflow-y: auto;
+        .table td {
+            padding: 1.5rem 2rem;
+            border-top: 1px solid var(--border-color);
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+        }
+
+        .table tbody tr {
+            transition: background 0.3s ease;
+        }
+
+        .table tbody tr:hover {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-danger {
+            background: rgba(239, 68, 68, 0.1);
+            color: #fca5a5;
+        }
+
+        .badge-warning {
+            background: rgba(245, 158, 11, 0.1);
+            color: #fcd34d;
+        }
+
+        .badge-blue {
+            background: rgba(59, 130, 246, 0.1);
+            color: #93c5fd;
+        }
+
+        .badge-success {
+            background: rgba(16, 185, 129, 0.1);
+            color: #86efac;
+        }
+
+        /* ─────────────────────────────────────────────────────────────── */
+        /* ACTIVITY FEED */
+        /* ─────────────────────────────────────────────────────────────── */
+
+        .activity-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
         }
 
         .activity-item {
             display: flex;
-            gap: 1rem;
-            margin-bottom: 1rem;
-            padding-bottom: 1rem;
-            border-bottom: 1px solid rgba(100, 116, 139, 0.2);
-            animation: slideUp 0.3s ease;
+            gap: 1.5rem;
+            padding: 1.5rem;
+            border-radius: 1rem;
+            border: 1px solid var(--border-color);
+            background: rgba(255, 255, 255, 0.01);
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
         }
 
-        .activity-item:last-child {
-            border-bottom: none;
-            margin-bottom: 0;
-            padding-bottom: 0;
+        .activity-item:hover {
+            border-color: rgba(255, 255, 255, 0.05);
+            background: rgba(255, 255, 255, 0.02);
         }
 
         .activity-icon {
-            font-size: 1.5rem;
+            font-size: 1.8rem;
             flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(139, 92, 246, 0.1));
+            border-radius: 1rem;
         }
 
-        .activity-content h4 {
-            color: #06b6d4;
-            margin-bottom: 0.2rem;
+        .activity-content {
+            flex: 1;
+        }
+
+        .activity-title {
+            font-weight: 600;
+            margin-bottom: 0.3rem;
             font-size: 0.95rem;
         }
 
-        .activity-content p {
-            color: #cbd5e1;
+        .activity-desc {
             font-size: 0.85rem;
+            color: var(--text-tertiary);
         }
 
         .activity-time {
-            color: #64748b;
             font-size: 0.75rem;
+            color: var(--text-tertiary);
+            margin-top: 0.5rem;
         }
 
-        @keyframes slideUp {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .loading {
-            display: inline-block;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
+        /* ─────────────────────────────────────────────────────────────── */
+        /* FOOTER */
+        /* ─────────────────────────────────────────────────────────────── */
 
         footer {
-            background: rgba(15, 23, 42, 0.95);
-            border-top: 1px solid rgba(100, 116, 139, 0.2);
-            padding: 2rem;
+            border-top: 1px solid var(--border-color);
+            padding: 3rem 2rem;
             text-align: center;
-            color: #94a3b8;
+            color: var(--text-tertiary);
+            backdrop-filter: blur(20px);
+            background: rgba(5, 8, 18, 0.3);
+            margin-top: 5rem;
         }
 
         footer a {
-            color: #06b6d4;
+            color: var(--accent-cyan);
             text-decoration: none;
-            transition: color 0.3s;
+            font-weight: 500;
+            transition: color 0.3s ease;
         }
 
         footer a:hover {
-            color: #6366f1;
+            color: var(--accent-blue);
         }
 
-        .info-box {
-            background: rgba(59, 130, 246, 0.1);
-            border: 1px solid #3b82f6;
-            border-radius: 12px;
-            padding: 1.5rem;
-            margin: 2rem 0;
-            color: #93c5fd;
-            display: flex;
-            gap: 1rem;
-            align-items: flex-start;
-        }
-
-        .info-box-icon {
-            font-size: 1.5rem;
-            flex-shrink: 0;
-        }
+        /* ─────────────────────────────────────────────────────────────── */
+        /* RESPONSIVE */
+        /* ─────────────────────────────────────────────────────────────── */
 
         @media (max-width: 768px) {
-            .hero h1 {
-                font-size: 1.8rem;
+            main {
+                padding: 2rem 1rem;
             }
 
-            .stats-grid {
-                grid-template-columns: repeat(2, 1fr);
+            .hero-title {
+                font-size: 2rem;
             }
 
-            .charts-grid {
-                grid-template-columns: 1fr;
+            .section-title {
+                font-size: 1.5rem;
             }
 
-            .commits-table {
-                font-size: 0.9rem;
+            .stat-showcase {
+                gap: 1.5rem;
             }
+        }
 
-            .commits-table th,
-            .commits-table td {
-                padding: 0.75rem;
-            }
+        /* ─────────────────────────────────────────────────────────────── */
+        /* SCROLLBAR */
+        /* ─────────────────────────────────────────────────────────────── */
+
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(59, 130, 246, 0.3);
+            border-radius: 5px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(59, 130, 246, 0.5);
         }
     </style>
 </head>
 <body>
+    <!-- HEADER -->
     <header>
         <div class="header-content">
-            <div class="logo">🛡️ DNS Blocklist Builder</div>
-            <div class="status-info">
+            <a href="#" class="header-logo">
+                <span>🛡️</span>
+                DNS Blocklist
+            </a>
+            <div class="header-status">
                 <div class="status-badge">
-                    <div class="status-dot"></div>
-                    <span id="statusText">Active</span>
+                    <div class="status-pulse"></div>
+                    Active
                 </div>
-                <div style="color: #94a3b8; font-size: 0.9rem;">
-                    <span id="lastUpdateTime">--:--:--</span>
-                </div>
+                <div class="header-time" id="headerTime">00:00:00</div>
             </div>
         </div>
     </header>
 
-    <section class="hero">
-        <h1>Real-time Threat Intelligence Dashboard</h1>
-        <p>Мониторинг работы скрипта в реальном времени</p>
-    </section>
-
+    <!-- MAIN -->
     <main>
-        <div class="info-box">
-            <div class="info-box-icon">ℹ️</div>
-            <div>
-                <strong>О этом Dashboard:</strong> Эта страница отслеживает работу скрипта и показывает статистику в реальном времени. Скрипт обновляет блоклист каждые 6 часов автоматически.
+        <!-- HERO -->
+        <section class="hero">
+            <h1 class="hero-title">Threat Intelligence in <span>Real-Time</span></h1>
+            <p class="hero-subtitle">Enterprise-grade blocklist aggregation with advanced analytics and insights</p>
+        </section>
+
+        <!-- STATS SHOWCASE -->
+        <div class="stats-showcase">
+            <div class="stat-showcase">
+                <div class="stat-icon">📊</div>
+                <div class="stat-showcase-content">
+                    <div class="stat-label">Total Domains</div>
+                    <div class="stat-value">62,461</div>
+                    <div class="stat-subtitle">Unique malicious domains</div>
+                </div>
+            </div>
+
+            <div class="stat-showcase">
+                <div class="stat-icon">⚡</div>
+                <div class="stat-showcase-content">
+                    <div class="stat-label">Execution Time</div>
+                    <div class="stat-value">5.06s</div>
+                    <div class="stat-subtitle">Average processing time</div>
+                </div>
+            </div>
+
+            <div class="stat-showcase">
+                <div class="stat-icon">💾</div>
+                <div class="stat-showcase-content">
+                    <div class="stat-label">File Size</div>
+                    <div class="stat-value">2.5 MB</div>
+                    <div class="stat-subtitle">Optimized blocklist</div>
+                </div>
+            </div>
+
+            <div class="stat-showcase">
+                <div class="stat-icon">🔄</div>
+                <div class="stat-showcase-content">
+                    <div class="stat-label">Cache Efficiency</div>
+                    <div class="stat-value">80%</div>
+                    <div class="stat-subtitle">Sources from cache</div>
+                </div>
             </div>
         </div>
 
-        <!-- STATS -->
+        <!-- CHARTS SECTION -->
         <section class="section">
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-icon">📄</div>
-                    <div class="stat-value" id="totalDomains">62,461</div>
-                    <div class="stat-label">Уникальные домены</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon">⚡</div>
-                    <div class="stat-value" id="executionTime">5.06</div>
-                    <div class="stat-label">Сек выполнения</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon">💾</div>
-                    <div class="stat-value" id="fileSize">2.5</div>
-                    <div class="stat-label">MB размер</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon">🔄</div>
-                    <div class="stat-value" id="cacheHits">80%</div>
-                    <div class="stat-label">Эффективность кэша</div>
-                </div>
+            <div class="section-header">
+                <h2 class="section-title">Analytics & <span>Insights</span></h2>
             </div>
-        </section>
+            <div class="grid grid-3">
+                <div class="card table-card">
+                    <div class="card-content">
+                        <h3 class="card-title">Threat Distribution</h3>
+                        <div class="chart-wrapper">
+                            <canvas id="distributionChart"></canvas>
+                        </div>
+                    </div>
+                </div>
 
-        <!-- CHARTS -->
-        <section class="section">
-            <h2 class="section-title">📈 Аналитика</h2>
-            <div class="charts-grid">
-                <div class="chart-card">
-                    <h3>Распределение по категориям</h3>
-                    <div class="chart-container">
-                        <canvas id="distributionChart"></canvas>
+                <div class="card table-card">
+                    <div class="card-content">
+                        <h3 class="card-title">Source Performance</h3>
+                        <div class="chart-wrapper">
+                            <canvas id="performanceChart"></canvas>
+                        </div>
                     </div>
                 </div>
-                <div class="chart-card">
-                    <h3>Производительность источников</h3>
-                    <div class="chart-container">
-                        <canvas id="performanceChart"></canvas>
-                    </div>
-                </div>
-                <div class="chart-card">
-                    <h3>Эффективность кэша</h3>
-                    <div class="chart-container">
-                        <canvas id="cacheChart"></canvas>
+
+                <div class="card table-card">
+                    <div class="card-content">
+                        <h3 class="card-title">Cache Efficiency</h3>
+                        <div class="chart-wrapper">
+                            <canvas id="cacheChart"></canvas>
+                        </div>
                     </div>
                 </div>
             </div>
         </section>
 
-        <!-- SOURCES TABLE -->
+        <!-- DATA SOURCES -->
         <section class="section">
-            <h2 class="section-title">🔗 Источники данных</h2>
-            <div class="commits-container">
-                <table class="commits-table">
+            <div class="section-header">
+                <h2 class="section-title">Data <span>Sources</span></h2>
+            </div>
+            <div class="card table-card">
+                <table class="table">
                     <thead>
                         <tr>
-                            <th>Источник</th>
-                            <th>Категория</th>
-                            <th>Домены</th>
-                            <th>Время</th>
-                            <th>Кэш</th>
+                            <th>Source</th>
+                            <th>Category</th>
+                            <th>Domains</th>
+                            <th>Time</th>
+                            <th>Status</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr>
-                            <td class="commit-message"><strong>URLhaus</strong></td>
-                            <td>🦠 Malware/C2</td>
+                            <td><strong>URLhaus</strong></td>
+                            <td><span class="badge badge-danger">Malware</span></td>
                             <td>12,450</td>
                             <td>0.15s</td>
-                            <td>✓</td>
+                            <td><span class="badge badge-success">Online</span></td>
                         </tr>
                         <tr>
-                            <td class="commit-message"><strong>OpenPhish</strong></td>
-                            <td>🎣 Phishing</td>
+                            <td><strong>OpenPhish</strong></td>
+                            <td><span class="badge badge-warning">Phishing</span></td>
                             <td>3,245</td>
                             <td>1.23s</td>
-                            <td>✗</td>
+                            <td><span class="badge badge-success">Online</span></td>
                         </tr>
                         <tr>
-                            <td class="commit-message"><strong>ThreatFox</strong></td>
-                            <td>🔴 Infrastructure</td>
+                            <td><strong>ThreatFox</strong></td>
+                            <td><span class="badge badge-danger">Infrastructure</span></td>
                             <td>8,932</td>
                             <td>0.89s</td>
-                            <td>✓</td>
+                            <td><span class="badge badge-success">Online</span></td>
                         </tr>
                         <tr>
-                            <td class="commit-message"><strong>CERT.PL</strong></td>
-                            <td>🦠 Malware</td>
+                            <td><strong>CERT.PL</strong></td>
+                            <td><span class="badge badge-danger">Malware</span></td>
                             <td>2,156</td>
                             <td>0.45s</td>
-                            <td>✓</td>
+                            <td><span class="badge badge-success">Online</span></td>
                         </tr>
                         <tr>
-                            <td class="commit-message"><strong>HaGeZi Pro++</strong></td>
-                            <td>📺 Tracking</td>
+                            <td><strong>HaGeZi Pro++</strong></td>
+                            <td><span class="badge badge-blue">Tracking</span></td>
                             <td>45,678</td>
                             <td>2.34s</td>
-                            <td>✗</td>
+                            <td><span class="badge badge-success">Online</span></td>
                         </tr>
                     </tbody>
                 </table>
             </div>
         </section>
 
-        <!-- LAST UPDATES -->
+        <!-- ACTIVITY -->
         <section class="section">
-            <h2 class="section-title">🔄 Последние обновления</h2>
-            <div class="commits-container">
-                <table class="commits-table">
-                    <thead>
-                        <tr>
-                            <th>Дата/Время</th>
-                            <th>Событие</th>
-                            <th>Статус</th>
-                        </tr>
-                    </thead>
-                    <tbody id="updatesTable">
-                        <tr>
-                            <td class="commit-time" id="update1Time">2024-01-15 14:32 UTC</td>
-                            <td class="commit-message">✅ Blocklist успешно обновлен</td>
-                            <td>🟢</td>
-                        </tr>
-                        <tr>
-                            <td class="commit-time" id="update2Time">2024-01-15 08:32 UTC</td>
-                            <td class="commit-message">✅ 62,461 доменов в списке</td>
-                            <td>🟢</td>
-                        </tr>
-                        <tr>
-                            <td class="commit-time" id="update3Time">2024-01-15 02:32 UTC</td>
-                            <td class="commit-message">✅ HTTP-кэширование активировано</td>
-                            <td>🟢</td>
-                        </tr>
-                    </tbody>
-                </table>
+            <div class="section-header">
+                <h2 class="section-title">Live <span>Activity</span></h2>
             </div>
-        </section>
-
-        <!-- ACTIVITY FEED -->
-        <section class="section">
-            <h2 class="section-title">🔴 Live Activity</h2>
-            <div class="activity-feed" id="activityFeed">
+            <div class="activity-list" id="activityFeed">
                 <div class="activity-item">
-                    <div class="activity-icon">🚀</div>
+                    <div class="activity-icon">✅</div>
                     <div class="activity-content">
-                        <h4>Dashboard Loaded</h4>
-                        <p>Приложение готово к работе</p>
-                        <div class="activity-time">сейчас</div>
+                        <div class="activity-title">Dashboard initialized</div>
+                        <div class="activity-desc">All systems operational and ready</div>
+                        <div class="activity-time">Just now</div>
                     </div>
                 </div>
                 <div class="activity-item">
                     <div class="activity-icon">📊</div>
                     <div class="activity-content">
-                        <h4>Data Synced</h4>
-                        <p>Все графики и статистика загружены</p>
-                        <div class="activity-time">только что</div>
+                        <div class="activity-title">Analytics rendered</div>
+                        <div class="activity-desc">Real-time charts loaded successfully</div>
+                        <div class="activity-time">A few seconds ago</div>
                     </div>
                 </div>
             </div>
         </section>
     </main>
 
+    <!-- FOOTER -->
     <footer>
-        <p>🛡️ Dynamic DNS Blocklist Builder • Enterprise-grade Threat Intelligence</p>
-        <p style="margin-top: 0.5rem; font-size: 0.9rem;">
-            <a href="https://github.com/somafix/dns-blocklist" target="_blank">🔗 GitHub Repository</a> • 
-            <a href="https://raw.githubusercontent.com/somafix/dns-blocklist/main/dynamic-blocklist.txt" target="_blank">📥 Download Blocklist</a>
+        <p>🛡️ DNS Blocklist Builder • Enterprise-grade Threat Intelligence Dashboard</p>
+        <p style="margin-top: 1.5rem;">
+            <a href="https://github.com/somafix/dns-blocklist" target="_blank">GitHub</a> • 
+            <a href="https://raw.githubusercontent.com/somafix/dns-blocklist/main/dynamic-blocklist.txt" target="_blank">Download Blocklist</a>
         </p>
     </footer>
 
     <script>
-        const activities = [];
+        // State
+        const app = {
+            activities: []
+        };
 
-        function addActivity(icon, title, desc) {
-            const time = new Date().toLocaleTimeString('ru-RU', { 
-                hour: '2-digit', 
-                minute: '2-digit', 
-                second: '2-digit' 
-            });
-            
-            activities.unshift({ icon, title, desc, time });
-            if (activities.length > 15) activities.pop();
-            
-            updateActivityFeed();
+        // Update time
+        function updateTime() {
+            const now = new Date();
+            document.getElementById('headerTime').textContent = now.toLocaleTimeString('en-US');
         }
 
-        function updateActivityFeed() {
+        // Activity management
+        function addActivity(icon, title, desc) {
+            const activity = {
+                icon,
+                title,
+                desc,
+                time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+            };
+
+            app.activities.unshift(activity);
+            if (app.activities.length > 8) app.activities.pop();
+
+            renderActivities();
+        }
+
+        function renderActivities() {
             const feed = document.getElementById('activityFeed');
-            feed.innerHTML = activities.map((activity, i) => `
-                <div class="activity-item" style="animation-delay: ${i * 0.05}s">
+            feed.innerHTML = app.activities.map(activity => `
+                <div class="activity-item" style="animation: slideIn 0.3s ease;">
                     <div class="activity-icon">${activity.icon}</div>
                     <div class="activity-content">
-                        <h4>${activity.title}</h4>
-                        <p>${activity.desc}</p>
+                        <div class="activity-title">${activity.title}</div>
+                        <div class="activity-desc">${activity.desc}</div>
                         <div class="activity-time">${activity.time}</div>
                     </div>
                 </div>
             `).join('');
         }
 
-        function updateTime() {
-            const now = new Date();
-            document.getElementById('lastUpdateTime').textContent = now.toLocaleTimeString('ru-RU');
-        }
-
-        function animateNumber(elementId, finalValue, duration = 1500) {
-            const element = document.getElementById(elementId);
-            const startValue = parseInt(element.textContent.replace(/,/g, '')) || 0;
-            const startTime = Date.now();
-
-            function animate() {
-                const elapsed = Date.now() - startTime;
-                const progress = Math.min(elapsed / duration, 1);
-                const currentValue = Math.floor(startValue + (finalValue - startValue) * progress);
-                element.textContent = currentValue.toLocaleString();
-
-                if (progress < 1) {
-                    requestAnimationFrame(animate);
-                }
-            }
-
-            animate();
-        }
-
-        // ─────────────────────────────────────────────────────────────
-        // Графики
-        // ─────────────────────────────────────────────────────────────
-
-        function createCharts() {
-            // Distribution Chart
-            new Chart(document.getElementById('distributionChart').getContext('2d'), {
-                type: 'doughnut',
-                data: {
-                    labels: ['🦠 Malware/C2', '🎣 Phishing', '📺 Tracking'],
-                    datasets: [{
-                        data: [23487, 3245, 45678],
-                        backgroundColor: [
-                            'rgba(239, 68, 68, 0.8)',
-                            'rgba(245, 158, 11, 0.8)',
-                            'rgba(59, 130, 246, 0.8)'
-                        ],
-                        borderColor: [
-                            'rgba(239, 68, 68, 1)',
-                            'rgba(245, 158, 11, 1)',
-                            'rgba(59, 130, 246, 1)'
-                        ],
-                        borderWidth: 2
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            labels: { color: '#cbd5e1' }
+        // Charts
+        function initCharts() {
+            const options = {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: '#d1d5db',
+                            font: { size: 12, weight: '500' },
+                            padding: 15
                         }
                     }
                 }
+            };
+
+            new Chart(document.getElementById('distributionChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Malware/C2', 'Phishing', 'Tracking'],
+                    datasets: [{
+                        data: [23487, 3245, 45678],
+                        backgroundColor: ['#ef4444', '#f59e0b', '#3b82f6'],
+                        borderColor: '#111827',
+                        borderWidth: 3
+                    }]
+                },
+                options
             });
 
-            // Performance Chart
-            new Chart(document.getElementById('performanceChart').getContext('2d'), {
+            new Chart(document.getElementById('performanceChart'), {
                 type: 'bar',
                 data: {
                     labels: ['URLhaus', 'OpenPhish', 'ThreatFox', 'CERT.PL', 'HaGeZi'],
                     datasets: [{
-                        label: 'Время (сек)',
+                        label: 'Time (s)',
                         data: [0.15, 1.23, 0.89, 0.45, 2.34],
-                        backgroundColor: 'rgba(99, 102, 241, 0.7)',
-                        borderColor: '#6366f1',
-                        borderWidth: 2,
-                        borderRadius: 8
+                        backgroundColor: '#3b82f6',
+                        borderRadius: 8,
+                        borderSkipped: false
                     }]
                 },
                 options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
+                    ...options,
                     indexAxis: 'y',
-                    plugins: {
-                        legend: {
-                            labels: { color: '#cbd5e1' }
-                        }
-                    },
                     scales: {
                         x: {
-                            ticks: { color: '#cbd5e1' },
-                            grid: { color: 'rgba(100, 116, 139, 0.2)' }
+                            ticks: { color: '#9ca3af' },
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' }
                         },
                         y: {
-                            ticks: { color: '#cbd5e1' }
+                            ticks: { color: '#9ca3af' }
                         }
                     }
                 }
             });
 
-            // Cache Efficiency Chart
-            new Chart(document.getElementById('cacheChart').getContext('2d'), {
+            new Chart(document.getElementById('cacheChart'), {
                 type: 'doughnut',
                 data: {
-                    labels: ['Из кэша', 'Свежая загрузка'],
+                    labels: ['From Cache', 'Fresh'],
                     datasets: [{
                         data: [80, 20],
-                        backgroundColor: [
-                            'rgba(16, 185, 129, 0.8)',
-                            'rgba(99, 102, 241, 0.8)'
-                        ],
-                        borderColor: [
-                            'rgba(16, 185, 129, 1)',
-                            'rgba(99, 102, 241, 1)'
-                        ],
-                        borderWidth: 2
+                        backgroundColor: ['#10b981', '#3b82f6'],
+                        borderColor: '#111827',
+                        borderWidth: 3
                     }]
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            labels: { color: '#cbd5e1' }
-                        }
-                    }
-                }
+                options
             });
         }
 
-        // Инициализация
+        // Init
         window.addEventListener('DOMContentLoaded', () => {
             updateTime();
-            createCharts();
+            initCharts();
+            addActivity('✅', 'System ready', 'All components loaded');
             
-            addActivity('✅', 'Dashboard Ready', 'Все данные загружены');
-            addActivity('📊', 'Charts Rendered', 'Графики отображаются');
-            addActivity('🔄', 'Last Update', 'Сейчас');
-
-            // Обновлять время каждую секунду
             setInterval(updateTime, 1000);
-
-            // Имитация активности
+            
             setInterval(() => {
                 const messages = [
-                    { icon: '✅', title: 'Health Check', desc: 'Все системы в норме' },
-                    { icon: '📥', title: 'Sync Status', desc: 'Данные синхронизированы' },
-                    { icon: '🔄', title: 'Cache Update', desc: 'Кэш обновлен' },
-                    { icon: '📊', title: 'Stats Update', desc: 'Статистика актуальна' }
+                    { icon: '✅', title: 'Health check', desc: 'All systems operational' },
+                    { icon: '🔄', title: 'Cache updated', desc: '4 of 5 sources cached' },
+                    { icon: '📥', title: 'Data synced', desc: 'Blocklist imported' },
+                    { icon: '📊', title: 'Stats refreshed', desc: 'Real-time analytics' }
                 ];
                 const msg = messages[Math.floor(Math.random() * messages.length)];
                 addActivity(msg.icon, msg.title, msg.desc);
-            }, 15000);
+            }, 12000);
         });
+
+        // Add slide animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn {
+                from { opacity: 0; transform: translateY(10px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+        `;
+        document.head.appendChild(style);
     </script>
 </body>
 </html>
