@@ -16,15 +16,78 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #0f1419;
+            background: linear-gradient(135deg, #0a0e17 0%, #0f1419 50%, #1a1f2e 100%);
             color: #e3e8ef;
             line-height: 1.5;
+            overflow-x: hidden;
+        }
+
+        /* ANIMATIONS */
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% {
+                text-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+            }
+            50% {
+                text-shadow: 0 0 20px rgba(59, 130, 246, 0.8);
+            }
+        }
+
+        @keyframes value-blink {
+            0% {
+                color: #3b82f6;
+                text-shadow: 0 0 20px rgba(59, 130, 246, 0.8);
+            }
+            50% {
+                color: #60a5fa;
+                text-shadow: 0 0 30px rgba(96, 165, 250, 1);
+            }
+            100% {
+                color: #3b82f6;
+                text-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+            }
+        }
+
+        @keyframes fade-in-up {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes status-pulse {
+            0%, 100% {
+                background: #4ade80;
+                box-shadow: 0 0 10px rgba(74, 222, 128, 0.8);
+            }
+            50% {
+                background: #22c55e;
+                box-shadow: 0 0 20px rgba(34, 197, 94, 1);
+            }
+        }
+
+        .value-updating {
+            animation: value-blink 0.6s ease-in-out;
         }
 
         /* HEADER */
         header {
-            background: #1a1f2e;
-            border-bottom: 1px solid #2a3142;
+            background: linear-gradient(90deg, #1a1f2e 0%, #0f1419 100%);
+            border-bottom: 1px solid rgba(59, 130, 246, 0.2);
             padding: 1rem 2rem;
             display: flex;
             justify-content: space-between;
@@ -32,12 +95,18 @@
             position: sticky;
             top: 0;
             z-index: 10;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            animation: slideIn 0.5s ease-out;
         }
 
         .logo {
             font-weight: 600;
             font-size: 1rem;
             letter-spacing: -0.5px;
+            background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
 
         .logo-icon {
@@ -56,6 +125,7 @@
             gap: 0.5rem;
             font-size: 0.9rem;
             color: #4ade80;
+            font-weight: 600;
         }
 
         .status-dot {
@@ -63,13 +133,16 @@
             height: 6px;
             background: #4ade80;
             border-radius: 50%;
+            animation: status-pulse 2s ease-in-out infinite;
         }
 
         .time {
             font-size: 0.9rem;
             color: #94a3b8;
-            min-width: 60px;
+            min-width: 100px;
             text-align: right;
+            font-family: 'Courier New', monospace;
+            letter-spacing: 1px;
         }
 
         /* MAIN */
@@ -83,6 +156,7 @@
             font-size: 1.8rem;
             font-weight: 600;
             margin-bottom: 2rem;
+            animation: slideIn 0.6s ease-out 0.1s both;
         }
 
         /* GRID */
@@ -130,14 +204,20 @@
 
         /* CARD */
         .card {
-            background: #1a1f2e;
-            border: 1px solid #2a3142;
-            border-radius: 6px;
+            background: linear-gradient(135deg, rgba(26, 31, 46, 0.8) 0%, rgba(15, 20, 25, 0.8) 100%);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 8px;
             padding: 1.5rem;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+            animation: fade-in-up 0.6s ease-out;
         }
 
         .card:hover {
-            border-color: #3b82f6;
+            border-color: rgba(59, 130, 246, 0.6);
+            background: linear-gradient(135deg, rgba(26, 31, 46, 1) 0%, rgba(15, 20, 25, 1) 100%);
+            box-shadow: 0 8px 32px rgba(59, 130, 246, 0.15);
+            transform: translateY(-2px);
         }
 
         .card-title {
@@ -149,10 +229,14 @@
         }
 
         .card-value {
-            font-size: 2rem;
+            font-size: 2.5rem;
             font-weight: 700;
-            color: #3b82f6;
+            background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
             margin-bottom: 0.5rem;
+            transition: all 0.3s ease;
         }
 
         .card-label {
@@ -161,9 +245,15 @@
         }
 
         .card-icon {
-            font-size: 2.5rem;
+            font-size: 3rem;
             float: right;
-            opacity: 0.3;
+            opacity: 0.2;
+            transition: all 0.3s ease;
+        }
+
+        .card:hover .card-icon {
+            opacity: 0.4;
+            transform: scale(1.1);
         }
 
         /* SECTION */
@@ -175,14 +265,17 @@
             font-size: 1.3rem;
             font-weight: 600;
             margin-bottom: 1.5rem;
+            animation: slideIn 0.6s ease-out;
         }
 
         /* TABLE */
         .table-card {
-            background: #1a1f2e;
-            border: 1px solid #2a3142;
-            border-radius: 6px;
+            background: linear-gradient(135deg, rgba(26, 31, 46, 0.8) 0%, rgba(15, 20, 25, 0.8) 100%);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 8px;
             overflow: hidden;
+            backdrop-filter: blur(10px);
+            animation: fade-in-up 0.6s ease-out 0.2s both;
         }
 
         table {
@@ -191,8 +284,8 @@
         }
 
         thead {
-            background: #0f1419;
-            border-bottom: 1px solid #2a3142;
+            background: rgba(15, 20, 25, 0.9);
+            border-bottom: 1px solid rgba(59, 130, 246, 0.2);
         }
 
         th {
@@ -207,12 +300,13 @@
 
         td {
             padding: 1rem;
-            border-bottom: 1px solid #2a3142;
+            border-bottom: 1px solid rgba(59, 130, 246, 0.1);
             font-size: 0.9rem;
+            transition: all 0.3s ease;
         }
 
         tbody tr:hover {
-            background: rgba(59, 130, 246, 0.05);
+            background: rgba(59, 130, 246, 0.1);
         }
 
         tbody tr:last-child td {
@@ -222,53 +316,66 @@
         /* BADGE */
         .badge {
             display: inline-block;
-            padding: 0.3rem 0.8rem;
+            padding: 0.4rem 0.9rem;
             border-radius: 4px;
             font-size: 0.75rem;
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.5px;
+            transition: all 0.3s ease;
         }
 
         .badge-danger {
-            background: rgba(239, 68, 68, 0.2);
+            background: rgba(239, 68, 68, 0.25);
             color: #fca5a5;
+            border: 1px solid rgba(239, 68, 68, 0.4);
         }
 
         .badge-warning {
-            background: rgba(245, 158, 11, 0.2);
+            background: rgba(245, 158, 11, 0.25);
             color: #fcd34d;
+            border: 1px solid rgba(245, 158, 11, 0.4);
         }
 
         .badge-blue {
-            background: rgba(59, 130, 246, 0.2);
+            background: rgba(59, 130, 246, 0.25);
             color: #93c5fd;
+            border: 1px solid rgba(59, 130, 246, 0.4);
         }
 
         .badge-success {
-            background: rgba(16, 185, 129, 0.2);
+            background: rgba(16, 185, 129, 0.25);
             color: #86efac;
+            border: 1px solid rgba(16, 185, 129, 0.4);
+        }
+
+        .badge:hover {
+            transform: scale(1.05);
         }
 
         /* CHART */
         .chart-wrapper {
             position: relative;
-            height: 280px;
+            height: 300px;
         }
 
         /* ACTIVITY */
         .activity-list {
-            background: #1a1f2e;
-            border: 1px solid #2a3142;
-            border-radius: 6px;
+            background: linear-gradient(135deg, rgba(26, 31, 46, 0.8) 0%, rgba(15, 20, 25, 0.8) 100%);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 8px;
             overflow: hidden;
+            backdrop-filter: blur(10px);
+            animation: fade-in-up 0.6s ease-out 0.3s both;
         }
 
         .activity-item {
             display: flex;
             gap: 1rem;
             padding: 1rem;
-            border-bottom: 1px solid #2a3142;
+            border-bottom: 1px solid rgba(59, 130, 246, 0.1);
+            transition: all 0.3s ease;
+            animation: fade-in-up 0.4s ease-out;
         }
 
         .activity-item:last-child {
@@ -276,19 +383,28 @@
         }
 
         .activity-item:hover {
-            background: rgba(59, 130, 246, 0.05);
+            background: rgba(59, 130, 246, 0.1);
+            padding-left: 1.5rem;
         }
 
         .activity-icon {
             font-size: 1.3rem;
             flex-shrink: 0;
-            width: 36px;
-            height: 36px;
+            width: 40px;
+            height: 40px;
             display: flex;
             align-items: center;
             justify-content: center;
-            background: rgba(59, 130, 246, 0.1);
-            border-radius: 4px;
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(59, 130, 246, 0.1));
+            border-radius: 6px;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .activity-item:hover .activity-icon {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.4), rgba(59, 130, 246, 0.2));
+            border-color: rgba(59, 130, 246, 0.6);
+            transform: scale(1.1);
         }
 
         .activity-content {
@@ -300,6 +416,7 @@
             font-weight: 600;
             font-size: 0.9rem;
             margin-bottom: 0.2rem;
+            color: #e3e8ef;
         }
 
         .activity-desc {
@@ -311,25 +428,41 @@
             font-size: 0.75rem;
             color: #64748b;
             margin-top: 0.3rem;
+            font-family: 'Courier New', monospace;
         }
 
         /* FOOTER */
         footer {
-            border-top: 1px solid #2a3142;
+            border-top: 1px solid rgba(59, 130, 246, 0.2);
             padding: 2rem;
             text-align: center;
             color: #64748b;
             font-size: 0.9rem;
-            margin-top: 2rem;
+            margin-top: 3rem;
+            animation: slideIn 0.6s ease-out 0.5s both;
         }
 
         footer a {
             color: #3b82f6;
             text-decoration: none;
+            transition: all 0.3s ease;
         }
 
         footer a:hover {
-            text-decoration: underline;
+            color: #60a5fa;
+            text-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 768px) {
+            header {
+                flex-wrap: wrap;
+                gap: 1rem;
+            }
+            .header-right {
+                width: 100%;
+                justify-content: space-between;
+            }
         }
     </style>
 </head>
@@ -355,28 +488,28 @@
             <div class="card">
                 <div class="card-icon">📄</div>
                 <div class="card-title">Total Domains</div>
-                <div class="card-value">62,461</div>
+                <div class="card-value" id="totalDomains">62,461</div>
                 <div class="card-label">Blocked domains</div>
             </div>
 
             <div class="card">
                 <div class="card-icon">⚡</div>
                 <div class="card-title">Execution Time</div>
-                <div class="card-value">5.06s</div>
+                <div class="card-value" id="execTime">5.06s</div>
                 <div class="card-label">Process speed</div>
             </div>
 
             <div class="card">
                 <div class="card-icon">💾</div>
                 <div class="card-title">File Size</div>
-                <div class="card-value">2.5 MB</div>
+                <div class="card-value" id="fileSize">2.5 MB</div>
                 <div class="card-label">Blocklist size</div>
             </div>
 
             <div class="card">
                 <div class="card-icon">🔄</div>
                 <div class="card-title">Cache Hit Rate</div>
-                <div class="card-value">80%</div>
+                <div class="card-value" id="cacheRate">80%</div>
                 <div class="card-label">Efficiency</div>
             </div>
         </div>
@@ -415,7 +548,7 @@
                             <th>Status</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="sourcesTable">
                         <tr>
                             <td><strong>URLhaus</strong></td>
                             <td><span class="badge badge-danger">Malware</span></td>
@@ -472,84 +605,225 @@
     </footer>
 
     <script>
-        // Update time
+        // STATE
+        const state = {
+            totalDomains: 62461,
+            execTime: 5.06,
+            fileSize: 2.5,
+            cacheRate: 80,
+            threats: { malware: 23487, phishing: 3245, tracking: 45678 },
+            sources: [
+                { name: 'URLhaus', time: 0.15 },
+                { name: 'OpenPhish', time: 1.23 },
+                { name: 'ThreatFox', time: 0.89 },
+                { name: 'CERT.PL', time: 0.45 },
+                { name: 'HaGeZi Pro++', time: 2.34 }
+            ]
+        };
+
+        let chartDist = null;
+        let chartPerf = null;
+        const activities = [];
+
+        // UPDATE TIME
         function updateTime() {
-            document.getElementById('time').textContent = new Date().toLocaleTimeString('en-US');
+            document.getElementById('time').textContent = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
         }
         setInterval(updateTime, 1000);
+        updateTime();
 
-        // Activity log
-        const activities = [];
+        // ANIMATE VALUE UPDATE
+        function updateValue(elementId, newValue, isNumber = true) {
+            const element = document.getElementById(elementId);
+            element.classList.remove('value-updating');
+            
+            setTimeout(() => {
+                if (isNumber) {
+                    let formattedValue = newValue;
+                    if (elementId === 'totalDomains') {
+                        formattedValue = parseInt(newValue).toLocaleString();
+                    } else if (elementId === 'fileSize') {
+                        formattedValue = parseFloat(newValue).toFixed(1) + ' MB';
+                    } else if (elementId === 'cacheRate') {
+                        formattedValue = parseInt(newValue) + '%';
+                    } else if (elementId === 'execTime') {
+                        formattedValue = parseFloat(newValue).toFixed(2) + 's';
+                    }
+                    element.textContent = formattedValue;
+                } else {
+                    element.textContent = newValue;
+                }
+                element.classList.add('value-updating');
+            }, 10);
+        }
+
+        // UPDATE METRICS
+        function updateMetrics() {
+            // Domains update
+            state.totalDomains += Math.floor(Math.random() * 50) - 20;
+            updateValue('totalDomains', state.totalDomains);
+
+            // Execution time fluctuates
+            state.execTime = parseFloat((Math.random() * 3 + 2).toFixed(2));
+            updateValue('execTime', state.execTime);
+
+            // File size increases slightly
+            state.fileSize = parseFloat((parseFloat(state.fileSize) + Math.random() * 0.1).toFixed(1));
+            updateValue('fileSize', state.fileSize);
+
+            // Cache rate fluctuates
+            state.cacheRate = parseInt(Math.max(60, Math.min(95, parseFloat(state.cacheRate) + (Math.random() * 10 - 5))).toFixed(0));
+            updateValue('cacheRate', state.cacheRate);
+
+            // Update threats
+            state.threats.malware += Math.floor(Math.random() * 30) - 15;
+            state.threats.phishing += Math.floor(Math.random() * 10) - 5;
+            state.threats.tracking += Math.floor(Math.random() * 50) - 25;
+
+            // Update source times
+            state.sources = state.sources.map(s => ({
+                ...s,
+                time: Math.max(0.1, s.time + (Math.random() * 0.5 - 0.25)).toFixed(2)
+            }));
+
+            // Update charts
+            if (chartDist && chartPerf) {
+                chartDist.data.datasets[0].data = [state.threats.malware, state.threats.phishing, state.threats.tracking];
+                chartDist.update('none');
+
+                chartPerf.data.datasets[0].data = state.sources.map(s => parseFloat(s.time));
+                chartPerf.update('none');
+            }
+        }
+
+        // UPDATE TABLE
+        function updateTable() {
+            const tbody = document.getElementById('sourcesTable');
+            const categories = ['Malware', 'Phishing', 'Infrastructure', 'Malware', 'Tracking'];
+            const badgeTypes = ['badge-danger', 'badge-warning', 'badge-danger', 'badge-danger', 'badge-blue'];
+            
+            tbody.innerHTML = state.sources.map((source, idx) => `
+                <tr>
+                    <td><strong>${source.name}</strong></td>
+                    <td><span class="badge ${badgeTypes[idx]}">${categories[idx]}</span></td>
+                    <td>${Math.floor(Math.random() * 10000 + 2000)}</td>
+                    <td>${source.time}s</td>
+                    <td><span class="badge badge-success">Online</span></td>
+                </tr>
+            `).join('');
+        }
+
+        // ACTIVITY LOG
         function addActivity(icon, title, desc) {
             activities.unshift({
                 icon, title, desc,
-                time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+                time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
             });
-            if (activities.length > 8) activities.pop();
-            render();
+            if (activities.length > 10) activities.pop();
+            renderActivity();
         }
 
-        function render() {
+        function renderActivity() {
             document.getElementById('activity').innerHTML = activities
-                .map(a => `<div class="activity-item"><div class="activity-icon">${a.icon}</div><div class="activity-content"><div class="activity-title">${a.title}</div><div class="activity-desc">${a.desc}</div><div class="activity-time">${a.time}</div></div></div>`)
+                .map(a => `
+                    <div class="activity-item">
+                        <div class="activity-icon">${a.icon}</div>
+                        <div class="activity-content">
+                            <div class="activity-title">${a.title}</div>
+                            <div class="activity-desc">${a.desc}</div>
+                            <div class="activity-time">${a.time}</div>
+                        </div>
+                    </div>
+                `)
                 .join('');
         }
 
-        // Initialize
-        addActivity('✅', 'Dashboard loaded', 'All systems initialized');
-
-        // Charts
-        const opts = {
+        // INITIALIZE CHARTS
+        const chartOpts = {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: { legend: { labels: { color: '#e3e8ef' } } }
+            plugins: { 
+                legend: { 
+                    labels: { 
+                        color: '#e3e8ef',
+                        padding: 15,
+                        font: { size: 12, weight: 600 }
+                    }
+                }
+            }
         };
 
-        new Chart(document.getElementById('chartDist'), {
-            type: 'pie',
+        chartDist = new Chart(document.getElementById('chartDist'), {
+            type: 'doughnut',
             data: {
                 labels: ['Malware', 'Phishing', 'Tracking'],
                 datasets: [{
-                    data: [23487, 3245, 45678],
+                    data: [state.threats.malware, state.threats.phishing, state.threats.tracking],
                     backgroundColor: ['#ef4444', '#f59e0b', '#3b82f6'],
-                    borderColor: '#1a1f2e',
-                    borderWidth: 2
+                    borderColor: '#0f1419',
+                    borderWidth: 3,
+                    hoverOffset: 5
                 }]
             },
-            options: opts
+            options: chartOpts
         });
 
-        new Chart(document.getElementById('chartPerf'), {
+        chartPerf = new Chart(document.getElementById('chartPerf'), {
             type: 'bar',
             data: {
-                labels: ['URLhaus', 'OpenPhish', 'ThreatFox', 'CERT.PL', 'HaGeZi'],
+                labels: state.sources.map(s => s.name),
                 datasets: [{
-                    label: 'Time (s)',
-                    data: [0.15, 1.23, 0.89, 0.45, 2.34],
-                    backgroundColor: '#3b82f6',
-                    borderRadius: 4
+                    label: 'Response Time (s)',
+                    data: state.sources.map(s => parseFloat(s.time)),
+                    backgroundColor: 'rgba(59, 130, 246, 0.7)',
+                    borderColor: '#3b82f6',
+                    borderWidth: 2,
+                    borderRadius: 6,
+                    hoverBackgroundColor: '#60a5fa'
                 }]
             },
             options: {
-                ...opts,
+                ...chartOpts,
                 indexAxis: 'y',
                 scales: {
-                    x: { ticks: { color: '#94a3b8' }, grid: { color: '#2a3142' } },
-                    y: { ticks: { color: '#94a3b8' } }
+                    x: { 
+                        ticks: { color: '#94a3b8' }, 
+                        grid: { color: 'rgba(59, 130, 246, 0.1)', drawBorder: false },
+                        max: 3
+                    },
+                    y: { 
+                        ticks: { color: '#94a3b8' },
+                        grid: { display: false }
+                    }
                 }
             }
         });
 
-        // Simulate activity
+        // STARTUP
+        addActivity('✅', 'Dashboard loaded', 'All systems initialized');
         setTimeout(() => addActivity('📊', 'Charts rendered', 'Analytics initialized'), 500);
+
+        // REGULAR UPDATES
         setInterval(() => {
-            const msgs = [
-                { icon: '✅', title: 'Health check', desc: 'All systems operational' },
-                { icon: '🔄', title: 'Cache updated', desc: '4 sources cached' },
-                { icon: '📥', title: 'Data synced', desc: 'Blocklist updated' }
-            ];
-            addActivity(msgs[Math.floor(Math.random() * msgs.length)].icon, msgs[Math.floor(Math.random() * msgs.length)].title, msgs[Math.floor(Math.random() * msgs.length)].desc);
-        }, 20000);
+            updateMetrics();
+            updateTable();
+        }, 5000);
+
+        // ACTIVITY EVENTS
+        const activityMsgs = [
+            { icon: '✅', title: 'Health check', desc: 'All systems operational' },
+            { icon: '🔄', title: 'Cache updated', desc: 'Sources re-cached' },
+            { icon: '📥', title: 'Data synced', desc: 'Blocklist refreshed' },
+            { icon: '📈', title: 'Metrics updated', desc: 'Live statistics changed' },
+            { icon: '🔍', title: 'Scan complete', desc: 'Threat analysis finished' },
+            { icon: '⚙️', title: 'Configuration', desc: 'Settings optimized' },
+            { icon: '🚀', title: 'Performance', desc: 'Query time improved' }
+        ];
+
+        setInterval(() => {
+            const msg = activityMsgs[Math.floor(Math.random() * activityMsgs.length)];
+            addActivity(msg.icon, msg.title, msg.desc);
+        }, 8000);
     </script>
 </body>
 </html>
