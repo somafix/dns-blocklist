@@ -1,0 +1,16 @@
+2026-03-23 09:35:24 [INFO] [SEQ:000001] Security hardening applied
+2026-03-23 09:35:24 [INFO] [SEQ:000002] GC configured with optimized thresholds (ENABLED)
+2026-03-23 09:35:24 [INFO] [SEQ:000003] Processing source: StevenBlack
+2026-03-23 09:35:24 [INFO] [SEQ:000004] Fetched https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts (2,585,439 bytes)
+2026-03-23 09:35:24 [INFO] [SEQ:000005] ✅ StevenBlack: 86,064 domains, 86,064 new [0.19s]
+2026-03-23 09:35:24 [INFO] [SEQ:000006] Processing source: AdAway
+2026-03-23 09:35:25 [INFO] [SEQ:000007] Fetched https://adaway.org/hosts.txt (243,454 bytes)
+2026-03-23 09:35:25 [INFO] [SEQ:000008] ✅ AdAway: 6,540 domains, 16 new [0.27s]
+2026-03-23 09:35:25 [INFO] [SEQ:000009] Processing source: HaGeZi Ultimate
+2026-03-23 09:35:26 [INFO] [SEQ:000010] Fetched https://raw.githubusercontent.com/hagezi/dns-blocklists/main/hosts/ultimate.txt (16,905,628 bytes)
+2026-03-23 09:35:26 [INFO] [SEQ:000011] ✅ HaGeZi Ultimate: 300,000 domains, 287,338 new [0.83s]
+2026-03-23 09:35:26 [INFO] [SEQ:000012] Processing source: SomeoneWhoCares
+2026-03-23 09:35:27 [INFO] [SEQ:000013] Fetched https://someonewhocares.org/hosts/zero/hosts (349,329 bytes)
+2026-03-23 09:35:27 [INFO] [SEQ:000014] ✅ SomeoneWhoCares: 12,380 domains, 34 new [0.05s]
+2026-03-23 09:35:27 [INFO] [SEQ:000015] Cache saved: 4 entries
+2026-03-23 09:35:27 [INFO] [SEQ:000016] Blocklist generated: dynamic-blocklist.txt (373,452 domains)
