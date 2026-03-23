@@ -31,3 +31,20 @@
 2026-03-23 13:21:10 [INFO] [SEQ:000015] ✅ SomeoneWhoCares: 0 domains, 0 new (cached) [0.51s]
 2026-03-23 13:21:10 [INFO] [SEQ:000016] Cache saved: 4 entries
 2026-03-23 13:21:10 [INFO] [SEQ:000017] Blocklist generated: dynamic-blocklist.txt (6,540 domains)
+2026-03-23 13:59:23 [INFO] [SEQ:000001] Security hardening applied
+2026-03-23 13:59:23 [INFO] [SEQ:000002] GC configured with optimized thresholds (ENABLED)
+2026-03-23 13:59:23 [INFO] [SEQ:000003] Cache loaded: 4 entries
+2026-03-23 13:59:23 [INFO] [SEQ:000004] Processing source: StevenBlack
+2026-03-23 13:59:23 [ERROR] [SEQ:000005] Unexpected error for https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts: expected string or bytes-like object, got 'NoneType'
+2026-03-23 13:59:23 [WARNING] [SEQ:000006] Empty response from StevenBlack
+2026-03-23 13:59:23 [INFO] [SEQ:000007] Processing source: AdAway
+2026-03-23 13:59:24 [INFO] [SEQ:000008] Fetched https://adaway.org/hosts.txt (243,454 bytes)
+2026-03-23 13:59:24 [INFO] [SEQ:000009] ✅ AdAway: 6,540 domains, 6,540 new [0.62s]
+2026-03-23 13:59:24 [INFO] [SEQ:000010] Processing source: HaGeZi Ultimate
+2026-03-23 13:59:24 [ERROR] [SEQ:000011] Unexpected error for https://raw.githubusercontent.com/hagezi/dns-blocklists/main/hosts/ultimate.txt: expected string or bytes-like object, got 'NoneType'
+2026-03-23 13:59:24 [WARNING] [SEQ:000012] Empty response from HaGeZi Ultimate
+2026-03-23 13:59:24 [INFO] [SEQ:000013] Processing source: SomeoneWhoCares
+2026-03-23 13:59:24 [INFO] [SEQ:000014] Content unchanged (304): https://someonewhocares.org/hosts/zero/hosts
+2026-03-23 13:59:24 [INFO] [SEQ:000015] ✅ SomeoneWhoCares: 0 domains, 0 new (cached) [0.45s]
+2026-03-23 13:59:24 [INFO] [SEQ:000016] Cache saved: 4 entries
+2026-03-23 13:59:24 [INFO] [SEQ:000017] Blocklist generated: dynamic-blocklist.txt (6,540 domains)

@@ -2,8 +2,8 @@
 # DNS SECURITY BLOCKLIST - ENTERPRISE GRADE
 # ====================================================================
 # Version: 3.0.4
-# Generated: 2026-03-23 13:21:10 UTC
-# Timestamp: 1774272071
+# Generated: 2026-03-23 13:59:24 UTC
+# Timestamp: 1774274365
 # Total domains: 6,540
 # SHA-256: 028eddea40b4e2b97e7381ad404489722f7904c2ee11caeffa158af43ae10d85
 # Sources processed: 4
