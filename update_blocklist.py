@@ -11,20 +11,29 @@ import sys
 import hashlib
 import tempfile
 import shutil
-import fcntl
 import signal
 import resource
 import gc
 import functools
-import array
+import threading
 from datetime import datetime, timezone
-from time import perf_counter, sleep
-from typing import Set, Dict, Optional, List, Tuple, Generator
+from time import perf_counter
+from typing import Set, Dict, Optional, List, Tuple
 from pathlib import Path
 from urllib.parse import urlparse
-from concurrent.futures import ThreadPoolExecutor, as_completed
 import urllib.request
 import urllib.error
+
+# Кроссплатформенная блокировка файлов
+try:
+    import fcntl
+    HAS_FCNTL = True
+except ImportError:
+    HAS_FCNTL = False
+    try:
+        import msvcrt
+    except ImportError:
+        msvcrt = None
 
 # ============================================================================
 # ОПТИМИЗИРОВАННАЯ КОНФИГУРАЦИЯ
@@ -33,35 +42,38 @@ import urllib.error
 class Config:
     """Оптимизированные настройки"""
     
-    # Лимиты (подобраны для максимальной эффективности)
+    # Лимиты
     MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
     MAX_DOMAINS = 300000
-    TIMEOUT = 10  # Уменьшил для скорости
-    RETRIES = 1   # Одна попытка для скорости
+    TIMEOUT = 10
+    RETRIES = 1
     
     # Оптимизация памяти
-    DOMAIN_CACHE_SIZE = 100000  # LRU кэш для доменов
-    BATCH_SIZE = 10000  # Размер батча для обработки
+    DOMAIN_CACHE_SIZE = 100000
+    BATCH_SIZE = 10000
     
-    # Белый список (оптимизирован через frozenset)
+    # Белый список
     ALLOWED_SOURCES = frozenset({
         'raw.githubusercontent.com',
         'adaway.org',
         'github.com',
     })
     
-    # Оптимизированные паттерны (скомпилированы заранее)
+    # Оптимизированные паттерны
     DOMAIN_PATTERN = re.compile(
         rb'^(?:0\.0\.0\.0|127\.0\.0\.1)\s+([a-z0-9.-]+)',
         re.MULTILINE | re.IGNORECASE
     )
     
-    # Безопасные символы для быстрой проверки
+    # Безопасные символы
     SAFE_CHARS = frozenset(b'abcdefghijklmnopqrstuvwxyz0123456789.-')
+    
+    # Лог файл
+    LOG_FILE = 'update_blocklist.log'
 
 
 # ============================================================================
-# ОПТИМИЗИРОВАННЫЙ ЛОГГЕР (асинхронный)
+# ОПТИМИЗИРОВАННЫЙ ЛОГГЕР
 # ============================================================================
 
 class AsyncLogger:
@@ -70,47 +82,67 @@ class AsyncLogger:
     __slots__ = ('_log_path', '_buffer', '_buffer_size', '_lock')
     
     def __init__(self):
-        self._log_path = Path(Config.LOG_FILE) if hasattr(Config, 'LOG_FILE') else None
+        self._log_path = Path(Config.LOG_FILE)
         self._buffer = []
         self._buffer_size = 0
-        self._lock = threading.Lock() if 'threading' in sys.modules else None
+        self._lock = threading.Lock()
+    
+    def _lock_file(self, f):
+        """Кроссплатформенная блокировка файла"""
+        if HAS_FCNTL:
+            fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+        elif msvcrt:
+            msvcrt.locking(f.fileno(), msvcrt.LK_LOCK, 1)
+    
+    def _unlock_file(self, f):
+        """Кроссплатформенная разблокировка файла"""
+        if HAS_FCNTL:
+            fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+        elif msvcrt:
+            msvcrt.locking(f.fileno(), msvcrt.LK_UNLCK, 1)
     
     def log(self, level: str, msg: str):
         """Быстрое логирование с буфером"""
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         line = f"[{timestamp}] {level}: {msg[:500]}\n"
         
-        # Вывод в консоль без задержки
+        # Вывод в консоль
         print(f"{'ℹ️' if level == 'INFO' else '⚠️' if level == 'WARN' else '❌'} {msg}")
         
         # Буферизированная запись в файл
         if self._log_path:
-            self._buffer.append(line)
-            self._buffer_size += len(line)
-            
-            if self._buffer_size > 65536:  # 64KB буфер
-                self.flush()
+            with self._lock:
+                self._buffer.append(line)
+                self._buffer_size += len(line)
+                
+                if self._buffer_size > 65536:
+                    self.flush()
     
     def flush(self):
         """Сброс буфера на диск"""
         if not self._buffer or not self._log_path:
             return
         
-        try:
-            with open(self._log_path, 'a', encoding='utf-8') as f:
-                fcntl.flock(f.fileno(), fcntl.LOCK_EX)
-                f.write(''.join(self._buffer))
-                f.flush()
-                os.fsync(f.fileno())
-        except:
-            pass
-        finally:
-            self._buffer.clear()
-            self._buffer_size = 0
+        with self._lock:
+            if not self._buffer:
+                return
+                
+            try:
+                with open(self._log_path, 'a', encoding='utf-8') as f:
+                    self._lock_file(f)
+                    f.write(''.join(self._buffer))
+                    f.flush()
+                    os.fsync(f.fileno())
+                    self._unlock_file(f)
+            except:
+                pass
+            finally:
+                self._buffer.clear()
+                self._buffer_size = 0
 
 
 # ============================================================================
-# ОПТИМИЗИРОВАННЫЙ ВАЛИДАТОР (минимальные накладные расходы)
+# ОПТИМИЗИРОВАННЫЙ ВАЛИДАТОР
 # ============================================================================
 
 class FastValidator:
@@ -173,7 +205,7 @@ class FastValidator:
         if 46 not in domain:  # '.'
             return False
         
-        # Проверка всех символов (битовая маска для скорости)
+        # Проверка всех символов
         for b in domain:
             if b not in Config.SAFE_CHARS:
                 return False
@@ -182,7 +214,7 @@ class FastValidator:
 
 
 # ============================================================================
-# ОПТИМИЗИРОВАННЫЙ HTTP КЛИЕНТ (с переиспользованием соединений)
+# ОПТИМИЗИРОВАННЫЙ HTTP КЛИЕНТ
 # ============================================================================
 
 class FastHTTPClient:
@@ -193,18 +225,17 @@ class FastHTTPClient:
     def __init__(self, logger: AsyncLogger):
         self._logger = logger
         self._opener = self._create_opener()
-        self._cache = {}
+        self._cache = {}  # Инициализация кэша
     
     def _create_opener(self):
         """Создание оптимизированного opener"""
-        # Настройка для максимальной скорости
-        import socket
         import ssl
         
         # Создаём SSL контекст с оптимизациями
         ssl_context = ssl.create_default_context()
-        ssl_context.check_hostname = False  # Отключаем для скорости (только для trusted источников)
-        ssl_context.verify_mode = ssl.CERT_NONE
+        # Для публичных источников лучше включить проверку
+        ssl_context.check_hostname = True
+        ssl_context.verify_mode = ssl.CERT_REQUIRED
         
         # Настройка сокета
         handler = urllib.request.HTTPSHandler(context=ssl_context)
@@ -214,8 +245,8 @@ class FastHTTPClient:
         opener.addheaders = [
             ('User-Agent', 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36'),
             ('Accept', 'text/plain'),
-            ('Accept-Encoding', 'gzip, deflate'),  # Поддержка сжатия
-            ('Connection', 'keep-alive'),  # Переиспользование соединений
+            ('Accept-Encoding', 'gzip, deflate'),
+            ('Connection', 'keep-alive'),
         ]
         
         return opener
@@ -253,7 +284,7 @@ class FastHTTPClient:
                 new_entry['etag'] = resp.headers.get('ETag')
                 new_entry['last_modified'] = resp.headers.get('Last-Modified')
                 
-                # Декодируем только если изменилось
+                # Декодируем
                 text = content.decode('utf-8', errors='replace')
                 
         except urllib.error.HTTPError as e:
@@ -262,10 +293,10 @@ class FastHTTPClient:
                 text = cache_entry.get('content', '')
                 new_entry = cache_entry
             else:
-                self._logger.log('ERROR', f'HTTP {e.code}')
+                self._logger.log('ERROR', f'HTTP {e.code} для {url[:80]}')
                 return "", False
         except Exception as e:
-            self._logger.log('ERROR', str(e))
+            self._logger.log('ERROR', f'{str(e)[:100]} для {url[:80]}')
             return "", False
         
         if not used_cache and text:
@@ -276,7 +307,7 @@ class FastHTTPClient:
 
 
 # ============================================================================
-# ОПТИМИЗИРОВАННЫЙ ПАРСЕР (работает с байтами, без декодирования)
+# ОПТИМИЗИРОВАННЫЙ ПАРСЕР
 # ============================================================================
 
 class FastParser:
@@ -293,7 +324,7 @@ class FastParser:
         domains = set()
         text_bytes = text.encode('utf-8', errors='ignore')
         
-        # Итератор по совпадениям (экономия памяти)
+        # Итератор по совпадениям
         for match in self._pattern.finditer(text_bytes):
             if len(domains) >= Config.MAX_DOMAINS:
                 break
@@ -310,7 +341,7 @@ class FastParser:
 
 
 # ============================================================================
-# ОСНОВНОЙ КЛАСС (оптимизированный)
+# ОСНОВНОЙ КЛАСС
 # ============================================================================
 
 class OptimizedBlocklistBuilder:
@@ -346,8 +377,8 @@ class OptimizedBlocklistBuilder:
     
     def _setup_gc(self):
         """Настройка сборщика мусора для производительности"""
-        gc.disable()  # Отключаем автоматический GC
-        gc.set_threshold(700, 10, 5)  # Настраиваем пороги
+        gc.disable()
+        gc.set_threshold(700, 10, 5)
     
     def _cleanup(self):
         """Быстрая очистка"""
@@ -376,7 +407,7 @@ class OptimizedBlocklistBuilder:
         try:
             # Используем временный файл для атомарности
             with tempfile.NamedTemporaryFile(mode='w', delete=False, dir='.') as tmp:
-                json.dump(self._cache, tmp, separators=(',', ':'))  # Минификация
+                json.dump(self._cache, tmp, separators=(',', ':'))
                 tmp.flush()
                 os.fsync(tmp.fileno())
             
@@ -422,7 +453,7 @@ class OptimizedBlocklistBuilder:
         # Оптимизированная сортировка
         sorted_domains = sorted(self._domains)
         
-        # Используем массив строк для быстрой конкатенации
+        # Используем список для быстрой конкатенации
         lines = [
             "# ============================================================",
             "# Dynamic DNS Blocklist - OPTIMIZED",
@@ -433,7 +464,7 @@ class OptimizedBlocklistBuilder:
             ""
         ]
         
-        # Добавляем домены батчами
+        # Добавляем домены
         lines.extend(f"0.0.0.0 {domain}" for domain in sorted_domains)
         content = '\n'.join(lines) + '\n'
         
@@ -467,7 +498,8 @@ class OptimizedBlocklistBuilder:
         # Время выполнения
         elapsed = perf_counter() - self._start_time
         print(f"\n⏱️  Общее время: {elapsed:.2f} сек")
-        print(f"📈 Скорость: {len(self._domains) / elapsed:.0f} доменов/сек")
+        if elapsed > 0:
+            print(f"📈 Скорость: {len(self._domains) / elapsed:.0f} доменов/сек")
     
     def run(self):
         """Запуск"""
@@ -487,7 +519,7 @@ class OptimizedBlocklistBuilder:
             ("https://raw.githubusercontent.com/hagezi/dns-blocklists/main/hosts/ultimate.txt", "HaGeZi"),
         ]
         
-        # Последовательная обработка (быстрее параллельной для сети)
+        # Последовательная обработка
         for url, name in sources:
             self.process_source(url, name)
         
