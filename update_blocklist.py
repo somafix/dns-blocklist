@@ -2,16 +2,19 @@
 """
 Dynamic DNS Blocklist Builder - Enterprise Grade Security Tool
 Author: Security Research Team
-Version: 3.0.4 (Production Ready - Ultimate Edition)
+Version: 3.0.5 (Production Ready - Ultimate Edition with Auto-Recovery)
 License: MIT
 
 High-performance DNS blocklist generator with enterprise-grade security features.
 Optimized for threat intelligence feeds with zero memory leaks, proper rate limiting,
-and production-ready stability.
+and production-ready stability. Includes automatic fallback sources and emergency recovery.
 
 Key Features:
 - Zero memory leaks (GC enabled with optimized thresholds)
 - Proper rate limiting with burst protection
+- Automatic source fallback (multiple mirrors)
+- Emergency recovery from backup cache
+- Network diagnostics on failure
 - Metadata-only caching (no content storage)
 - Full SSL/TLS hardening with strong ciphers
 - Atomic file operations for cache and output
@@ -79,7 +82,13 @@ class SecurityConfig:
         'adaway.org',
         'github.com',
         'hostsfile.mine.nu',
-        'someonewhocares.org'
+        'someonewhocares.org',
+        'cdn.jsdelivr.net',
+        'gitlab.com',
+        'adaway.surge.sh',
+        'oisd.nl',
+        'big.oisd.nl',
+        'small.oisd.nl'
     })
     
     # ========== DNS PATTERNS ==========
@@ -156,14 +165,7 @@ class SecurityAuditLogger:
             self._logger.addHandler(file_handler)
     
     def log(self, level: str, message: str, sensitive: bool = False) -> None:
-        """
-        Log message with severity level and audit sequence.
-        
-        Args:
-            level: Log level (INFO, WARNING, ERROR, DEBUG)
-            message: Log message
-            sensitive: If True, redact sensitive data
-        """
+        """Log message with severity level and audit sequence."""
         if sensitive:
             message = self._sanitize_message(message)
         
@@ -223,35 +225,25 @@ class DomainValidator:
     
     @staticmethod
     def validate_domain(domain: bytes) -> bool:
-        """
-        Validate domain according to RFC 1035/1123.
-        Returns True if domain is valid and safe for blocklisting.
-        No caching to prevent memory leaks with byte strings.
-        """
+        """Validate domain according to RFC 1035/1123."""
         length = len(domain)
         
-        # Length validation - early exit
         if length < DomainValidator.MIN_DOMAIN_LEN or length > DomainValidator.MAX_DOMAIN_LEN:
             return False
         
-        # First and last character cannot be hyphen
         if domain[0] == SecurityConfig.BYTE_HYPHEN or domain[-1] == SecurityConfig.BYTE_HYPHEN:
             return False
         
-        # Must contain at least one dot
         if SecurityConfig.BYTE_DOT not in domain:
             return False
         
-        # Character set validation
         if not all(b in SecurityConfig.DOMAIN_ALLOWED_CHARS for b in domain):
             return False
         
-        # Label validation
         labels = domain.split(b'.')
         for label in labels:
             if not label or len(label) > DomainValidator.MAX_LABEL_LEN:
                 return False
-            
             if label[0] == SecurityConfig.BYTE_HYPHEN or label[-1] == SecurityConfig.BYTE_HYPHEN:
                 return False
         
@@ -259,48 +251,133 @@ class DomainValidator:
     
     @staticmethod
     def validate_url(url: str) -> bool:
-        """
-        Validate and sanitize URL before fetching.
-        Prevents SSRF and injection attacks.
-        """
+        """Validate and sanitize URL before fetching."""
         if len(url) > 2000:
             return False
         
         try:
             parsed = urlparse(url)
-            
-            # Enforce HTTPS for security
             if parsed.scheme not in ('https',):
                 return False
             
-            # Validate hostname
             host = parsed.hostname
             if not host:
                 return False
             
-            # Check path for directory traversal
             if '..' in parsed.path or '//' in parsed.path:
                 return False
             
-            # Whitelist trusted sources
             if host in SecurityConfig.TRUSTED_SOURCES:
                 return True
             
-            # Check subdomains of trusted sources
             if any(host.endswith(f'.{source}') for source in SecurityConfig.TRUSTED_SOURCES):
                 return True
             
             return False
-            
         except Exception:
             return False
 
 
+class SourceManager:
+    """Manages sources with automatic fallback for failed endpoints."""
+    
+    __slots__ = ('_sources_config', '_working_cache')
+    
+    def __init__(self):
+        # Define sources with extended fallback chains
+        self._sources_config: List[Tuple[str, str, List[str]]] = [
+            ("StevenBlack", 
+             "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts",
+             [
+                 "https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/fakenews-gambling-porn/hosts",
+                 "https://cdn.jsdelivr.net/gh/StevenBlack/hosts@master/hosts",
+                 "https://gitlab.com/StevenBlack/hosts/-/raw/master/hosts",
+             ]),
+            
+            ("AdAway",
+             "https://adaway.org/hosts.txt",
+             [
+                 "https://adaway.surge.sh/hosts.txt",
+                 "https://raw.githubusercontent.com/AdAway/adaway.github.io/master/hosts.txt",
+             ]),
+            
+            ("HaGeZi Ultimate",
+             "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/hosts/ultimate.txt",
+             [
+                 "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/adblock/ultimate.txt",
+                 "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/domains/ultimate.txt",
+                 "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/hosts/pro.plus.txt",
+                 "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/adblock/pro.plus.txt",
+             ]),
+            
+            ("SomeoneWhoCares",
+             "https://someonewhocares.org/hosts/zero/hosts",
+             [
+                 "https://someonewhocares.org/hosts/zero/hosts.txt",
+             ]),
+            
+            ("OISD Emergency",
+             "https://big.oisd.nl/domainswild2",
+             [
+                 "https://small.oisd.nl/domainswild",
+             ]),
+        ]
+        
+        self._working_cache: Dict[str, str] = {}
+        self._load_working_cache()
+    
+    def _load_working_cache(self) -> None:
+        """Load last working URLs from cache."""
+        cache_file = Path('.source_cache.json')
+        if cache_file.exists():
+            try:
+                with open(cache_file, 'r') as f:
+                    self._working_cache = json.load(f)
+            except Exception:
+                pass
+    
+    def _save_working_cache(self) -> None:
+        """Save working URLs to cache for next run."""
+        if self._working_cache:
+            try:
+                with tempfile.NamedTemporaryFile(mode='w', delete=False, dir='.',
+                                                suffix='.tmp') as tmp:
+                    json.dump(self._working_cache, tmp, separators=(',', ':'))
+                    tmp.flush()
+                    os.fsync(tmp.fileno())
+                shutil.move(tmp.name, '.source_cache.json')
+            except Exception:
+                pass
+    
+    def get_urls_for_source(self, name: str, primary: str, fallbacks: List[str]) -> List[Tuple[str, str]]:
+        """Get ordered list of URLs to try for a source."""
+        urls = []
+        
+        if name in self._working_cache:
+            cached_url = self._working_cache[name]
+            if cached_url != primary:
+                urls.append((cached_url, f"{name} (cached working)"))
+        
+        urls.append((primary, f"{name} (primary)"))
+        
+        for fb in fallbacks:
+            if fb != primary and (name not in self._working_cache or self._working_cache[name] != fb):
+                urls.append((fb, f"{name} (fallback: {fb.split('/')[-1][:20]})"))
+        
+        return urls
+    
+    def mark_working(self, name: str, url: str) -> None:
+        """Mark a URL as working for this source."""
+        self._working_cache[name] = url
+        self._save_working_cache()
+    
+    def get_sources(self) -> List[Tuple[str, str, List[str]]]:
+        """Return all source configurations."""
+        return self._sources_config
+
+
 class SecureHTTPClient:
-    """
-    Enterprise-grade HTTP client with security controls.
-    Implements proper rate limiting, metadata-only caching, and TLS hardening.
-    """
+    """Enterprise-grade HTTP client with security controls."""
     
     __slots__ = ('_logger', '_opener', '_cache', '_last_request_time', '_request_count')
     
@@ -313,7 +390,6 @@ class SecureHTTPClient:
     
     def _create_secure_opener(self) -> urllib.request.OpenerDirector:
         """Create hardened URL opener with strong security controls."""
-        # Configure SSL context with strong ciphers
         ssl_context = ssl.create_default_context()
         
         if SecurityConfig.SSL_VERIFY:
@@ -321,14 +397,10 @@ class SecureHTTPClient:
             ssl_context.verify_mode = ssl.CERT_REQUIRED
             ssl_context.set_ciphers(SecurityConfig.SSL_CIPHERS)
         
-        # Disable weak protocols (TLS 1.0 and 1.1)
         ssl_context.minimum_version = ssl.TLSVersion.TLSv1_2
         ssl_context.maximum_version = ssl.TLSVersion.TLSv1_3
         
-        # Create HTTPS handler
         https_handler = urllib.request.HTTPSHandler(context=ssl_context)
-        
-        # Build opener
         opener = urllib.request.build_opener(https_handler)
         
         opener.addheaders = [
@@ -342,41 +414,30 @@ class SecureHTTPClient:
         return opener
     
     def _rate_limit(self) -> None:
-        """
-        Proper rate limiting with burst protection.
-        Ensures we don't exceed requests per second over any window.
-        """
+        """Proper rate limiting with burst protection."""
         now = time.time()
         min_interval = 1.0 / SecurityConfig.RATE_LIMIT
         
         if self._last_request_time > 0:
             elapsed = now - self._last_request_time
             if elapsed < min_interval:
-                sleep_time = min_interval - elapsed
-                time.sleep(sleep_time)
-                now = time.time()  # Update after sleep
+                time.sleep(min_interval - elapsed)
+                now = time.time()
         
         self._last_request_time = now
         self._request_count += 1
     
     def fetch(self, url: str) -> Tuple[str, bool]:
-        """
-        Fetch URL content with rate limiting and metadata caching.
-        Returns (content, used_cache) tuple.
-        """
-        # Rate limiting
+        """Fetch URL content with rate limiting and metadata caching."""
         self._rate_limit()
         
-        # Validate URL
         if not DomainValidator.validate_url(url):
             self._logger.log('WARNING', f'Rejected unsafe URL: {url}', sensitive=True)
             return "", False
         
-        # Check cache for metadata
         cache_entry = self._cache.get(url)
-        
-        # Prepare request with conditional headers if we have metadata
         req = urllib.request.Request(url)
+        
         if cache_entry:
             if 'etag' in cache_entry:
                 req.add_header('If-None-Match', cache_entry['etag'])
@@ -384,12 +445,9 @@ class SecureHTTPClient:
                 req.add_header('If-Modified-Since', cache_entry['last_modified'])
         
         try:
-            # Execute request
             with self._opener.open(req, timeout=SecurityConfig.TIMEOUT) as response:
-                # Read with size limit
                 raw_data = response.read(SecurityConfig.MAX_FILE_SIZE)
                 
-                # Handle compression if needed
                 content_encoding = response.headers.get('Content-Encoding', '')
                 if content_encoding == 'gzip':
                     import gzip
@@ -398,17 +456,13 @@ class SecureHTTPClient:
                     import zlib
                     raw_data = zlib.decompress(raw_data)
                 
-                # Decode
                 text = raw_data.decode('utf-8', errors='replace')
                 
-                # Update cache with metadata ONLY (not content)
-                # This prevents memory bloat
                 cache_metadata = {
                     'etag': response.headers.get('etag'),
                     'last_modified': response.headers.get('last-modified'),
                     'timestamp': time.time()
                 }
-                # Remove None values to keep cache clean
                 cache_metadata = {k: v for k, v in cache_metadata.items() if v is not None}
                 
                 if cache_metadata:
@@ -419,9 +473,7 @@ class SecureHTTPClient:
                 
         except urllib.error.HTTPError as e:
             if e.code == 304 and cache_entry:
-                # Not modified - but we need content
                 self._logger.log('INFO', f'Content unchanged (304): {url}')
-                # We don't have content cached, so we need to refetch without conditional headers
                 try:
                     req = urllib.request.Request(url)
                     with self._opener.open(req, timeout=SecurityConfig.TIMEOUT) as response:
@@ -430,27 +482,71 @@ class SecureHTTPClient:
                         return text, True
                 except Exception:
                     return "", False
-            
             self._logger.log('ERROR', f'HTTP {e.code} for {url}')
             return "", False
-            
-        except (urllib.error.URLError, socket.timeout, ssl.SSLError) as e:
+        except Exception as e:
             self._logger.log('ERROR', f'Network error for {url}: {str(e)[:100]}')
             return "", False
-        except Exception as e:
-            self._logger.log('ERROR', f'Unexpected error for {url}: {str(e)[:100]}')
-            return "", False
+    
+    def check_connectivity(self) -> Dict[str, Any]:
+        """Check basic network connectivity and DNS resolution."""
+        diagnostics = {
+            'timestamp': datetime.now(timezone.utc).isoformat(),
+            'checks': []
+        }
+        
+        test_hosts = ['github.com', 'raw.githubusercontent.com', 'adaway.org', '1.1.1.1']
+        for host in test_hosts:
+            try:
+                start = time.time()
+                socket.gethostbyname(host)
+                elapsed = (time.time() - start) * 1000
+                diagnostics['checks'].append({
+                    'type': 'dns',
+                    'host': host,
+                    'status': 'ok',
+                    'latency_ms': round(elapsed, 2)
+                })
+            except Exception as e:
+                diagnostics['checks'].append({
+                    'type': 'dns',
+                    'host': host,
+                    'status': 'failed',
+                    'error': str(e)
+                })
+        
+        test_urls = ['https://github.com', 'https://raw.githubusercontent.com', 'https://adaway.org']
+        for url in test_urls:
+            try:
+                start = time.time()
+                req = urllib.request.Request(url, method='HEAD')
+                req.add_header('User-Agent', SecurityConfig.USER_AGENT)
+                with self._opener.open(req, timeout=5) as resp:
+                    elapsed = (time.time() - start) * 1000
+                    diagnostics['checks'].append({
+                        'type': 'http',
+                        'url': url,
+                        'status': 'ok',
+                        'status_code': resp.getcode(),
+                        'latency_ms': round(elapsed, 2)
+                    })
+            except Exception as e:
+                diagnostics['checks'].append({
+                    'type': 'http',
+                    'url': url,
+                    'status': 'failed',
+                    'error': str(e)
+                })
+        
+        return diagnostics
     
     def load_cache(self, cache_path: Path) -> None:
         """Load cache metadata from disk."""
         if not cache_path.exists():
             return
-        
         try:
             with open(cache_path, 'r') as f:
                 cache_data = json.load(f)
-            
-            # Restore cache with metadata only
             for url, meta in cache_data.items():
                 if isinstance(meta, dict):
                     self._cache[url] = {
@@ -458,22 +554,15 @@ class SecureHTTPClient:
                         'last_modified': meta.get('last_modified'),
                         'timestamp': meta.get('timestamp', 0)
                     }
-            
             self._logger.log('INFO', f'Cache loaded: {len(self._cache)} entries')
-            
         except Exception as e:
             self._logger.log('WARNING', f'Failed to load cache: {e}')
     
     def save_cache(self, cache_path: Path) -> None:
-        """
-        Save cache metadata to disk atomically.
-        Only stores ETag and timestamps, not content.
-        """
+        """Save cache metadata to disk atomically."""
         if not self._cache:
             return
-        
         try:
-            # Prepare cache data (metadata only)
             cache_data = {}
             for url, entry in self._cache.items():
                 cache_data[url] = {
@@ -481,17 +570,12 @@ class SecureHTTPClient:
                     'last_modified': entry.get('last_modified'),
                     'timestamp': entry.get('timestamp', 0)
                 }
-            
-            # Atomic write via temporary file
-            with tempfile.NamedTemporaryFile(mode='w', delete=False, dir='.', 
-                                            suffix='.tmp') as tmp:
+            with tempfile.NamedTemporaryFile(mode='w', delete=False, dir='.', suffix='.tmp') as tmp:
                 json.dump(cache_data, tmp, separators=(',', ':'))
                 tmp.flush()
                 os.fsync(tmp.fileno())
-            
             shutil.move(tmp.name, str(cache_path))
             self._logger.log('INFO', f'Cache saved: {len(self._cache)} entries')
-            
         except Exception as e:
             self._logger.log('ERROR', f'Failed to save cache: {e}')
     
@@ -505,10 +589,7 @@ class SecureHTTPClient:
 
 
 class FastDomainParser:
-    """
-    High-performance domain extraction with pattern matching.
-    Optimized for large-scale threat intelligence feeds.
-    """
+    """High-performance domain extraction with pattern matching."""
     
     __slots__ = ('_pattern', '_stats')
     
@@ -517,14 +598,10 @@ class FastDomainParser:
         self._stats = {'extracted': 0, 'rejected': 0}
     
     def extract_domains(self, text: str) -> Set[str]:
-        """
-        Extract and validate domains from blocklist content.
-        Returns set of unique, validated domains.
-        """
+        """Extract and validate domains from blocklist content."""
         domains = set()
         text_bytes = text.encode('utf-8', errors='ignore')
         
-        # Extract using optimized regex iterator
         for match in self._pattern.finditer(text_bytes):
             if len(domains) >= SecurityConfig.MAX_DOMAINS:
                 break
@@ -532,7 +609,6 @@ class FastDomainParser:
             domain_bytes = match.group(1)
             self._stats['extracted'] += 1
             
-            # Validate and add
             if DomainValidator.validate_domain(domain_bytes):
                 try:
                     domain = domain_bytes.decode('ascii').lower()
@@ -550,13 +626,10 @@ class FastDomainParser:
 
 
 class SecurityBlocklistBuilder:
-    """
-    Main orchestrator for DNS blocklist generation.
-    Implements defense-in-depth and threat intelligence aggregation.
-    """
+    """Main orchestrator for DNS blocklist generation."""
     
     __slots__ = ('_logger', '_http', '_parser', '_domains', '_stats', 
-                 '_source_stats', '_start_time')
+                 '_source_stats', '_start_time', '_source_manager')
     
     def __init__(self):
         self._logger = SecurityAuditLogger()
@@ -566,6 +639,7 @@ class SecurityBlocklistBuilder:
         self._stats: List[Tuple[str, int, float, bool]] = []
         self._source_stats: Dict[str, Dict[str, Any]] = {}
         self._start_time = perf_counter()
+        self._source_manager = SourceManager()
         
         self._setup_security_hardening()
         self._setup_garbage_collection()
@@ -574,42 +648,24 @@ class SecurityBlocklistBuilder:
     def _setup_security_hardening(self) -> None:
         """Apply security hardening to the process."""
         try:
-            # Memory limit
             memory_bytes = SecurityConfig.MEMORY_LIMIT_MB * 1024 * 1024
             resource.setrlimit(resource.RLIMIT_AS, (memory_bytes, memory_bytes))
-            
-            # CPU time limit
             resource.setrlimit(resource.RLIMIT_CPU, 
                               (SecurityConfig.CPU_TIME_LIMIT, SecurityConfig.CPU_TIME_LIMIT))
-            
-            # File descriptor limit
             resource.setrlimit(resource.RLIMIT_NOFILE, (1024, 1024))
-            
             self._logger.log('INFO', 'Security hardening applied')
-            
-        except (resource.error, ValueError) as e:
+        except Exception as e:
             self._logger.log('WARNING', f'Resource limits not set: {e}')
     
     def _setup_garbage_collection(self) -> None:
-        """
-        Setup garbage collection with optimized thresholds.
-        GC remains ENABLED - only thresholds are tuned for performance.
-        """
-        # Optimize GC thresholds for this workload
-        # Generation 0: 1000 objects (default 700)
-        # Generation 1: 15 collections (default 10)
-        # Generation 2: 10 collections (default 5)
+        """Setup garbage collection with optimized thresholds."""
         gc.set_threshold(1000, 15, 10)
-        
-        # Ensure GC is enabled (it is by default, but be explicit)
         gc.enable()
-        
         self._logger.log('INFO', 'GC configured with optimized thresholds (ENABLED)')
     
     def _register_signal_handlers(self) -> None:
         """Register signal handlers for graceful shutdown."""
         def graceful_shutdown(signum: int, frame: Any) -> None:
-            """Handle shutdown signals gracefully."""
             self._logger.log('INFO', f'Received signal {signum}, shutting down...')
             self._cleanup()
             sys.exit(0)
@@ -622,84 +678,109 @@ class SecurityBlocklistBuilder:
         self._http.save_cache(Path('.download_cache.json'))
         self._logger.flush()
     
-    def process_source(self, url: str, name: str) -> None:
-        """
-        Process a single threat intelligence source.
+    def process_source_with_fallback(self, name: str, primary_url: str, fallbacks: List[str]) -> None:
+        """Process a source with automatic fallback to alternative URLs."""
+        urls_to_try = self._source_manager.get_urls_for_source(name, primary_url, fallbacks)
         
-        Args:
-            url: Source URL
-            name: Source display name
-        """
-        self._logger.log('INFO', f'Processing source: {name}')
-        start_time = perf_counter()
+        success = False
         
-        # Fetch content
-        content, used_cache = self._http.fetch(url)
-        elapsed = perf_counter() - start_time
+        for url, desc in urls_to_try:
+            self._logger.log('INFO', f'Attempting {desc}: {url}')
+            start_time = perf_counter()
+            
+            content, used_cache = self._http.fetch(url)
+            elapsed = perf_counter() - start_time
+            
+            if content:
+                new_domains = self._parser.extract_domains(content)
+                new_count = len(new_domains)
+                
+                # Check if we actually got data
+                if new_count > 0 or (content.strip() and not all(l.startswith('#') for l in content.split('\n') if l.strip())):
+                    before = len(self._domains)
+                    self._domains |= new_domains
+                    added = len(self._domains) - before
+                    
+                    short_name = desc.split('(')[0].strip()
+                    self._stats.append((f"{name} ({short_name})", new_count, elapsed, used_cache))
+                    
+                    cache_msg = ' (cached)' if used_cache else ''
+                    self._logger.log(
+                        'INFO',
+                        f'✅ {name}: {new_count:,} domains, {added:,} new{cache_msg} [{elapsed:.2f}s]'
+                    )
+                    
+                    self._source_stats[name] = {
+                        'total': new_count,
+                        'added': added,
+                        'time': elapsed,
+                        'cached': used_cache,
+                        'url': url,
+                        'timestamp': datetime.now(timezone.utc).isoformat()
+                    }
+                    
+                    self._source_manager.mark_working(name, url)
+                    success = True
+                    break
+                else:
+                    self._logger.log('WARNING', f'Empty or comment-only content from {desc}')
+            else:
+                self._logger.log('WARNING', f'Failed to fetch from {desc}')
         
-        if not content:
-            self._stats.append((name, 0, elapsed, used_cache))
-            self._logger.log('WARNING', f'Empty response from {name}')
-            return
+        if not success:
+            self._stats.append((name, 0, 0, False))
+            self._logger.log('WARNING', f'All endpoints failed for {name}, skipping')
         
-        # Extract domains
-        new_domains = self._parser.extract_domains(content)
-        new_count = len(new_domains)
-        
-        # Add to master set
-        before = len(self._domains)
-        self._domains |= new_domains
-        added = len(self._domains) - before
-        
-        self._stats.append((name, new_count, elapsed, used_cache))
-        
-        # Log statistics
-        cache_msg = ' (cached)' if used_cache else ''
-        self._logger.log(
-            'INFO',
-            f'✅ {name}: {new_count:,} domains, {added:,} new{cache_msg} [{elapsed:.2f}s]'
-        )
-        
-        # Track source statistics
-        self._source_stats[name] = {
-            'total': new_count,
-            'added': added,
-            'time': elapsed,
-            'cached': used_cache,
-            'timestamp': datetime.now(timezone.utc).isoformat()
-        }
-        
-        # Periodic garbage collection (every 3 sources)
+        # Periodic GC
         if len(self._stats) % 3 == 0:
             collected = gc.collect()
             if collected:
                 self._logger.log('DEBUG', f'GC collected {collected} objects')
     
+    def emergency_recovery_from_cache(self) -> bool:
+        """Emergency recovery: load last successful blocklist from backup."""
+        backup_file = Path('dynamic-blocklist.txt.backup')
+        if not backup_file.exists():
+            self._logger.log('ERROR', 'No backup blocklist found for emergency recovery')
+            return False
+        
+        try:
+            with open(backup_file, 'r') as f:
+                lines = [l for l in f if l.startswith('0.0.0.0')]
+                domain_count = len(lines)
+            
+            self._domains.clear()
+            for line in lines:
+                parts = line.strip().split()
+                if len(parts) >= 2:
+                    self._domains.add(parts[1])
+            
+            self._logger.log('INFO', f'Emergency recovery: loaded {len(self._domains):,} domains from backup')
+            shutil.copy2(backup_file, Path('dynamic-blocklist.txt'))
+            return True
+        except Exception as e:
+            self._logger.log('ERROR', f'Emergency recovery failed: {e}')
+            return False
+    
     def generate_blocklist(self) -> Optional[Path]:
-        """
-        Generate final blocklist file with integrity verification.
-        Returns Path to generated file or None on failure.
-        """
+        """Generate final blocklist file with integrity verification."""
         if not self._domains:
             self._logger.log('ERROR', 'No domains to generate blocklist')
             return None
         
-        # Sort domains for consistency and reproducibility
         sorted_domains = sorted(self._domains)
         
-        # Calculate cryptographic hash for integrity verification
         hash_obj = hashlib.sha256()
         for domain in sorted_domains:
             hash_obj.update(domain.encode())
         file_hash = hash_obj.hexdigest()
         
-        # Prepare header with metadata
         now = datetime.now(timezone.utc)
         header_lines = [
             "# ====================================================================",
             "# DNS SECURITY BLOCKLIST - ENTERPRISE GRADE",
             "# ====================================================================",
-            f"# Version: 3.0.4",
+            f"# Version: 3.0.5",
             f"# Generated: {now.strftime('%Y-%m-%d %H:%M:%S UTC')}",
             f"# Timestamp: {now.timestamp():.0f}",
             f"# Total domains: {len(sorted_domains):,}",
@@ -712,19 +793,16 @@ class SecurityBlocklistBuilder:
             ""
         ]
         
-        # Write file atomically
         try:
             with tempfile.NamedTemporaryFile(
                 mode='w', 
                 delete=False, 
                 dir='.',
                 suffix='.tmp',
-                buffering=1024 * 1024  # 1MB buffer for performance
+                buffering=1024 * 1024
             ) as tmp:
-                # Write header
                 tmp.write('\n'.join(header_lines))
                 
-                # Write domains in batches for memory efficiency
                 for i in range(0, len(sorted_domains), SecurityConfig.BATCH_SIZE):
                     batch = sorted_domains[i:i + SecurityConfig.BATCH_SIZE]
                     lines = [f"0.0.0.0 {domain}" for domain in batch]
@@ -733,17 +811,14 @@ class SecurityBlocklistBuilder:
                 tmp.flush()
                 os.fsync(tmp.fileno())
             
-            # Move to final location (atomic operation on Unix)
             output_path = Path('dynamic-blocklist.txt')
             shutil.move(tmp.name, str(output_path))
             output_path.chmod(0o644)
             
             self._logger.log('INFO', f'Blocklist generated: {output_path} ({len(sorted_domains):,} domains)')
             return output_path
-            
         except Exception as e:
             self._logger.log('ERROR', f'Failed to generate blocklist: {e}')
-            # Clean up temp file if it exists
             if 'tmp' in locals() and Path(tmp.name).exists():
                 try:
                     Path(tmp.name).unlink()
@@ -756,36 +831,33 @@ class SecurityBlocklistBuilder:
         print("\n" + "=" * 80)
         print("🔒 DNS SECURITY BLOCKLIST REPORT")
         print("=" * 80)
-        print(f"{'SOURCE':<30} {'DOMAINS':>12} {'NEW':>10} {'TIME':>8} {'CACHE':>6}")
+        print(f"{'SOURCE':<35} {'DOMAINS':>12} {'NEW':>10} {'TIME':>8} {'CACHE':>6}")
         print("-" * 80)
         
         for name, count, elapsed, cached in self._stats:
-            source_stats = self._source_stats.get(name, {})
+            source_stats = self._source_stats.get(name.split(' (')[0] if '(' in name else name, {})
             added = source_stats.get('added', 0)
             cache_mark = "✓" if cached else "✗"
-            print(f"{name:<30} {count:>12,} {added:>10,} {elapsed:>7.2f}s {cache_mark:>6}")
+            print(f"{name:<35} {count:>12,} {added:>10,} {elapsed:>7.2f}s {cache_mark:>6}")
         
         print("-" * 80)
-        print(f"{'TOTAL':<30} {len(self._domains):>12,}")
+        print(f"{'TOTAL':<35} {len(self._domains):>12,}")
         print("=" * 80)
         
-        # Performance metrics
         elapsed = perf_counter() - self._start_time
         print(f"\n📊 Performance Metrics:")
         print(f"  • Total execution time: {elapsed:.2f} seconds")
         if elapsed > 0:
             print(f"  • Processing rate: {len(self._domains) / elapsed:.0f} domains/second")
         
-        # Security metrics
         parser_stats = self._parser.get_stats()
         acceptance_rate = (parser_stats['extracted'] - parser_stats['rejected']) / max(parser_stats['extracted'], 1) * 100
-        print(f"\n🛡️  Security Metrics:")
+        print(f"\n🛡️ Security Metrics:")
         print(f"  • Unique domains: {len(self._domains):,}")
         print(f"  • Domains extracted: {parser_stats['extracted']:,}")
         print(f"  • Domains rejected: {parser_stats['rejected']:,}")
         print(f"  • Acceptance rate: {acceptance_rate:.1f}%")
         
-        # Cache statistics
         cache_hits = sum(1 for _, _, _, cached in self._stats if cached)
         cache_rate = (cache_hits / len(self._stats) * 100) if self._stats else 0
         print(f"\n💾 Cache Statistics:")
@@ -795,7 +867,6 @@ class SecurityBlocklistBuilder:
         print(f"  • Cache entries: {cache_stats['size']}")
         print(f"  • Total requests: {cache_stats['requests']}")
         
-        # Memory usage (if psutil available)
         try:
             import psutil
             process = psutil.Process(os.getpid())
@@ -805,41 +876,35 @@ class SecurityBlocklistBuilder:
         except ImportError:
             pass
         
-        # Audit trail
         audit = self._logger.get_audit_trail()
         print(f"\n📝 Audit Trail:")
         print(f"  • Total log entries: {audit['total_entries']}")
         print(f"  • Log file: {audit['log_path']}")
     
     def run(self) -> int:
-        """
-        Execute the blocklist builder.
-        Returns exit code (0 = success, 1 = failure).
-        """
+        """Execute the blocklist builder with fallback and recovery."""
         print("\n" + "=" * 80)
-        print("🚀 DNS SECURITY BLOCKLIST BUILDER v3.0.4")
-        print("Enterprise-grade threat intelligence aggregation")
+        print("🚀 DNS SECURITY BLOCKLIST BUILDER v3.0.5")
+        print("Enterprise-grade threat intelligence aggregation with auto-recovery")
         print("=" * 80)
+        
+        # Check connectivity first
+        self._logger.log('INFO', 'Running network diagnostics...')
+        diag = self._http.check_connectivity()
+        
+        failed_checks = [c for c in diag['checks'] if c['status'] == 'failed']
+        if failed_checks:
+            self._logger.log('WARNING', f'Network issues detected: {len(failed_checks)} failures')
+            for fail in failed_checks[:3]:
+                self._logger.log('WARNING', f'  • {fail["type"]}: {fail.get("url", fail.get("host"))}')
         
         # Load cache
         self._http.load_cache(Path('.download_cache.json'))
         
-        # Define sources (priority order - most reliable first)
-        sources: List[Tuple[str, str]] = [
-            ("https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts", 
-             "StevenBlack"),
-            ("https://adaway.org/hosts.txt", 
-             "AdAway"),
-            ("https://raw.githubusercontent.com/hagezi/dns-blocklists/main/hosts/ultimate.txt", 
-             "HaGeZi Ultimate"),
-            ("https://someonewhocares.org/hosts/zero/hosts", 
-             "SomeoneWhoCares"),
-        ]
-        
-        # Process each source
-        for url, name in sources:
+        # Process each source with fallback support
+        for name, url, fallbacks in self._source_manager.get_sources():
             try:
-                self.process_source(url, name)
+                self.process_source_with_fallback(name, url, fallbacks)
             except Exception as e:
                 self._logger.log('ERROR', f'Failed to process {name}: {e}')
                 continue
@@ -847,13 +912,30 @@ class SecurityBlocklistBuilder:
         # Save cache
         self._http.save_cache(Path('.download_cache.json'))
         
+        # Check if we got any domains
+        if not self._domains:
+            self._logger.log('WARNING', 'No domains fetched from any source!')
+            self._logger.log('INFO', 'Attempting emergency recovery from backup...')
+            if self.emergency_recovery_from_cache():
+                self._logger.log('INFO', 'Emergency recovery successful')
+            else:
+                self._logger.log('ERROR', 'Emergency recovery failed — no blocklist generated')
+                return 1
+        
         # Generate final blocklist
         output_file = self.generate_blocklist()
         
         if output_file:
+            # Create backup for next time
+            shutil.copy2(output_file, Path('dynamic-blocklist.txt.backup'))
+            
             self.print_report()
+            
+            if failed_checks:
+                print(f"\n⚠️ Network Issues Detected:")
+                print(f"   {len(failed_checks)} connectivity failures — blocklist built from fallbacks/cache")
+            
             print(f"\n✅ Success! Blocklist saved to: {output_file}")
-            print(f"📁 File size: {output_file.stat().st_size:,} bytes")
             return 0
         else:
             self._logger.log('ERROR', 'Blocklist generation failed')
@@ -861,29 +943,21 @@ class SecurityBlocklistBuilder:
 
 
 def main() -> int:
-    """
-    Application entry point with comprehensive error handling.
-    Returns exit code.
-    """
-    # Python version check
+    """Application entry point with comprehensive error handling."""
     if sys.version_info < (3, 8):
         print("❌ Error: Python 3.8+ required (for TLS 1.3 support)")
         return 1
     
     try:
-        # Initialize and run builder
         builder = SecurityBlocklistBuilder()
         return builder.run()
-        
     except KeyboardInterrupt:
-        print("\n⚠️  Interrupted by user")
+        print("\n⚠️ Interrupted by user")
         return 130
-        
     except MemoryError:
         print("❌ Fatal error: Out of memory")
         print("   Suggestion: Reduce MAX_DOMAINS or MEMORY_LIMIT_MB in SecurityConfig")
         return 1
-        
     except Exception as e:
         print(f"❌ Fatal error: {e}")
         import traceback
