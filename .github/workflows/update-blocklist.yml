@@ -6,14 +6,11 @@ on:
       - main  # измените на master если нужно
   workflow_dispatch:
 
-# КРИТИЧНО: даем права на запись
 permissions:
   contents: write
-  pages: write
-  id-token: write
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
     
     steps:
@@ -22,25 +19,25 @@ jobs:
         with:
           fetch-depth: 0
           
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          
-      - name: Install dependencies
-        run: npm ci
-        
-      - name: Build project
-        run: npm run build
-        
-      - name: Prepare deployment
+      - name: Deploy to GitHub Pages
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Создаем или очищаем ветку gh-pages
+          # Настройка git
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Получаем текущую ветку
+          CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+          echo "Deploying from branch: $CURRENT_BRANCH"
+          
+          # Переключаемся на ветку gh-pages
           git fetch origin gh-pages || true
           git checkout -B gh-pages
           
-          # Копируем собранные файлы (измените путь если нужно)
-          cp -r build/* . || true
+          # Копируем все файлы из основной ветки в корень gh-pages
+          # Исключаем папку .git
+          git checkout $CURRENT_BRANCH -- .
           
           # Добавляем .nojekyll для GitHub Pages
           touch .nojekyll
@@ -49,12 +46,11 @@ jobs:
           git add -A
           
           # Коммитим только если есть изменения
-          git diff --cached --quiet || git commit -m "Deploy to GitHub Pages - ${{ github.sha }}"
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Deploy to GitHub Pages - ${{ github.sha }}"
+          fi
           
-      - name: Push the commit or tag
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          # Пушим в gh-pages
           git push origin gh-pages --force
