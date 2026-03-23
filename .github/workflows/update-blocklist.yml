@@ -1,16 +1,17 @@
-name: Deploy to GitHub Pages
+name: Update DNS Blocklist
 
 on:
-  push:
-    branches:
-      - main  # измените на master если нужно
-  workflow_dispatch:
+  schedule:
+    - cron: '0 */6 * * *'  # Каждые 6 часов
+  workflow_dispatch:  # Можно запустить вручную
 
 permissions:
   contents: write
+  pages: write
+  id-token: write
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
     
     steps:
@@ -18,39 +19,47 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          
-      - name: Deploy to GitHub Pages
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Run blocklist builder
+        run: python3 blocklist_builder.py
+      
+      - name: Check if files changed
+        id: check_changes
+        run: |
+          if git diff --quiet dynamic-blocklist.txt; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Commit and push to main
+        if: steps.check_changes.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add dynamic-blocklist.txt update_blocklist.log
+          git commit -m "chore: auto-update blocklist [$(date +'%Y-%m-%d %H:%M:%S')]"
+          git push origin main
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          # Настройка git
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          
-          # Получаем текущую ветку
-          CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
-          echo "Deploying from branch: $CURRENT_BRANCH"
-          
-          # Переключаемся на ветку gh-pages
-          git fetch origin gh-pages || true
-          git checkout -B gh-pages
-          
-          # Копируем все файлы из основной ветки в корень gh-pages
-          # Исключаем папку .git
-          git checkout $CURRENT_BRANCH -- .
-          
-          # Добавляем .nojekyll для GitHub Pages
-          touch .nojekyll
-          
-          # Добавляем все изменения
-          git add -A
-          
-          # Коммитим только если есть изменения
-          if git diff --cached --quiet; then
-            echo "No changes to commit"
-          else
-            git commit -m "Deploy to GitHub Pages - ${{ github.sha }}"
-          fi
-          
-          # Пушим в gh-pages
-          git push origin gh-pages --force
+      
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        if: steps.check_changes.outputs.changed == 'true'
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: .
+          cname: dns-blocklist.yourdomain.com  # Замени или удали если не нужен
+          exclude_files: |
+            .git
+            .github
+            blocklist_builder.py
+            update_blocklist.py
+            README.md
+            .gitignore
+            .nojekyll
