@@ -1,4 +1,4 @@
-name: Update DNS Blocklist - UNIVERSAL
+name: Update DNS Blocklist
 
 on:
   schedule:
@@ -15,77 +15,34 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
       
-      - name: Setup Python
+      - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
       
-      - name: Find Python Script
-        id: find_script
-        run: |
-          # Find any Python file that looks like blocklist builder
-          SCRIPT=$(find . -maxdepth 1 -name "*blocklist*.py" -o -name "*builder*.py" | head -1)
-          
-          if [ -z "$SCRIPT" ]; then
-            # If not found, use any .py file
-            SCRIPT=$(find . -maxdepth 1 -type f -name "*.py" ! -name "test_*" | head -1)
-          fi
-          
-          if [ -z "$SCRIPT" ]; then
-            echo "❌ ERROR: No Python script found!"
-            ls -la
-            exit 1
-          fi
-          
-          # Remove ./ prefix
-          SCRIPT=${SCRIPT#./}
-          
-          echo "📝 Found script: $SCRIPT"
-          echo "script=$SCRIPT" >> $GITHUB_OUTPUT
+      - name: Run blocklist builder
+        run: python3 update_blocklist.py
       
-      - name: Run Blocklist Builder
+      - name: Check if files changed
+        id: check_changes
         run: |
-          echo "🚀 Running: python3 ${{ steps.find_script.outputs.script }}"
-          python3 "${{ steps.find_script.outputs.script }}"
-      
-      - name: Check Output
-        run: |
-          echo "📂 Current directory:"
-          ls -lah *.txt 2>/dev/null || echo "No .txt files"
-          
-          if [ -f dynamic-blocklist.txt ]; then
-            echo "✅ Blocklist created!"
-            echo "📊 Lines: $(wc -l < dynamic-blocklist.txt)"
-            echo "📦 Size: $(du -h dynamic-blocklist.txt | cut -f1)"
-          else
-            echo "⚠️  No blocklist.txt found"
-          fi
-      
-      - name: Check Changes
-        id: changes
-        run: |
-          if git diff --quiet dynamic-blocklist.txt 2>/dev/null; then
-            echo "✓ No changes"
+          if git diff --quiet dynamic-blocklist.txt; then
             echo "changed=false" >> $GITHUB_OUTPUT
           else
-            echo "✓ Changes detected"
             echo "changed=true" >> $GITHUB_OUTPUT
           fi
       
-      - name: Commit & Push
-        if: steps.changes.outputs.changed == 'true'
+      - name: Commit and push to main
+        if: steps.check_changes.outputs.changed == 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add dynamic-blocklist.txt
-          git add -A *.log *.json 2>/dev/null || true
-          git commit -m "Auto-update blocklist $(date +'%Y-%m-%d %H:%M')" || echo "Nothing to commit"
-          git push origin main 2>&1 || echo "Push failed or no changes"
+          git add security_blocklist.log .download_cache.json || true
+          git commit -m "chore: auto-update blocklist [$(date +'%Y-%m-%d %H:%M:%S')]"
+          git push origin main
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      
-      - name: Done
-        run: echo "✅ Workflow completed!"
