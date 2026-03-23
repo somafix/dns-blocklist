@@ -1,397 +1,397 @@
-# 🏆 Динамический Конструктор DNS Блок-листов
+# 🏆 Dynamic DNS Blocklist Builder
 
-### Платформа Корпоративного Уровня для Агрегации Угроз
-### v3.0.4 | Готово к Производству | Максимальная Безопасность и Производительность
+### Enterprise-Grade Threat Intelligence Platform
+### v3.0.4 | Production Ready | Maximum Security & Performance
 
-[![Лицензия: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
 [![Python 3.8+](https://img.shields.io/badge/Python-3.8%2B-blue?style=for-the-badge)](https://www.python.org/)
-[![Безопасность: ЭЛИТА](https://img.shields.io/badge/Безопасность-ЭЛИТА-red?style=for-the-badge)](#-комплексная-защита)
-[![Производительность: ⚡⚡⚡⚡⚡](https://img.shields.io/badge/Производительность-МАКСИМУМ-brightgreen?style=for-the-badge)](#-максимальная-оптимизация)
+[![Security: ELITE](https://img.shields.io/badge/Security-ELITE-red?style=for-the-badge)](#-comprehensive-protection)
+[![Performance: ⚡⚡⚡⚡⚡](https://img.shields.io/badge/Performance-MAXIMUM-brightgreen?style=for-the-badge)](#-maximum-optimization)
 
 ---
 
-## 🎯 РЕЗЮМЕ ДЛЯ РУКОВОДИТЕЛЯ
+## 🎯 EXECUTIVE SUMMARY
 
-Это **не просто скрипт**. Это **профессиональное корпоративное решение** для агрегации и обработки списков блокирования DNS с использованием передовых технологий обработки данных, безопасности и оптимизации.
+This is **not just a script**. This is **enterprise-grade professional solution** for aggregating and processing DNS blocklists using cutting-edge data processing, security, and optimization techniques.
 
-- ✅ **265K+ доменов** обработано за **9 сек**
-- ✅ **Нулевые утечки памяти** — прошёл все тесты нагрузки
-- ✅ **Корпоративная безопасность** — максимальный уровень защиты
-- ✅ **Проверено в боевых условиях** — работает 24/7 на сотнях серверов
-
----
-
-## 🚀 КЛЮЧЕВЫЕ ХАРАКТЕРИСТИКИ
-
-### Уровень Производительности
-```
-⚡ 28K-30K доменов/сек (реальный бенчмарк)
-⚡ 9.15 сек на 265K доменов
-⚡ 50 МБ базовое потребление
-⚡ 220 МБ максимальное использование
-⚡ O(n log n) оптимальная сложность алгоритма
-```
-
-### Уровень Безопасности
-```
-🔒 SSRF Protection — только доверенные источники
-🔒 SSL/TLS 1.2+ — сильные шифры
-🔒 RFC 1035/1123 совместимость
-🔒 Ограничение ресурсов — CPU и Memory лимиты
-🔒 Атомарные операции — нет частичного состояния
-🔒 Обработка сигналов — корректное завершение
-🔒 Аудит логирование — отслеживание последовательности
-🔒 Нулевые зависимости — никаких внешних библиотек
-```
-
-### Уровень Надёжности
-```
-✅ Кэширование только метаданных (ETag, Last-Modified)
-✅ Умный механизм повторных попыток
-✅ Восстановление после ошибок
-✅ Плавная деградация при сбое
-✅ Ограничение скорости (3 запроса/сек)
-✅ Ограничение ресурсов
-✅ Защита от краша
-```
+- ✅ **265K+ domains** processed in **9 seconds**
+- ✅ **Zero memory leaks** — passed all stress tests
+- ✅ **Enterprise security** — maximum protection level
+- ✅ **Battle-tested** — runs 24/7 on hundreds of servers
 
 ---
 
-## 📊 ОСНОВНЫЕ ИЗМЕНЕНИЯ v3.0.4
+## 🚀 KEY FEATURES
 
-### Что Добавлено
+### Performance Tier
 ```
-[NEW] Комплексное логирование аудита с отслеживанием последовательности
-[NEW] Полная валидация соответствия RFC 1035/1123
-[NEW] Расширенные отчёты статистики кэша
-[NEW] Мониторинг использования памяти
-[NEW] Метрики производительности в реальном времени
-[NEW] Детальное логирование событий безопасности
-[NEW] Отслеживание статистики по источникам
-[NEW] Улучшенные механизмы восстановления от ошибок
+⚡ 28K-30K domains/sec (real benchmark)
+⚡ 9.15 sec for 265K domains
+⚡ 50 MB baseline memory
+⚡ 220 MB peak usage
+⚡ O(n log n) optimal complexity
 ```
 
-### Что Улучшено
+### Security Tier
 ```
-[IMPROVED] Скорость парсера: +40% vs v3.0.3
-[IMPROVED] Эффективность памяти: -25% потребления
-[IMPROVED] Процент попаданий кэша: 25-50% vs 15-20%
-[IMPROVED] SSL/TLS: обязательное использование TLS 1.2+
-[IMPROVED] Ограничение скорости: добавлена защита от всплесков
-[IMPROVED] Обработка ошибок: все граничные случаи покрыты
-[IMPROVED] Логирование: структурированный формат с временными метками
-[IMPROVED] Вывод: гарантировано атомарное написание файлов
+🔒 SSRF Protection — whitelist only
+🔒 SSL/TLS 1.2+ — strong ciphers
+🔒 RFC 1035/1123 compliant validation
+🔒 Resource limits — CPU & Memory bounded
+🔒 Atomic operations — no partial state
+🔒 Signal handling — graceful shutdown
+🔒 Audit logging — sequence-tracked
+🔒 Zero dependencies — no supply chain risk
 ```
 
-### Что Лучшее на Сегодня
+### Reliability Tier
 ```
-[BEST] Нулевые внешние зависимости
-[BEST] Архитектура безопасности корпоративного уровня
-[BEST] Готовность к производству и стабильность
-[BEST] Комплексная документация
-[BEST] Протестировано в реальных условиях 24/7
-[BEST] Оптимальное использование ресурсов
-[BEST] Полный аудит тропы
-[BEST] Профессиональные стандарты кода
+✅ Metadata-only caching (ETag, Last-Modified)
+✅ Smart retry mechanism
+✅ Error recovery
+✅ Graceful degradation
+✅ Rate limiting (3 req/sec)
+✅ Resource limiting
+✅ Crash protection
 ```
 
 ---
 
-## 📈 ИСТОРИЯ ВЕРСИЙ
+## 📊 MAIN CHANGES v3.0.4
 
-### v3.0.4 (ТЕКУЩАЯ - ОКОНЧАТЕЛЬНОЕ ИЗДАНИЕ)
+### What's Added
 ```
-✅ Готово к Производству
-✅ Корпоративная Безопасность
-✅ Максимальная Производительность
-✅ Нулевые Утечки Памяти
-✅ Комплексное Логирование
-✅ Полное Соответствие RFC
-
-Производительность: 28K-30K дом/сек
-Память: 180-220 МБ пиковое
-Стабильность: 99.9% проверенная
-Безопасность: оценка A+ (соответствие OWASP)
+[NEW] Comprehensive audit logging with sequence tracking
+[NEW] Full RFC 1035/1123 compliance validation
+[NEW] Advanced cache statistics reporting
+[NEW] Memory usage monitoring
+[NEW] Performance metrics in real-time
+[NEW] Detailed security event logging
+[NEW] Source-level statistics tracking
+[NEW] Enhanced error recovery mechanisms
 ```
 
-### v3.0.3 (Оптимизированное Ядро)
+### What's Improved
 ```
-✅ Ультра-оптимизированный парсинг
-✅ Минимальный оверхед
-✅ Базовая функциональность
-- Ограниченные отчёты
-- Базовое логирование
-```
-
-### v3.0.2 (Обновление Безопасности)
-```
-✅ Верификация SSL
-✅ Улучшенное ограничение скорости
-✅ Лучшая обработка ошибок
+[IMPROVED] Parser speed: +40% vs v3.0.3
+[IMPROVED] Memory efficiency: -25% consumption
+[IMPROVED] Cache hit rate: 25-50% vs 15-20%
+[IMPROVED] SSL/TLS: TLS 1.2+ enforcement
+[IMPROVED] Rate limiting: Burst protection added
+[IMPROVED] Error handling: All edge cases covered
+[IMPROVED] Logging: Structured format with timestamps
+[IMPROVED] Output: Atomic file writes guaranteed
 ```
 
-### v3.0.1 (Первоначальный Выпуск)
+### What's Best Today
 ```
-✅ Базовая функциональность
-✅ Поддержка кэширования
-✅ Агрегация из нескольких источников
+[BEST] Zero external dependencies
+[BEST] Enterprise-grade security architecture
+[BEST] Production-ready stability
+[BEST] Comprehensive documentation
+[BEST] Real-world tested 24/7
+[BEST] Optimal resource utilization
+[BEST] Complete audit trail
+[BEST] Professional code standards
 ```
 
 ---
 
-## 🛡️ КОМПЛЕКСНАЯ ЗАЩИТА
+## 📈 VERSION HISTORY
 
-### Слой 1: Защита Входных Данных
+### v3.0.4 (CURRENT - ULTIMATE EDITION)
+```
+✅ Production Ready
+✅ Enterprise Security
+✅ Maximum Performance
+✅ Zero Memory Leaks
+✅ Comprehensive Logging
+✅ Full RFC Compliance
+
+Performance: 28K-30K dom/sec
+Memory: 180-220 MB peak
+Stability: 99.9% uptime verified
+Security: A+ grade (OWASP compliant)
+```
+
+### v3.0.3 (Optimized Core)
+```
+✅ Ultra-optimized parsing
+✅ Minimal overhead
+✅ Core functionality
+- Limited reporting
+- Basic logging
+```
+
+### v3.0.2 (Security Update)
+```
+✅ SSL verification
+✅ Enhanced rate limiting
+✅ Better error handling
+```
+
+### v3.0.1 (Initial Release)
+```
+✅ Basic functionality
+✅ Caching support
+✅ Multi-source aggregation
+```
+
+---
+
+## 🛡️ COMPREHENSIVE PROTECTION
+
+### Layer 1: Input Protection
 ```python
-✅ Валидация URL
-   - Обязательное использование HTTPS
-   - Защита от SSRF (белый список)
-   - Проверка path traversal
+✅ URL Validation
+   - HTTPS only enforcement
+   - SSRF protection (whitelist)
+   - Path traversal checks
    
-✅ Валидация Домена
-   - Соответствие RFC 1035/1123
-   - Валидация длины (3-253 байта)
-   - Валидация набора символов
-   - Валидация меток (labels)
+✅ Domain Validation
+   - RFC 1035/1123 compliance
+   - Length validation (3-253 bytes)
+   - Character set validation
+   - Label validation
 ```
 
-### Слой 2: Защита Во Время Выполнения
+### Layer 2: Runtime Protection
 ```python
-✅ Ограничение Ресурсов
-   - Память: жёсткий лимит 512 МБ
-   - CPU: жёсткий лимит 60 сек
-   - Размер файла: 10 МБ на источник
+✅ Resource Limits
+   - Memory: 512 MB hard limit
+   - CPU: 60 sec hard limit
+   - File size: 10 MB per source
    
-✅ Ограничение Скорости
-   - 3 запроса/сек
-   - Защита от всплесков
-   - Плавная деградация
+✅ Rate Limiting
+   - 3 requests/sec
+   - Burst protection
+   - Graceful degradation
 ```
 
-### Слой 3: Криптографическая Защита
+### Layer 3: Cryptographic Protection
 ```python
-✅ Укрепление SSL/TLS
-   - Обязательное использование TLS 1.2+
-   - Только сильные шифры
-   - Верификация сертификата
-   - Только HTTPS
+✅ SSL/TLS Hardening
+   - TLS 1.2+ enforcement
+   - Strong ciphers only
+   - Certificate verification
+   - HTTPS only
    
-✅ Целостность Данных
-   - Хеширование SHA-256
-   - Атомарные записи
-   - Стратегия с временными файлами
+✅ Data Integrity
+   - SHA-256 hashing
+   - Atomic writes
+   - Temp file strategy
 ```
 
-### Слой 4: Защита Доступа
+### Layer 4: Access Protection
 ```python
-✅ Обработка Сигналов
-   - Корректное завершение при SIGINT
-   - Корректное завершение при SIGTERM
-   - Очистка ресурсов
-   - Сохранение кэша
+✅ Signal Handling
+   - SIGINT graceful shutdown
+   - SIGTERM graceful shutdown
+   - Resource cleanup
+   - Cache persistence
    
-✅ Блокировка Файлов
-   - Кроссплатформенная поддержка
-   - Целостность кэша
-   - Атомарные операции
+✅ File Locking
+   - Cross-platform support
+   - Cache integrity
+   - Atomic operations
 ```
 
-### Слой 5: Защита Аудита
+### Layer 5: Audit Protection
 ```python
-✅ Комплексное Логирование
-   - Отслеживание последовательности
-   - Верификация временных меток
-   - Указание источника
-   - Отслеживание ошибок
-   - Метрики производительности
+✅ Comprehensive Logging
+   - Sequence tracking
+   - Timestamp verification
+   - Source attribution
+   - Error tracking
+   - Performance metrics
 ```
 
-### Слой 6: Санитизация Данных
+### Layer 6: Data Sanitization
 ```python
-✅ Редактирование Чувствительных Данных
-   - API ключи замаскированы
-   - Токены замаскированы
-   - Пароли замаскированы
-   - Bearer токены замаскированы
-   - Секреты замаскированы
+✅ Sensitive Data Redaction
+   - API keys masked
+   - Tokens masked
+   - Passwords masked
+   - Bearer tokens masked
+   - Secrets masked
 ```
 
 ---
 
-## 💎 ПРОФЕССИОНАЛЬНЫЙ КОД
+## 💎 PROFESSIONAL CODE
 
-### Паттерны Архитектуры
+### Architecture Pattern
 ```
-Принципы SOLID     ✅ Единственная Ответственность
-                   ✅ Открыто/Закрыто
-                   ✅ Подстановка Лисков
-                   ✅ Разделение Интерфейса
-                   ✅ Инверсия Зависимостей
+SOLID Principles       ✅ Single Responsibility
+                       ✅ Open/Closed
+                       ✅ Liskov Substitution
+                       ✅ Interface Segregation
+                       ✅ Dependency Inversion
 
-Качество Кода       ✅ Type hints везде
-                   ✅ Комплексные документация
-                   ✅ Обработка ошибок
-                   ✅ Управление ресурсами
-                   ✅ Чистый код
+Code Quality           ✅ Type hints throughout
+                       ✅ Comprehensive docstrings
+                       ✅ Error handling
+                       ✅ Resource management
+                       ✅ Clean code
 
-Производительность ✅ Поиск за O(1)
-                   ✅ Сортировка O(n log n)
-                   ✅ Пакетная обработка
-                   ✅ Ленивое вычисление
-                   ✅ Пулинг памяти
-```
-
-### Паттерны Безопасности
-```
-Валидация Входных    ✅ Подход белого списка
-                     ✅ Множественные проверки
-                     ✅ Ранний выход
-                     ✅ Сообщение об ошибке
-
-Обработка Ошибок     ✅ Блоки Try-catch
-                     ✅ Плавная деградация
-                     ✅ Очистка ресурсов
-                     ✅ Резервные механизмы
-
-Управление           ✅ Context managers
-Ресурсами            ✅ Явная очистка
-                     ✅ Сборка мусора
-                     ✅ Файловые дескрипторы
+Performance            ✅ O(1) hash lookups
+                       ✅ O(n log n) sorting
+                       ✅ Batch processing
+                       ✅ Lazy evaluation
+                       ✅ Memory pooling
 ```
 
-### Подход Тестирования
+### Security Patterns
 ```
-Модульные Тесты      ✅ Валидация домена
-                     ✅ Валидация URL
-                     ✅ Логика кэша
-                     ✅ Логика парсера
+Input Validation       ✅ Whitelist approach
+                       ✅ Multiple checks
+                       ✅ Early termination
+                       ✅ Error reporting
 
-Интеграционные       ✅ Агрегация из нескольких источников
-Тесты                ✅ Файловый ввод-вывод
-                     ✅ Сохранение кэша
-                     ✅ Генерация вывода
+Error Handling         ✅ Try-catch blocks
+                       ✅ Graceful degradation
+                       ✅ Resource cleanup
+                       ✅ Fallback mechanisms
 
-Тесты Нагрузки       ✅ 300K+ доменов
-                     ✅ Лимиты памяти
-                     ✅ Лимиты CPU
-                     ✅ Одновременные запросы
+Resource Management    ✅ Context managers
+                       ✅ Explicit cleanup
+                       ✅ Garbage collection
+                       ✅ File handles
 ```
 
----
-
-## 🔥 МАКСИМАЛЬНЫЙ УРОВЕНЬ ЗАЩИТЫ
-
-### Покрытие Модели Угроз
-
-| Угроза | Вектор Атаки | Защита | Уровень |
-|--------|--------------|--------|---------|
-| **SSRF** | Вредоносные URL | Только белый список | 🟢 Полная |
-| **DoS** | Исчерпание ресурсов | Жёсткие лимиты | 🟢 Полная |
-| **Инъекция** | Неправильный ввод | RFC валидация | 🟢 Полная |
-| **MITM** | Перехват сети | TLS 1.2+ | 🟢 Полная |
-| **Утечка Данных** | Утечка учётных данных | Редактирование | 🟢 Полная |
-| **Корупция** | Частичная запись | Атомарные операции | 🟢 Полная |
-| **Цепочка Поставок** | Эксплуатация зависимости | Нулевые зависимости | 🟢 Полная |
-| **Timing Attack** | Боковой канал | Constant time | 🟢 Полная |
-
-### Сертификаты Безопасности
+### Testing Approach
 ```
-✅ OWASP Top 10 — Все смягчены
-✅ NIST Cybersecurity Framework — Соответствие
-✅ CWE/SANS Top 25 — Все покрыты
-✅ CVSS Score — 0.0 (нет уязвимостей)
-✅ Аудит Безопасности — Прошёл (независимый)
-✅ Тест Пентеста — Эксплойты не найдены
+Unit Tests             ✅ Domain validation
+                       ✅ URL validation
+                       ✅ Cache logic
+                       ✅ Parser logic
+
+Integration Tests      ✅ Multi-source aggregation
+                       ✅ File I/O
+                       ✅ Cache persistence
+                       ✅ Output generation
+
+Load Tests             ✅ 300K+ domains
+                       ✅ Memory limits
+                       ✅ CPU limits
+                       ✅ Concurrent requests
 ```
 
 ---
 
-## ⚡ МАКСИМАЛЬНАЯ ОПТИМИЗАЦИЯ
+## 🔥 MAXIMUM PROTECTION LEVEL
 
-### Техники Оптимизации
+### Threat Model Coverage
 
-| Техника | Реализация | Прирост |
-|---------|-----------|---------|
-| **Скомпилированный Regex** | `re.compile()` один раз | -40% CPU |
-| **Обработка Байтов** | Работа с байтами | -25% памяти |
-| **LRU Cache** | `functools.lru_cache` | -30% валидация |
-| **Set Operations** | `frozenset` поиск | O(1) доступ |
-| **Пакетная Обработка** | 10K доменов батчи | -50% I/O |
-| **Умная Сборка Мусора** | `gc.set_threshold()` | -50% паузы |
-| **Keep-Alive** | Пулинг соединений HTTP | -60% задержка |
-| **ETag Caching** | Условные запросы | -80% трафик |
+| Threat | Attack Vector | Protection | Level |
+|--------|---------------|-----------|-------|
+| **SSRF** | Malicious URLs | Whitelist only | 🟢 Complete |
+| **DoS** | Resource exhaustion | Hard limits | 🟢 Complete |
+| **Injection** | Malformed input | RFC validation | 🟢 Complete |
+| **MITM** | Network interception | TLS 1.2+ | 🟢 Complete |
+| **Data Breach** | Credential exposure | Pattern redaction | 🟢 Complete |
+| **Corruption** | Partial writes | Atomic ops | 🟢 Complete |
+| **Supply Chain** | Dependency exploit | Zero deps | 🟢 Complete |
+| **Timing Attack** | Side channel | Constant time | 🟢 Complete |
 
-### Метрики Производительности
-
+### Security Certifications
 ```
-Скорость Парсинга:     30K+ доменов/сек
-Скорость Обработки:    28K-30K доменов/сек
-Пиковая Память:        220 МБ (300K доменов)
-Процент Попаданий:     25-50% (второй запуск)
-Сохранённый Трафик:    80% (с кэшем)
-Эффективность CPU:     95%+
-Время Доступности:     99.9%+
-```
-
-### Реальный Бенчмарк
-```
-Входные Данные:  265,105 уникальных доменов
-Время:           9.15 секунд
-Скорость:        28,969 доменов/сек
-Память:          180-220 МБ пиковое
-Вывод:           8,940,235 байтов
-Кэш:             1-2 КБ
-Результат:       ✅ ЭЛИТА производительность
+✅ OWASP Top 10 — All mitigated
+✅ NIST Cybersecurity Framework — Compliant
+✅ CWE/SANS Top 25 — All covered
+✅ CVSS Score — 0.0 (no vulnerabilities)
+✅ Security Audit — Passed (independent)
+✅ Penetration Test — No exploits found
 ```
 
 ---
 
-## 📦 ЧТО ВКЛЮЧЕНО
+## ⚡ MAXIMUM OPTIMIZATION
 
-### Основные Компоненты
+### Optimization Techniques
+
+| Technique | Implementation | Gain |
+|-----------|----------------|------|
+| **Compiled Regex** | `re.compile()` once | -40% CPU |
+| **Bytes Processing** | Work with bytes | -25% memory |
+| **LRU Cache** | `functools.lru_cache` | -30% validation |
+| **Set Operations** | `frozenset` lookups | O(1) access |
+| **Batch Processing** | 10K domain batches | -50% I/O |
+| **Smart GC** | `gc.set_threshold()` | -50% pauses |
+| **Keep-Alive** | HTTP connection pooling | -60% latency |
+| **ETag Caching** | Conditional requests | -80% bandwidth |
+
+### Performance Metrics
+
 ```
-SecurityConfig         Конфигурация корпоративного уровня
-SecurityAuditLogger    Комплексное логирование аудита
-DomainValidator        Соответствие RFC 1035/1123
-SecureHTTPClient       TLS 1.2+ с кэшем
-FastDomainParser       Ультра-оптимизированный парсинг
-BlocklistBuilder        Главный оркестратор
+Parsing Speed:     30K+ domains/sec
+Processing Speed:  28K-30K domains/sec
+Memory Peak:       220 MB (300K domains)
+Cache Hit Rate:    25-50% (second run)
+Bandwidth Saved:   80% (with caching)
+CPU Efficiency:    95%+
+Uptime:            99.9%+
 ```
 
-### Выходные Файлы
+### Real-World Benchmark
 ```
-dynamic-blocklist.txt  265K+ доменов (8-10 МБ)
-security_blocklist.log Лог аудита (10-50 КБ)
-.download_cache.json   Умный кэш (1-2 КБ)
-```
-
-### Варианты Развёртывания
-```
-Cron Job            Автоматически каждые 6 часов
-GitHub Actions      CI/CD интеграция
-Docker              Контейнеризованное выполнение
-Ручной              Один раз или по требованию
-Systemd Timer       Встроенное расписание Linux
+Input:    265,105 unique domains
+Time:     9.15 seconds
+Speed:    28,969 domains/second
+Memory:   180-220 MB peak
+Output:   8,940,235 bytes
+Cache:    1-2 KB
+Result:   ✅ ELITE performance
 ```
 
 ---
 
-## 🎯 БЫСТРЫЙ СТАРТ
+## 📦 WHAT'S INCLUDED
 
-### 1. Запуск (30 сек)
+### Core Components
+```
+SecurityConfig         Enterprise-grade configuration
+SecurityAuditLogger    Comprehensive audit logging
+DomainValidator        RFC 1035/1123 compliance
+SecureHTTPClient       TLS 1.2+ with caching
+FastDomainParser       Ultra-optimized parsing
+BlocklistBuilder        Main orchestration engine
+```
+
+### Output Files
+```
+dynamic-blocklist.txt  265K+ domains (8-10 MB)
+security_blocklist.log Audit trail (10-50 KB)
+.download_cache.json   Smart cache (1-2 KB)
+```
+
+### Deployment Options
+```
+Cron Job            Every 6 hours automatic
+GitHub Actions      CI/CD integration
+Docker              Containerized execution
+Manual              One-time or on-demand
+Systemd Timer       Linux native scheduling
+```
+
+---
+
+## 🎯 QUICK START
+
+### 1. Run (30 sec)
 ```bash
 python3 update_blocklist.py
 ```
 
-### 2. Результат
+### 2. Result
 ```
-✅ 265,105 уникальных доменов агрегировано
-✅ 9.15 секунд общее время
-✅ 99.9% процент приёмки
-✅ 8.9 МБ выходной файл
+✅ 265,105 unique domains aggregated
+✅ 9.15 seconds total time
+✅ 99.9% acceptance rate
+✅ 8.9 MB output file
 ```
 
-### 3. Интеграция (5 мин)
+### 3. Integration (5 min)
 ```bash
 # Pi-hole
 scp dynamic-blocklist.txt pi@pihole:/etc/pihole/
@@ -404,100 +404,100 @@ sed 's/^0\.0\.0\.0 /local-zone: "/' dynamic-blocklist.txt | \
   sed 's/$/" static/' | sudo tee /etc/unbound/blocklist.conf
 ```
 
-### 4. Автоматизация (10 мин)
+### 4. Automation (10 min)
 ```bash
 # Cron
 0 */6 * * * python3 /path/to/update_blocklist.py
 
-# GitHub Actions (готовый workflow предоставлен)
+# GitHub Actions (ready-to-use workflow provided)
 ```
 
 ---
 
-## 📊 СТАТИСТИКА
+## 📊 STATISTICS
 
-### Источники
+### Sources
 ```
-StevenBlack      87,342 домена
-AdAway           12,054 домена
-HaGeZi Ultimate 156,789 доменов
-SomeoneWhoCares   8,920 доменов
+StevenBlack      87,342 domains
+AdAway           12,054 domains
+HaGeZi Ultimate 156,789 domains
+SomeoneWhoCares   8,920 domains
 ─────────────────────────────────
-ИТОГО           265,105 доменов
+TOTAL           265,105 domains
 ```
 
-### Качество
+### Quality
 ```
-Извлечено:     265,234 домена
-Отклонено:         129 доменов
-Приёмка:         99.9%
-Дубликаты:   ~9K удалено
+Extracted:  265,234 domains
+Rejected:        129 domains
+Acceptance:    99.9%
+Duplicates:  ~9K removed
 ```
 
-### Производительность
+### Performance
 ```
-Время Парсинга:     0.45 сек
-Время Сортировки:   0.23 сек
-Время Записи:       0.32 сек
-Общее Время:        9.15 сек
-Скорость:    28,969 доменов/сек
+Parse Time:      0.45 sec
+Sort Time:       0.23 sec
+Write Time:      0.32 sec
+Total Time:      9.15 sec
+Speed:    28,969 domains/sec
 ```
 
 ---
 
-## 🏆 КОНКУРЕНТНЫЕ ПРЕИМУЩЕСТВА
+## 🏆 COMPETITIVE ADVANTAGES
 
-### vs. Другие Решения
+### vs. Other Solutions
 
-| Функция | Наше | Конкуренты |
-|---------|------|-----------|
-| **Производительность** | 28K/сек | 5-10K/сек |
-| **Память** | 180 МБ | 500+ МБ |
-| **Зависимости** | 0 | 5-10 |
-| **Безопасность** | A+ | C-B |
-| **Кэширование** | ETag | Нет |
-| **Логирование** | Аудит тропа | Базовое |
-| **RFC Соответствие** | ✅ | ❌ |
-| **Готово к Производству** | ✅ | ⚠️ |
-
----
-
-## 📝 ЛИЦЕНЗИЯ
-
-MIT Лицензия — свободное использование в коммерческих и личных целях
+| Feature | Ours | Competitors |
+|---------|------|-------------|
+| **Performance** | 28K/sec | 5-10K/sec |
+| **Memory** | 180 MB | 500+ MB |
+| **Dependencies** | 0 | 5-10 |
+| **Security** | A+ | C-B |
+| **Caching** | ETag | No |
+| **Logging** | Audit trail | Basic |
+| **RFC Compliant** | ✅ | ❌ |
+| **Production Ready** | ✅ | ⚠️ |
 
 ---
 
+## 📝 LICENSE
+
+MIT License — free use in commercial and personal projects
+
 ---
 
-## 🎓 ТЕХНИЧЕСКИЕ СПЕЦИФИКАЦИИ
+---
 
-### Соответствие Стандартам
+## 🎓 TECHNICAL SPECIFICATIONS
+
+### Compliance
 ```
-✅ RFC 1035  Реализация имён доменов
-✅ RFC 1123  Требования для хостов Интернета
-✅ OWASP Top 10 - Все смягчены
+✅ RFC 1035  Domain Name Implementation
+✅ RFC 1123  Requirements for Internet Hosts
+✅ OWASP Top 10 - All mitigations
 ✅ NIST Cybersecurity Framework
 ✅ CIS Critical Security Controls
 ```
 
-### Стандарты
+### Standards
 ```
-✅ PEP 8     Руководство по стилю Python
-✅ PEP 257   Соглашения о строках документации
+✅ PEP 8     Python Style Guide
+✅ PEP 257   Docstring Conventions
 ✅ PEP 484   Type Hints
-✅ PEP 20    Дзен Python
+✅ PEP 20    Zen of Python
 ```
 
-### Тестирование
+### Testing
 ```
-✅ Модульные Тесты          Покрытие 95%+
-✅ Интеграционные Тесты    Покрытие 90%+
-✅ Тесты Нагрузки          300K+ доменов
-✅ Аудит Безопасности      Независимо проверено
-✅ Тесты Пентеста          Эксплойты не найдены
+✅ Unit Tests          Coverage 95%+
+✅ Integration Tests    Coverage 90%+
+✅ Load Tests          300K+ domains
+✅ Security Audit      Independent verified
+✅ Penetration Tests    No exploits found
 ```
 
 ---
 
-**Готово к развёртыванию в производстве.** 🚀
+**Ready for production deployment.** 🚀
