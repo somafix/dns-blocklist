@@ -550,14 +550,6 @@ MIT License — freely use, modify, and distribute. See [LICENSE](LICENSE) file.
 
 ---
 
-## 📞 Support
-
-- **Issues:** GitHub Issues
-- **Questions:** Check FAQ section
-- **Security:** Report via security@example.com
-
----
-
 <div align="center">
 
 ### ⭐ If this tool is useful, please give it a star! ⭐
