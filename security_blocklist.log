@@ -95,3 +95,36 @@
 2026-03-23 19:01:54 [INFO] [SEQ:000026] ✅ OISD Emergency: 0 domains, 0 new [1.54s]
 2026-03-23 19:01:54 [INFO] [SEQ:000027] Cache saved: 7 entries
 2026-03-23 19:01:54 [INFO] [SEQ:000028] Blocklist generated: dynamic-blocklist.txt (171,081 domains)
+2026-03-24 02:32:41 [INFO] [SEQ:000001] Security hardening applied
+2026-03-24 02:32:41 [INFO] [SEQ:000002] GC configured with optimized thresholds (ENABLED)
+2026-03-24 02:32:41 [INFO] [SEQ:000003] Running network diagnostics...
+2026-03-24 02:32:41 [INFO] [SEQ:000004] Cache loaded: 7 entries
+2026-03-24 02:32:41 [INFO] [SEQ:000005] Attempting StevenBlack (primary): https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts
+2026-03-24 02:32:41 [ERROR] [SEQ:000006] Network error for https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts: expected string or bytes-like object, got 'NoneType'
+2026-03-24 02:32:41 [WARNING] [SEQ:000007] Failed to fetch from StevenBlack (primary)
+2026-03-24 02:32:41 [INFO] [SEQ:000008] Attempting StevenBlack (fallback: hosts): https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/fakenews-gambling-porn/hosts
+2026-03-24 02:32:42 [ERROR] [SEQ:000009] Network error for https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/fakenews-gambling-porn/hosts: expected string or bytes-like object, got 'NoneType'
+2026-03-24 02:32:42 [WARNING] [SEQ:000010] Failed to fetch from StevenBlack (fallback: hosts)
+2026-03-24 02:32:42 [INFO] [SEQ:000011] Attempting StevenBlack (fallback: hosts): https://cdn.jsdelivr.net/gh/StevenBlack/hosts@master/hosts
+2026-03-24 02:32:42 [INFO] [SEQ:000012] Fetched https://cdn.jsdelivr.net/gh/StevenBlack/hosts@master/hosts (2,585,439 bytes)
+2026-03-24 02:32:43 [INFO] [SEQ:000013] ✅ StevenBlack: 86,064 domains, 86,064 new [0.49s]
+2026-03-24 02:32:43 [INFO] [SEQ:000014] Attempting AdAway (primary): https://adaway.org/hosts.txt
+2026-03-24 02:32:43 [INFO] [SEQ:000015] Fetched https://adaway.org/hosts.txt (243,454 bytes)
+2026-03-24 02:32:43 [INFO] [SEQ:000016] ✅ AdAway: 6,540 domains, 16 new [0.20s]
+2026-03-24 02:32:43 [INFO] [SEQ:000017] Attempting HaGeZi Ultimate (primary): https://raw.githubusercontent.com/hagezi/dns-blocklists/main/hosts/ultimate.txt
+2026-03-24 02:32:43 [ERROR] [SEQ:000018] Network error for https://raw.githubusercontent.com/hagezi/dns-blocklists/main/hosts/ultimate.txt: expected string or bytes-like object, got 'NoneType'
+2026-03-24 02:32:43 [WARNING] [SEQ:000019] Failed to fetch from HaGeZi Ultimate (primary)
+2026-03-24 02:32:43 [INFO] [SEQ:000020] Attempting HaGeZi Ultimate (fallback: ultimate.txt): https://raw.githubusercontent.com/hagezi/dns-blocklists/main/adblock/ultimate.txt
+2026-03-24 02:32:43 [ERROR] [SEQ:000021] Network error for https://raw.githubusercontent.com/hagezi/dns-blocklists/main/adblock/ultimate.txt: expected string or bytes-like object, got 'NoneType'
+2026-03-24 02:32:43 [WARNING] [SEQ:000022] Failed to fetch from HaGeZi Ultimate (fallback: ultimate.txt)
+2026-03-24 02:32:43 [INFO] [SEQ:000023] Attempting HaGeZi Ultimate (fallback: ultimate.txt): https://raw.githubusercontent.com/hagezi/dns-blocklists/main/domains/ultimate.txt
+2026-03-24 02:32:44 [INFO] [SEQ:000024] Fetched https://raw.githubusercontent.com/hagezi/dns-blocklists/main/domains/ultimate.txt (12,663,290 bytes)
+2026-03-24 02:32:44 [INFO] [SEQ:000025] ✅ HaGeZi Ultimate: 0 domains, 0 new [0.55s]
+2026-03-24 02:32:44 [INFO] [SEQ:000027] Attempting SomeoneWhoCares (primary): https://someonewhocares.org/hosts/zero/hosts
+2026-03-24 02:32:44 [INFO] [SEQ:000028] Fetched https://someonewhocares.org/hosts/zero/hosts (349,440 bytes)
+2026-03-24 02:32:44 [INFO] [SEQ:000029] ✅ SomeoneWhoCares: 12,384 domains, 38 new [0.13s]
+2026-03-24 02:32:44 [INFO] [SEQ:000030] Attempting OISD Emergency (primary): https://big.oisd.nl/domainswild2
+2026-03-24 02:32:46 [INFO] [SEQ:000031] Fetched https://big.oisd.nl/domainswild2 (5,872,751 bytes)
+2026-03-24 02:32:46 [INFO] [SEQ:000032] ✅ OISD Emergency: 0 domains, 0 new [2.03s]
+2026-03-24 02:32:46 [INFO] [SEQ:000033] Cache saved: 9 entries
+2026-03-24 02:32:46 [INFO] [SEQ:000034] Blocklist generated: dynamic-blocklist.txt (86,118 domains)
