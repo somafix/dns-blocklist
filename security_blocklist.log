@@ -342,3 +342,47 @@
 2026-03-25 05:47:57 [INFO] [SEQ:000043] ✅ OISD Emergency: 0 domains, 0 new [3.91s]
 2026-03-25 05:47:57 [INFO] [SEQ:000044] Cache saved: 12 entries
 2026-03-25 05:47:57 [INFO] [SEQ:000045] Blocklist generated: dynamic-blocklist.txt (18,537 domains)
+2026-03-25 07:08:50 [INFO] [SEQ:000001] Security hardening applied
+2026-03-25 07:08:50 [INFO] [SEQ:000002] GC configured with optimized thresholds (ENABLED)
+2026-03-25 07:08:50 [INFO] [SEQ:000003] Running network diagnostics...
+2026-03-25 07:08:51 [INFO] [SEQ:000004] Cache loaded: 12 entries
+2026-03-25 07:08:51 [INFO] [SEQ:000005] Attempting StevenBlack (primary): https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts
+2026-03-25 07:08:51 [ERROR] [SEQ:000006] Network error for https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts: expected string or bytes-like object, got 'NoneType'
+2026-03-25 07:08:51 [WARNING] [SEQ:000007] Failed to fetch from StevenBlack (primary)
+2026-03-25 07:08:51 [INFO] [SEQ:000008] Attempting StevenBlack (fallback: hosts): https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/fakenews-gambling-porn/hosts
+2026-03-25 07:08:52 [ERROR] [SEQ:000009] Network error for https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/fakenews-gambling-porn/hosts: expected string or bytes-like object, got 'NoneType'
+2026-03-25 07:08:52 [WARNING] [SEQ:000010] Failed to fetch from StevenBlack (fallback: hosts)
+2026-03-25 07:08:52 [INFO] [SEQ:000011] Attempting StevenBlack (fallback: hosts): https://cdn.jsdelivr.net/gh/StevenBlack/hosts@master/hosts
+2026-03-25 07:08:52 [ERROR] [SEQ:000012] Network error for https://cdn.jsdelivr.net/gh/StevenBlack/hosts@master/hosts: expected string or bytes-like object, got 'NoneType'
+2026-03-25 07:08:52 [WARNING] [SEQ:000013] Failed to fetch from StevenBlack (fallback: hosts)
+2026-03-25 07:08:52 [INFO] [SEQ:000014] Attempting StevenBlack (fallback: hosts): https://gitlab.com/StevenBlack/hosts/-/raw/master/hosts
+2026-03-25 07:08:52 [ERROR] [SEQ:000015] Network error for https://gitlab.com/StevenBlack/hosts/-/raw/master/hosts: expected string or bytes-like object, got 'NoneType'
+2026-03-25 07:08:52 [WARNING] [SEQ:000016] Failed to fetch from StevenBlack (fallback: hosts)
+2026-03-25 07:08:52 [WARNING] [SEQ:000017] All endpoints failed for StevenBlack, skipping
+2026-03-25 07:08:52 [INFO] [SEQ:000018] Attempting AdAway (primary): https://adaway.org/hosts.txt
+2026-03-25 07:08:53 [INFO] [SEQ:000019] Fetched https://adaway.org/hosts.txt (243,454 bytes)
+2026-03-25 07:08:53 [INFO] [SEQ:000020] ✅ AdAway: 6,540 domains, 6,540 new [0.56s]
+2026-03-25 07:08:53 [INFO] [SEQ:000021] Attempting HaGeZi Ultimate (primary): https://raw.githubusercontent.com/hagezi/dns-blocklists/main/hosts/ultimate.txt
+2026-03-25 07:08:53 [ERROR] [SEQ:000022] Network error for https://raw.githubusercontent.com/hagezi/dns-blocklists/main/hosts/ultimate.txt: expected string or bytes-like object, got 'NoneType'
+2026-03-25 07:08:53 [WARNING] [SEQ:000023] Failed to fetch from HaGeZi Ultimate (primary)
+2026-03-25 07:08:53 [INFO] [SEQ:000024] Attempting HaGeZi Ultimate (fallback: ultimate.txt): https://raw.githubusercontent.com/hagezi/dns-blocklists/main/adblock/ultimate.txt
+2026-03-25 07:08:53 [ERROR] [SEQ:000025] Network error for https://raw.githubusercontent.com/hagezi/dns-blocklists/main/adblock/ultimate.txt: expected string or bytes-like object, got 'NoneType'
+2026-03-25 07:08:53 [WARNING] [SEQ:000026] Failed to fetch from HaGeZi Ultimate (fallback: ultimate.txt)
+2026-03-25 07:08:53 [INFO] [SEQ:000027] Attempting HaGeZi Ultimate (fallback: ultimate.txt): https://raw.githubusercontent.com/hagezi/dns-blocklists/main/domains/ultimate.txt
+2026-03-25 07:08:54 [ERROR] [SEQ:000028] Network error for https://raw.githubusercontent.com/hagezi/dns-blocklists/main/domains/ultimate.txt: expected string or bytes-like object, got 'NoneType'
+2026-03-25 07:08:54 [WARNING] [SEQ:000029] Failed to fetch from HaGeZi Ultimate (fallback: ultimate.txt)
+2026-03-25 07:08:54 [INFO] [SEQ:000030] Attempting HaGeZi Ultimate (fallback: pro.plus.txt): https://raw.githubusercontent.com/hagezi/dns-blocklists/main/hosts/pro.plus.txt
+2026-03-25 07:08:54 [ERROR] [SEQ:000031] Network error for https://raw.githubusercontent.com/hagezi/dns-blocklists/main/hosts/pro.plus.txt: expected string or bytes-like object, got 'NoneType'
+2026-03-25 07:08:54 [WARNING] [SEQ:000032] Failed to fetch from HaGeZi Ultimate (fallback: pro.plus.txt)
+2026-03-25 07:08:54 [INFO] [SEQ:000033] Attempting HaGeZi Ultimate (fallback: pro.plus.txt): https://raw.githubusercontent.com/hagezi/dns-blocklists/main/adblock/pro.plus.txt
+2026-03-25 07:08:54 [ERROR] [SEQ:000034] Network error for https://raw.githubusercontent.com/hagezi/dns-blocklists/main/adblock/pro.plus.txt: expected string or bytes-like object, got 'NoneType'
+2026-03-25 07:08:54 [WARNING] [SEQ:000035] Failed to fetch from HaGeZi Ultimate (fallback: pro.plus.txt)
+2026-03-25 07:08:54 [WARNING] [SEQ:000036] All endpoints failed for HaGeZi Ultimate, skipping
+2026-03-25 07:08:54 [INFO] [SEQ:000038] Attempting SomeoneWhoCares (primary): https://someonewhocares.org/hosts/zero/hosts
+2026-03-25 07:08:55 [INFO] [SEQ:000039] Content unchanged (304): https://someonewhocares.org/hosts/zero/hosts
+2026-03-25 07:08:55 [INFO] [SEQ:000040] ✅ SomeoneWhoCares: 12,401 domains, 11,997 new (cached) [0.67s]
+2026-03-25 07:08:55 [INFO] [SEQ:000041] Attempting OISD Emergency (primary): https://big.oisd.nl/domainswild2
+2026-03-25 07:09:03 [INFO] [SEQ:000042] Fetched https://big.oisd.nl/domainswild2 (7,832,964 bytes)
+2026-03-25 07:09:03 [INFO] [SEQ:000043] ✅ OISD Emergency: 0 domains, 0 new [7.85s]
+2026-03-25 07:09:03 [INFO] [SEQ:000044] Cache saved: 12 entries
+2026-03-25 07:09:03 [INFO] [SEQ:000045] Blocklist generated: dynamic-blocklist.txt (18,537 domains)
