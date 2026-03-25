@@ -2,10 +2,10 @@
 # DNS SECURITY BLOCKLIST - ENTERPRISE GRADE (HARDENED EDITION)
 # ====================================================================
 # Version: 3.0.6
-# Generated: 2026-03-25 13:21:31 UTC
-# Timestamp: 1774444892
-# Total domains: 18,537
-# SHA-256: 1b8cd59ee5eb267c6a3867b1f5b6099bba4d375ddc0e79df3c5bb1c713e572b7
+# Generated: 2026-03-25 19:01:55 UTC
+# Timestamp: 1774465315
+# Total domains: 18,539
+# SHA-256: 55e9b93e759c245f4be80bb4c83cb0b43acaba73d6725cbc44631cfef5c9bf1b
 # Sources processed: 5
 # ====================================================================
 # Format: 0.0.0.0 domain.tld
@@ -9144,6 +9144,7 @@
 0.0.0.0 kake.images.worldnow.com
 0.0.0.0 kampyle.com
 0.0.0.0 kanojo.fr
+0.0.0.0 kantoexuziiv.com
 0.0.0.0 kanzlei-borchers.de
 0.0.0.0 kaprazatos.club
 0.0.0.0 karat.hu
@@ -17505,6 +17506,7 @@
 0.0.0.0 www.loboclick.com
 0.0.0.0 www.localytics.com
 0.0.0.0 www.lockupouseburn.com
+0.0.0.0 www.loginhunter.com
 0.0.0.0 www.logoradar.com
 0.0.0.0 www.lolhello.com
 0.0.0.0 www.lolshock.com
