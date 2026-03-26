@@ -2,10 +2,10 @@
 # DNS SECURITY BLOCKLIST - ENTERPRISE GRADE (HARDENED EDITION)
 # ====================================================================
 # Version: 3.0.6
-# Generated: 2026-03-26 13:28:01 UTC
-# Timestamp: 1774531682
-# Total domains: 18,539
-# SHA-256: 55e9b93e759c245f4be80bb4c83cb0b43acaba73d6725cbc44631cfef5c9bf1b
+# Generated: 2026-03-26 19:14:40 UTC
+# Timestamp: 1774552480
+# Total domains: 18,546
+# SHA-256: 30fe585b4262cc58aa9f93bae670d4ab9afd30544090beb749ae18873b4e3403
 # Sources processed: 5
 # ====================================================================
 # Format: 0.0.0.0 domain.tld
@@ -9572,6 +9572,7 @@
 0.0.0.0 livezfoot.fr
 0.0.0.0 livreral.fr
 0.0.0.0 livrval.fr
+0.0.0.0 livsffer.sa.com
 0.0.0.0 lizzardsnail.com
 0.0.0.0 ll.atdmt.com
 0.0.0.0 lm.serving-sys.com
@@ -16805,10 +16806,12 @@
 0.0.0.0 www.alexrc.plus.com
 0.0.0.0 www.alexyastro.com
 0.0.0.0 www.algocashmaster.com
+0.0.0.0 www.alittlelewd.com
 0.0.0.0 www.allhqpics.com
 0.0.0.0 www.allosponsor.com
 0.0.0.0 www.allscrabble.com
 0.0.0.0 www.allstateproteectionplans.com
+0.0.0.0 www.allusermanual.com
 0.0.0.0 www.amazing-opportunities.info
 0.0.0.0 www.anatol.com
 0.0.0.0 www.andyhawk.free-online.co.uk
@@ -16976,6 +16979,7 @@
 0.0.0.0 www.chartboost.com
 0.0.0.0 www.chartercare.plus.com
 0.0.0.0 www.cheap-online-stamp.cast.cc
+0.0.0.0 www.checkpics.com
 0.0.0.0 www.chelick.net
 0.0.0.0 www.chichomods.com
 0.0.0.0 www.chienhung.url.tw
@@ -17194,6 +17198,7 @@
 0.0.0.0 www.filezilla.fr
 0.0.0.0 www.finance-offer.com
 0.0.0.0 www.findalgorithm.com
+0.0.0.0 www.findalign.com
 0.0.0.0 www.findlobster.com
 0.0.0.0 www.fineclicks.com
 0.0.0.0 www.fingertimer.com
@@ -17264,6 +17269,7 @@
 0.0.0.0 www.furcomics.com
 0.0.0.0 www.fusionbanners.com
 0.0.0.0 www.futuredecide.com
+0.0.0.0 www.futureowned.com
 0.0.0.0 www.fxcounters.com
 0.0.0.0 www.gadgetbonanzamarket.com
 0.0.0.0 www.gainwintz.com
@@ -17549,6 +17555,7 @@
 0.0.0.0 www.medical-offer.com
 0.0.0.0 www.medical-research-books.com
 0.0.0.0 www.megacounter.de
+0.0.0.0 www.megapurchase.com
 0.0.0.0 www.megawealthbiz.com
 0.0.0.0 www.mellowads.com
 0.0.0.0 www.merijntjeaanderijn.nl
