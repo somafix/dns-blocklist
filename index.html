@@ -4,60 +4,32 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=yes">
     <meta name="theme-color" content="#0a0e17">
-    <meta name="description" content="DNS Blocklist Dashboard - Панель управления блокировкой вредоносных доменов в реальном времени">
-    <meta name="keywords" content="DNS, blocklist, security, malware, phishing, tracking">
-    <meta name="author" content="somafix">
-    <meta name="robots" content="index, follow">
+    <meta name="description" content="DNS Blocklist Dashboard - Панель управления блокировкой вредоносных доменов">
     
     <!-- Security Headers -->
     <meta http-equiv="Content-Security-Policy" content="
         default-src 'self';
-        script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com;
+        script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com;
         style-src 'self' 'unsafe-inline';
         img-src 'self' data: https:;
         font-src 'self' data:;
         connect-src 'self' https://api.github.com https://cdn.jsdelivr.net https://corsproxy.io https://raw.githubusercontent.com;
         frame-ancestors 'none';
         base-uri 'self';
-        form-action 'self';
     ">
     <meta http-equiv="X-Content-Type-Options" content="nosniff">
     <meta http-equiv="X-Frame-Options" content="DENY">
     <meta http-equiv="X-XSS-Protection" content="1; mode=block">
-    <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
-    <meta name="format-detection" content="telephone=no">
-    
-    <!-- PWA Support -->
-    <link rel="manifest" href="data:application/manifest+json,{}">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    
-    <!-- Preconnect to critical origins -->
-    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
-    <link rel="preconnect" href="https://api.github.com" crossorigin>
-    
-    <!-- Chart.js with SRI for security -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"
-            integrity="sha384-6G1GzJLFNvCvE9euoRqH/wyzJf2gsT7wP1V9tEbjXQXeDdpU7E1mFvK3+ZJ7PzW"
-            crossorigin="anonymous"></script>
-    
-    <!-- DOMPurify for XSS prevention -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"
-            integrity="sha384-5f8RwQvq/WOQGA0BmBmOo7C5lMqM3kYJ4oK4Sq5pUXlQ5tul6noyRKn1sVh3D+V"
-            crossorigin="anonymous"></script>
     
     <style>
         /* CSS Reset & Base Styles */
-        *, *::before, *::after {
+        * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
         }
 
         :root {
-            /* Colors - WCAG AA compliant contrast */
             --bg-primary: #0a0e17;
             --bg-secondary: #0f1419;
             --bg-tertiary: #1a1f2e;
@@ -67,121 +39,50 @@
             --text-tertiary: #6b7280;
             --accent-blue: #3b82f6;
             --accent-blue-light: #60a5fa;
-            --accent-blue-dark: #2563eb;
             --success: #10b981;
             --warning: #f59e0b;
             --danger: #ef4444;
             --border-color: rgba(59, 130, 246, 0.25);
-            
-            /* Typography - Fluid sizes */
-            --font-xs: clamp(0.75rem, 2vw, 0.875rem);
-            --font-sm: clamp(0.875rem, 2.5vw, 1rem);
-            --font-base: clamp(1rem, 3vw, 1.125rem);
-            --font-lg: clamp(1.125rem, 3.5vw, 1.25rem);
-            --font-xl: clamp(1.25rem, 4vw, 1.5rem);
+            --font-xs: clamp(0.7rem, 2vw, 0.8rem);
+            --font-sm: clamp(0.8rem, 2.5vw, 0.9rem);
+            --font-base: clamp(0.9rem, 3vw, 1rem);
+            --font-lg: clamp(1rem, 3.5vw, 1.2rem);
+            --font-xl: clamp(1.2rem, 4vw, 1.5rem);
             --font-2xl: clamp(1.5rem, 5vw, 2rem);
-            --font-3xl: clamp(2rem, 6vw, 2.5rem);
-            
-            /* Spacing */
             --spacing-xs: clamp(0.25rem, 1vw, 0.5rem);
             --spacing-sm: clamp(0.5rem, 2vw, 0.75rem);
             --spacing-md: clamp(0.75rem, 3vw, 1rem);
             --spacing-lg: clamp(1rem, 4vw, 1.5rem);
-            --spacing-xl: clamp(1.5rem, 5vw, 2rem);
-            --spacing-2xl: clamp(2rem, 6vw, 3rem);
-            
-            /* Layout */
-            --container-max: 1440px;
             --border-radius: clamp(0.5rem, 2vw, 1rem);
-            --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-            :root {
-                --transition: none;
-            }
-            *, *::before, *::after {
-                animation-duration: 0.01ms !important;
-                animation-iteration-count: 1 !important;
-                transition-duration: 0.01ms !important;
-            }
+            --transition: all 0.2s ease;
         }
 
         body {
-            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
             background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 50%, var(--bg-tertiary) 100%);
             color: var(--text-primary);
-            line-height: 1.5;
             min-height: 100vh;
             overflow-x: hidden;
-            text-rendering: optimizeLegibility;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
         }
 
-        /* Accessibility - Focus styles */
-        :focus-visible {
-            outline: 2px solid var(--accent-blue);
-            outline-offset: 2px;
-            border-radius: 4px;
-        }
-
-        /* Skip to content link for keyboard users */
+        /* Skip Link */
         .skip-link {
             position: absolute;
             top: -40px;
             left: 0;
             background: var(--accent-blue);
             color: white;
-            padding: var(--spacing-sm) var(--spacing-md);
-            text-decoration: none;
+            padding: 8px 16px;
             z-index: 1000;
-            transition: var(--transition);
         }
-        
-        .skip-link:focus-visible {
-            top: 0;
-        }
-
-        /* Animations */
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        @keyframes valuePulse {
-            0%, 100% {
-                transform: scale(1);
-                text-shadow: 0 0 0 rgba(59, 130, 246, 0);
-            }
-            50% {
-                transform: scale(1.02);
-                text-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
-            }
-        }
-
-        @keyframes statusPulse {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.6; transform: scale(1.2); }
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
+        .skip-link:focus { top: 0; }
 
         /* Header */
         header {
             background: rgba(15, 20, 25, 0.85);
             backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
             border-bottom: 1px solid var(--border-color);
-            padding: var(--spacing-md) var(--spacing-xl);
+            padding: var(--spacing-md) var(--spacing-lg);
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -190,7 +91,6 @@
             position: sticky;
             top: 0;
             z-index: 100;
-            animation: fadeInUp 0.5s ease-out;
         }
 
         .logo {
@@ -205,11 +105,7 @@
             gap: var(--spacing-sm);
         }
 
-        .logo-icon {
-            font-size: var(--font-xl);
-            -webkit-text-fill-color: initial;
-            color: var(--accent-blue);
-        }
+        .logo-icon { font-size: var(--font-xl); -webkit-text-fill-color: initial; color: var(--accent-blue); }
 
         .header-right {
             display: flex;
@@ -223,7 +119,6 @@
             align-items: center;
             gap: var(--spacing-xs);
             font-size: var(--font-sm);
-            font-weight: 500;
             background: rgba(16, 185, 129, 0.1);
             padding: var(--spacing-xs) var(--spacing-md);
             border-radius: 40px;
@@ -235,22 +130,18 @@
             height: 8px;
             background: var(--success);
             border-radius: 50%;
-            animation: statusPulse 1.5s ease-in-out infinite;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.2); }
         }
 
         .time {
-            font-family: 'SF Mono', 'JetBrains Mono', monospace;
+            font-family: monospace;
             font-size: var(--font-sm);
             color: var(--text-secondary);
-            letter-spacing: 0.5px;
-        }
-
-        .refresh-indicator {
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-sm);
-            font-size: var(--font-xs);
-            color: var(--text-tertiary);
         }
 
         .refresh-spinner {
@@ -260,430 +151,208 @@
             border-top-color: var(--accent-blue);
             border-radius: 50%;
             animation: spin 0.8s linear infinite;
+            display: none;
         }
 
-        /* Main Content */
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Main */
         main {
-            max-width: var(--container-max);
+            max-width: 1400px;
             margin: 0 auto;
-            padding: var(--spacing-xl);
+            padding: var(--spacing-lg);
         }
 
-        /* Responsive container queries */
-        @container (max-width: 600px) {
-            .card-value {
-                font-size: var(--font-2xl);
-            }
-        }
-
-        /* Grid System */
+        /* Grid */
         .grid {
             display: grid;
             gap: var(--spacing-lg);
             margin-bottom: var(--spacing-xl);
         }
+        .grid-4 { grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
+        .grid-2 { grid-template-columns: repeat(2, 1fr); }
 
-        .grid-4 {
-            grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
-        }
-
-        .grid-2 {
-            grid-template-columns: repeat(2, 1fr);
-        }
-
-        /* Responsive breakpoints */
-        @media (max-width: 1024px) {
-            .grid-2 {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        @media (max-width: 768px) {
-            main {
-                padding: var(--spacing-md);
-            }
-            
-            .grid-4 {
-                grid-template-columns: repeat(2, 1fr);
-                gap: var(--spacing-md);
-            }
-            
-            header {
-                padding: var(--spacing-sm) var(--spacing-md);
-            }
-            
-            .header-right {
-                gap: var(--spacing-md);
-            }
-        }
-
-        @media (max-width: 640px) {
-            .grid-4 {
-                grid-template-columns: 1fr;
-            }
-            
-            .logo span:not(.logo-icon) {
-                font-size: var(--font-sm);
-            }
-            
-            .status span {
-                display: none;
-            }
-        }
-
-        @media (max-width: 480px) {
-            header {
-                flex-direction: column;
-                text-align: center;
-            }
-            
-            .header-right {
-                justify-content: center;
-            }
-        }
+        @media (max-width: 1024px) { .grid-2 { grid-template-columns: 1fr; } }
+        @media (max-width: 768px) { .grid-4 { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 640px) { .grid-4 { grid-template-columns: 1fr; } }
 
         /* Cards */
         .card {
             background: var(--bg-card);
             backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
             border: 1px solid var(--border-color);
             border-radius: var(--border-radius);
             padding: var(--spacing-lg);
             transition: var(--transition);
-            animation: fadeInUp 0.5s ease-out;
-            position: relative;
-            overflow: hidden;
         }
-
-        .card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 2px;
-            background: linear-gradient(90deg, transparent, var(--accent-blue), transparent);
-            transform: translateX(-100%);
-            transition: transform 0.6s ease;
-        }
-
-        .card:hover::before {
-            transform: translateX(100%);
-        }
-
         .card:hover {
             border-color: var(--accent-blue);
             transform: translateY(-2px);
-            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
         }
 
         .card-icon {
-            font-size: var(--font-3xl);
+            font-size: var(--font-2xl);
             float: right;
-            opacity: 0.25;
-            transition: var(--transition);
-            pointer-events: none;
+            opacity: 0.3;
         }
-
-        .card:hover .card-icon {
-            opacity: 0.5;
-            transform: scale(1.05);
-        }
-
         .card-title {
             font-size: var(--font-xs);
             text-transform: uppercase;
-            letter-spacing: 1px;
             color: var(--text-secondary);
             margin-bottom: var(--spacing-sm);
-            font-weight: 600;
         }
-
         .card-value {
-            font-size: var(--font-3xl);
+            font-size: var(--font-2xl);
             font-weight: 800;
             background: linear-gradient(135deg, var(--accent-blue), var(--accent-blue-light));
             background-clip: text;
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            line-height: 1.2;
-            margin-bottom: var(--spacing-xs);
-            transition: var(--transition);
         }
-
-        .card-value.updating {
-            animation: valuePulse 0.4s ease-out;
+        .card-value.updating { animation: valuePulse 0.4s; }
+        @keyframes valuePulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); text-shadow: 0 0 10px rgba(59,130,246,0.5); }
         }
+        .card-label { font-size: var(--font-xs); color: var(--text-tertiary); }
 
-        .card-label {
-            font-size: var(--font-xs);
-            color: var(--text-tertiary);
-        }
-
-        /* Section Titles */
+        /* Section Title */
         .section-title {
-            font-size: var(--font-xl);
+            font-size: var(--font-lg);
             font-weight: 600;
             margin-bottom: var(--spacing-lg);
-            letter-spacing: -0.3px;
-            background: linear-gradient(135deg, var(--text-primary), var(--text-secondary));
-            background-clip: text;
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
         }
 
-        /* Tables */
+        /* Table */
         .table-wrapper {
             background: var(--bg-card);
             backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
             border: 1px solid var(--border-color);
             border-radius: var(--border-radius);
             overflow-x: auto;
-            animation: fadeInUp 0.5s ease-out 0.1s backwards;
+            margin-bottom: var(--spacing-xl);
         }
-
         table {
             width: 100%;
             border-collapse: collapse;
             min-width: 500px;
         }
-
         th {
             text-align: left;
             padding: var(--spacing-md) var(--spacing-lg);
             font-size: var(--font-xs);
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
             color: var(--text-tertiary);
             border-bottom: 1px solid var(--border-color);
-            background: rgba(15, 20, 25, 0.5);
         }
-
         td {
             padding: var(--spacing-md) var(--spacing-lg);
             font-size: var(--font-sm);
-            border-bottom: 1px solid rgba(59, 130, 246, 0.1);
-            transition: var(--transition);
+            border-bottom: 1px solid rgba(59,130,246,0.1);
         }
-
-        tr:hover td {
-            background: rgba(59, 130, 246, 0.05);
-        }
+        tr:hover td { background: rgba(59,130,246,0.05); }
 
         /* Badges */
         .badge {
             display: inline-block;
-            padding: var(--spacing-xs) var(--spacing-md);
+            padding: 4px 12px;
             border-radius: 40px;
             font-size: var(--font-xs);
             font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.3px;
-            transition: var(--transition);
         }
-
-        .badge-danger { background: rgba(239, 68, 68, 0.2); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.3); }
-        .badge-warning { background: rgba(245, 158, 11, 0.2); color: #fcd34d; border: 1px solid rgba(245, 158, 11, 0.3); }
-        .badge-blue { background: rgba(59, 130, 246, 0.2); color: #93c5fd; border: 1px solid rgba(59, 130, 246, 0.3); }
-        .badge-success { background: rgba(16, 185, 129, 0.2); color: #86efac; border: 1px solid rgba(16, 185, 129, 0.3); }
+        .badge-danger { background: rgba(239,68,68,0.2); color: #fca5a5; border: 1px solid rgba(239,68,68,0.3); }
+        .badge-warning { background: rgba(245,158,11,0.2); color: #fcd34d; border: 1px solid rgba(245,158,11,0.3); }
+        .badge-blue { background: rgba(59,130,246,0.2); color: #93c5fd; border: 1px solid rgba(59,130,246,0.3); }
+        .badge-success { background: rgba(16,185,129,0.2); color: #86efac; border: 1px solid rgba(16,185,129,0.3); }
 
         /* Activity List */
         .activity-list {
             background: var(--bg-card);
             backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
             border: 1px solid var(--border-color);
             border-radius: var(--border-radius);
-            overflow: hidden;
-            max-height: 400px;
+            max-height: 350px;
             overflow-y: auto;
         }
-
         .activity-item {
             display: flex;
             gap: var(--spacing-md);
             padding: var(--spacing-md) var(--spacing-lg);
-            border-bottom: 1px solid rgba(59, 130, 246, 0.1);
-            transition: var(--transition);
-            cursor: pointer;
+            border-bottom: 1px solid rgba(59,130,246,0.1);
         }
-
         .activity-item:last-child { border-bottom: none; }
-        .activity-item:hover { background: rgba(59, 130, 246, 0.05); }
-
+        .activity-item:hover { background: rgba(59,130,246,0.05); }
         .activity-icon {
-            width: 40px;
-            height: 40px;
-            background: rgba(59, 130, 246, 0.1);
-            border-radius: 12px;
+            width: 36px;
+            height: 36px;
+            background: rgba(59,130,246,0.1);
+            border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: var(--font-lg);
             flex-shrink: 0;
-            transition: var(--transition);
         }
+        .activity-title { font-weight: 600; font-size: var(--font-sm); margin-bottom: 4px; }
+        .activity-desc { font-size: var(--font-xs); color: var(--text-secondary); }
+        .activity-time { font-size: var(--font-xs); color: var(--text-tertiary); margin-top: 4px; font-family: monospace; }
 
-        .activity-item:hover .activity-icon {
-            transform: scale(1.05);
-            background: rgba(59, 130, 246, 0.2);
-        }
-
-        .activity-content {
-            flex: 1;
-            min-width: 0;
-        }
-
-        .activity-title {
-            font-weight: 600;
-            font-size: var(--font-sm);
-            margin-bottom: var(--spacing-xs);
-            color: var(--text-primary);
-        }
-
-        .activity-desc {
-            font-size: var(--font-xs);
-            color: var(--text-secondary);
-            word-break: break-word;
-        }
-
-        .activity-time {
-            font-size: var(--font-xs);
-            color: var(--text-tertiary);
-            margin-top: var(--spacing-xs);
-            font-family: monospace;
-        }
-
-        /* Charts */
+        /* Chart fallback */
         .chart-wrapper {
             position: relative;
-            height: clamp(250px, 40vh, 320px);
+            height: 280px;
             width: 100%;
-            margin-top: var(--spacing-md);
         }
-
-        canvas {
-            max-width: 100%;
-            height: auto;
+        .chart-fallback {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: var(--text-secondary);
+            text-align: center;
+            flex-direction: column;
+            gap: var(--spacing-sm);
         }
+        canvas { max-width: 100%; }
 
-        /* Footer */
         footer {
             text-align: center;
             padding: var(--spacing-xl);
             border-top: 1px solid var(--border-color);
-            margin-top: var(--spacing-2xl);
+            margin-top: var(--spacing-xl);
             color: var(--text-tertiary);
             font-size: var(--font-sm);
         }
+        footer a { color: var(--accent-blue); text-decoration: none; }
+        footer a:hover { text-decoration: underline; }
 
-        footer a {
-            color: var(--accent-blue);
-            text-decoration: none;
-            transition: var(--transition);
-        }
-
-        footer a:hover {
-            color: var(--accent-blue-light);
-            text-decoration: underline;
-        }
-
-        /* Loading States */
-        .loading-placeholder {
-            text-align: center;
-            padding: var(--spacing-2xl);
-            color: var(--text-secondary);
-        }
-
-        /* Scrollbar Styling */
-        ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: var(--bg-secondary);
-            border-radius: 4px;
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: var(--accent-blue);
-            border-radius: 4px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: var(--accent-blue-light);
-        }
-
-        /* Print Styles */
-        @media print {
-            header, footer, .refresh-indicator, .status {
-                display: none;
-            }
-            
-            body {
-                background: white;
-                color: black;
-            }
-            
-            .card {
-                break-inside: avoid;
-                border: 1px solid #ccc;
-            }
-        }
+        .loading-placeholder { text-align: center; padding: var(--spacing-xl); color: var(--text-secondary); }
     </style>
 </head>
 <body>
-    <a href="#main-content" class="skip-link">Перейти к основному содержанию</a>
+    <a href="#main-content" class="skip-link">Перейти к содержанию</a>
     
     <header>
         <div class="logo">
-            <span class="logo-icon" aria-hidden="true">🛡️</span>
+            <span class="logo-icon">🛡️</span>
             <span>DNS Blocklist Control</span>
         </div>
         <div class="header-right">
-            <div class="status" role="status" aria-label="Статус системы">
-                <div class="status-dot" aria-hidden="true"></div>
+            <div class="status">
+                <div class="status-dot"></div>
                 <span>Активна</span>
             </div>
-            <div class="refresh-indicator" id="refreshIndicator">
-                <div class="refresh-spinner" style="display: none;" aria-hidden="true"></div>
-                <span id="lastUpdateLabel" aria-live="polite">Обновление...</span>
-            </div>
-            <div class="time" id="liveTime" aria-label="Текущее время">--:--:--</div>
+            <div class="refresh-spinner" id="refreshSpinner"></div>
+            <div class="time" id="liveTime">--:--:--</div>
         </div>
     </header>
 
     <main id="main-content">
         <!-- Stats Cards -->
         <div class="grid grid-4">
-            <div class="card">
-                <div class="card-icon" aria-hidden="true">🌐</div>
-                <div class="card-title">Заблокировано доменов</div>
-                <div class="card-value" id="totalDomains" aria-live="polite">—</div>
-                <div class="card-label">Актуальные записи</div>
-            </div>
-            <div class="card">
-                <div class="card-icon" aria-hidden="true">⚡</div>
-                <div class="card-title">Время обработки</div>
-                <div class="card-value" id="execTime" aria-live="polite">—</div>
-                <div class="card-label">Последний парсинг</div>
-            </div>
-            <div class="card">
-                <div class="card-icon" aria-hidden="true">💾</div>
-                <div class="card-title">Размер блоклиста</div>
-                <div class="card-value" id="fileSize" aria-live="polite">—</div>
-                <div class="card-label">Сжатые данные</div>
-            </div>
-            <div class="card">
-                <div class="card-icon" aria-hidden="true">🎯</div>
-                <div class="card-title">Эффективность</div>
-                <div class="card-value" id="efficiency" aria-live="polite">—</div>
-                <div class="card-label">Точность фильтрации</div>
-            </div>
+            <div class="card"><div class="card-icon">🌐</div><div class="card-title">Заблокировано доменов</div><div class="card-value" id="totalDomains">—</div><div class="card-label">Актуальные записи</div></div>
+            <div class="card"><div class="card-icon">⚡</div><div class="card-title">Время обработки</div><div class="card-value" id="execTime">—</div><div class="card-label">Последний парсинг</div></div>
+            <div class="card"><div class="card-icon">💾</div><div class="card-title">Размер блоклиста</div><div class="card-value" id="fileSize">—</div><div class="card-label">Сжатые данные</div></div>
+            <div class="card"><div class="card-icon">🎯</div><div class="card-title">Эффективность</div><div class="card-value" id="efficiency">—</div><div class="card-label">Точность фильтрации</div></div>
         </div>
 
         <!-- Charts Section -->
@@ -691,13 +360,15 @@
             <div class="card">
                 <div class="card-title">Распределение по категориям</div>
                 <div class="chart-wrapper">
-                    <canvas id="threatChart" role="img" aria-label="График распределения угроз по категориям"></canvas>
+                    <canvas id="threatChart" style="display: none;"></canvas>
+                    <div id="threatFallback" class="chart-fallback" style="display: flex;">📊 Загрузка графиков...</div>
                 </div>
             </div>
             <div class="card">
                 <div class="card-title">Производительность источников</div>
                 <div class="chart-wrapper">
-                    <canvas id="performanceChart" role="img" aria-label="График времени ответа источников данных"></canvas>
+                    <canvas id="performanceChart" style="display: none;"></canvas>
+                    <div id="perfFallback" class="chart-fallback" style="display: flex;">📊 Загрузка графиков...</div>
                 </div>
             </div>
         </div>
@@ -705,274 +376,325 @@
         <!-- Sources Table -->
         <h2 class="section-title">📡 Источники данных</h2>
         <div class="table-wrapper">
-            <table aria-label="Таблица источников данных блоклиста">
-                <thead>
-                    <tr>
-                        <th scope="col">Источник</th>
-                        <th scope="col">Категория</th>
-                        <th scope="col">Домены</th>
-                        <th scope="col">Латентность</th>
-                        <th scope="col">Статус</th>
-                    </tr>
-                </thead>
-                <tbody id="sourcesTableBody">
-                    <tr>
-                        <td colspan="5" class="loading-placeholder">Загрузка данных...</td>
-                    </tr>
-                </tbody>
+            <table>
+                <thead><tr><th>Источник</th><th>Категория</th><th>Домены</th><th>Латентность</th><th>Статус</th></tr></thead>
+                <tbody id="sourcesTableBody"><tr><td colspan="5" class="loading-placeholder">Загрузка данных...</td></tr></tbody>
             </table>
         </div>
 
         <!-- Activity Log -->
         <h2 class="section-title">📋 Журнал событий</h2>
-        <div class="activity-list" id="activityContainer" role="log" aria-live="polite">
-            <div class="activity-item">
-                <div class="activity-icon" aria-hidden="true">⏳</div>
-                <div class="activity-content">
-                    <div class="activity-title">Инициализация панели</div>
-                    <div class="activity-desc">Ожидание данных...</div>
-                </div>
-            </div>
+        <div class="activity-list" id="activityContainer">
+            <div class="activity-item"><div class="activity-icon">⏳</div><div class="activity-content"><div class="activity-title">Инициализация</div><div class="activity-desc">Загрузка панели управления...</div></div></div>
         </div>
     </main>
 
     <footer>
         <p>🛡️ DNS Blocklist Dashboard • Реальное время • Автоматическое обновление</p>
-        <p style="margin-top: var(--spacing-sm);">
-            <a href="https://github.com/somafix/dns-blocklist" target="_blank" rel="noopener noreferrer">GitHub Repository</a>
-        </p>
+        <p style="margin-top: 8px;"><a href="https://github.com/somafix/dns-blocklist" target="_blank" rel="noopener noreferrer">GitHub Repository</a></p>
     </footer>
 
     <script>
-        // Secure XSS Prevention Helper
-        const escapeHtml = (text) => {
-            if (!text) return '';
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
+        // ==================== SAFE UTILITIES ====================
+        const escapeHtml = (str) => {
+            if (!str) return '';
+            return str.replace(/[&<>]/g, function(m) {
+                if (m === '&') return '&amp;';
+                if (m === '<') return '&lt;';
+                if (m === '>') return '&gt;';
+                return m;
+            });
         };
 
-        // Sanitize HTML with DOMPurify if available
-        const sanitizeHtml = (dirty) => {
-            if (typeof DOMPurify !== 'undefined') {
-                return DOMPurify.sanitize(dirty, { ALLOWED_TAGS: ['strong', 'span', 'div', 'p', 'br'], ALLOWED_ATTR: ['class'] });
-            }
-            return escapeHtml(dirty);
-        };
-
-        // --------------------- SECURE CONFIGURATION ---------------------
+        // ==================== CONFIGURATION ====================
         const CONFIG = {
             githubUser: 'somafix',
             githubRepo: 'dns-blocklist',
             updateIntervalMs: 15000,
             maxRetries: 3,
-            retryDelayMs: 1000,
-            maxActivityItems: 20,
             urls: [
-                (user, repo) => `https://api.github.com/repos/${user}/${repo}/contents/dynamic-blocklist.txt`,
-                (user, repo) => `https://cdn.jsdelivr.net/gh/${user}/${repo}/dynamic-blocklist.txt`,
-                (user, repo) => `https://corsproxy.io/?https://raw.githubusercontent.com/${user}/${repo}/main/dynamic-blocklist.txt`
+                (u, r) => `https://api.github.com/repos/${u}/${r}/contents/dynamic-blocklist.txt`,
+                (u, r) => `https://cdn.jsdelivr.net/gh/${u}/${r}/dynamic-blocklist.txt`,
+                (u, r) => `https://corsproxy.io/?https://raw.githubusercontent.com/${u}/${r}/main/dynamic-blocklist.txt`
             ]
         };
 
-        // --------------------- STATE MANAGEMENT ---------------------
-        class AppState {
-            constructor() {
-                this.totalDomains = 0;
-                this.execTimeSec = 0;
-                this.fileSizeMB = 0;
-                this.efficiency = 94;
-                this.lastUpdate = null;
-                this.threats = { malware: 0, phishing: 0, tracking: 0 };
-                this.sources = [
-                    { name: 'URLhaus', domains: 0, latency: 0.15, category: 'malware' },
-                    { name: 'OpenPhish', domains: 0, latency: 1.23, category: 'phishing' },
-                    { name: 'ThreatFox', domains: 0, latency: 0.89, category: 'malware' },
-                    { name: 'CERT.PL', domains: 0, latency: 0.45, category: 'tracking' },
-                    { name: 'HaGeZi Pro++', domains: 0, latency: 2.34, category: 'tracking' }
-                ];
+        // ==================== APP STATE ====================
+        let appState = {
+            totalDomains: 0,
+            execTimeSec: 0,
+            fileSizeMB: 0,
+            efficiency: 94,
+            lastUpdate: null,
+            threats: { malware: 0, phishing: 0, tracking: 0 },
+            sources: [
+                { name: 'URLhaus', domains: 0, latency: 0.15, category: 'malware' },
+                { name: 'OpenPhish', domains: 0, latency: 1.23, category: 'phishing' },
+                { name: 'ThreatFox', domains: 0, latency: 0.89, category: 'malware' },
+                { name: 'CERT.PL', domains: 0, latency: 0.45, category: 'tracking' },
+                { name: 'HaGeZi Pro++', domains: 0, latency: 2.34, category: 'tracking' }
+            ]
+        };
+
+        // ==================== DOM ELEMENTS ====================
+        const elements = {
+            totalDomains: document.getElementById('totalDomains'),
+            execTime: document.getElementById('execTime'),
+            fileSize: document.getElementById('fileSize'),
+            efficiency: document.getElementById('efficiency'),
+            sourcesBody: document.getElementById('sourcesTableBody'),
+            activityContainer: document.getElementById('activityContainer'),
+            refreshSpinner: document.getElementById('refreshSpinner'),
+            liveTime: document.getElementById('liveTime'),
+            threatCanvas: document.getElementById('threatChart'),
+            perfCanvas: document.getElementById('performanceChart'),
+            threatFallback: document.getElementById('threatFallback'),
+            perfFallback: document.getElementById('perfFallback')
+        };
+
+        // ==================== CHART INSTANCES ====================
+        let threatChart = null;
+        let perfChart = null;
+        let chartLibraryLoaded = false;
+
+        // ==================== ACTIVITY LOG ====================
+        function addActivity(icon, title, description) {
+            const container = elements.activityContainer;
+            if (!container) return;
+            
+            const timeStr = new Date().toLocaleTimeString('ru-RU');
+            const item = document.createElement('div');
+            item.className = 'activity-item';
+            item.innerHTML = `
+                <div class="activity-icon">${escapeHtml(icon)}</div>
+                <div class="activity-content">
+                    <div class="activity-title">${escapeHtml(title)}</div>
+                    <div class="activity-desc">${escapeHtml(description)}</div>
+                    <div class="activity-time">${escapeHtml(timeStr)}</div>
+                </div>
+            `;
+            container.insertBefore(item, container.firstChild);
+            
+            while (container.children.length > 20) {
+                container.removeChild(container.lastChild);
             }
         }
 
-        // --------------------- SECURE UI MANAGER ---------------------
-        class UIManager {
-            constructor() {
-                this.elements = {
-                    totalDomains: document.getElementById('totalDomains'),
-                    execTime: document.getElementById('execTime'),
-                    fileSize: document.getElementById('fileSize'),
-                    efficiency: document.getElementById('efficiency'),
-                    sourcesBody: document.getElementById('sourcesTableBody'),
-                    activityContainer: document.getElementById('activityContainer'),
-                    lastUpdateLabel: document.getElementById('lastUpdateLabel'),
-                    refreshSpinner: document.querySelector('#refreshIndicator .refresh-spinner')
-                };
-                this.activityQueue = [];
-            }
-
-            animateValue(element, newValue, formatter = (v) => v.toString()) {
-                if (!element) return;
-                element.classList.add('updating');
-                element.textContent = formatter(newValue);
-                setTimeout(() => element.classList.remove('updating'), 400);
-            }
-
-            updateStats(state) {
-                this.animateValue(this.elements.totalDomains, state.totalDomains, v => v.toLocaleString());
-                this.animateValue(this.elements.execTime, state.execTimeSec, v => `${v.toFixed(2)}s`);
-                this.animateValue(this.elements.fileSize, state.fileSizeMB, v => `${v.toFixed(2)} MB`);
-                this.animateValue(this.elements.efficiency, state.efficiency, v => `${v}%`);
-                
-                if (state.lastUpdate) {
-                    const timeStr = state.lastUpdate.toLocaleTimeString('ru-RU');
-                    if (this.elements.lastUpdateLabel) {
-                        this.elements.lastUpdateLabel.textContent = `Обновлено ${timeStr}`;
-                    }
-                }
-            }
-
-            updateSourcesTable(sources) {
-                if (!this.elements.sourcesBody) return;
-                
-                const categoryMap = { malware: 'Вредоносное ПО', phishing: 'Фишинг', tracking: 'Отслеживание' };
-                const badgeMap = { malware: 'badge-danger', phishing: 'badge-warning', tracking: 'badge-blue' };
-                
-                const rows = sources.map(src => `
-                    <tr>
-                        <td><strong>${escapeHtml(src.name)}</strong></td>
-                        <td><span class="badge ${badgeMap[src.category]}">${escapeHtml(categoryMap[src.category] || 'Разное')}</span></td>
-                        <td>${src.domains.toLocaleString()}</td>
-                        <td>${src.latency.toFixed(2)}s</td>
-                        <td><span class="badge badge-success">Активен</span></td>
-                    </tr>
-                `).join('');
-                
-                this.elements.sourcesBody.innerHTML = rows;
-            }
-
-            addActivity(icon, title, description) {
-                const container = this.elements.activityContainer;
-                if (!container) return;
-                
-                const timeStr = new Date().toLocaleTimeString('ru-RU');
-                const sanitizedTitle = escapeHtml(title);
-                const sanitizedDesc = escapeHtml(description);
-                
-                const activityItem = document.createElement('div');
-                activityItem.className = 'activity-item';
-                activityItem.style.opacity = '0';
-                activityItem.style.transform = 'translateX(-10px)';
-                activityItem.innerHTML = `
-                    <div class="activity-icon" aria-hidden="true">${escapeHtml(icon)}</div>
-                    <div class="activity-content">
-                        <div class="activity-title">${sanitizedTitle}</div>
-                        <div class="activity-desc">${sanitizedDesc}</div>
-                        <div class="activity-time">${escapeHtml(timeStr)}</div>
-                    </div>
-                `;
-                
-                container.insertBefore(activityItem, container.firstChild);
-                
-                requestAnimationFrame(() => {
-                    activityItem.style.transition = 'all 0.3s ease';
-                    activityItem.style.opacity = '1';
-                    activityItem.style.transform = 'translateX(0)';
-                });
-                
-                while (container.children.length > CONFIG.maxActivityItems) {
-                    container.removeChild(container.lastChild);
-                }
-            }
-
-            setLoading(isLoading) {
-                if (this.elements.refreshSpinner) {
-                    this.elements.refreshSpinner.style.display = isLoading ? 'block' : 'none';
-                }
-            }
-        }
-
-        // --------------------- SECURE DATA FETCHER ---------------------
-        class DataFetcher {
-            constructor(config) {
-                this.config = config;
-                this.abortController = null;
-            }
-
-            async fetchWithRetry(urls, retries = this.config.maxRetries) {
-                if (this.abortController) {
-                    this.abortController.abort();
-                }
-                
-                for (let attempt = 1; attempt <= retries; attempt++) {
-                    for (const urlBuilder of urls) {
-                        this.abortController = new AbortController();
-                        try {
-                            const url = urlBuilder(this.config.githubUser, this.config.githubRepo);
-                            const response = await fetch(url, { 
-                                headers: { 'Accept': 'text/plain,application/json' },
-                                signal: this.abortController.signal
-                            });
-                            
-                            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                            
-                            let text = await response.text();
-                            
-                            // Handle GitHub API response (Base64 encoded)
-                            if (text.includes('"content"')) {
-                                try {
-                                    const json = JSON.parse(text);
-                                    if (json.content) {
-                                        text = atob(json.content.replace(/\s/g, ''));
-                                    }
-                                } catch (e) {
-                                    // Not JSON, continue
-                                }
-                            }
-                            
-                            return text;
-                        } catch (err) {
-                            if (err.name === 'AbortError') {
-                                console.warn('Fetch aborted');
-                                throw err;
-                            }
-                            console.warn(`Attempt ${attempt} failed:`, err.message);
-                        }
-                    }
-                    if (attempt < retries) {
-                        await new Promise(r => setTimeout(r, this.config.retryDelayMs * attempt));
-                    }
-                }
-                throw new Error('Не удалось загрузить blocklist после всех попыток');
-            }
-
-            async loadBlocklist() {
-                return await this.fetchWithRetry(this.config.urls);
+        // ==================== CHART INITIALIZATION WITH FALLBACK ====================
+        function initCharts() {
+            // Check if Chart is available
+            if (typeof Chart === 'undefined') {
+                console.warn('Chart.js not loaded, using fallback display');
+                if (elements.threatFallback) elements.threatFallback.style.display = 'flex';
+                if (elements.perfFallback) elements.perfFallback.style.display = 'flex';
+                if (elements.threatCanvas) elements.threatCanvas.style.display = 'none';
+                if (elements.perfCanvas) elements.perfCanvas.style.display = 'none';
+                return false;
             }
             
-            abort() {
-                if (this.abortController) {
-                    this.abortController.abort();
-                    this.abortController = null;
+            try {
+                chartLibraryLoaded = true;
+                
+                // Hide fallbacks
+                if (elements.threatFallback) elements.threatFallback.style.display = 'none';
+                if (elements.perfFallback) elements.perfFallback.style.display = 'none';
+                if (elements.threatCanvas) elements.threatCanvas.style.display = 'block';
+                if (elements.perfCanvas) elements.perfCanvas.style.display = 'block';
+                
+                // Destroy existing charts if any
+                if (threatChart) {
+                    threatChart.destroy();
+                    threatChart = null;
                 }
+                if (perfChart) {
+                    perfChart.destroy();
+                    perfChart = null;
+                }
+                
+                // Create threat chart
+                const ctx1 = elements.threatCanvas?.getContext('2d');
+                if (ctx1) {
+                    threatChart = new Chart(ctx1, {
+                        type: 'doughnut',
+                        data: {
+                            labels: ['Вредоносное ПО', 'Фишинг', 'Отслеживание'],
+                            datasets: [{
+                                data: [0, 0, 0],
+                                backgroundColor: ['#ef4444', '#f59e0b', '#3b82f6'],
+                                borderWidth: 0,
+                                hoverOffset: 8
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { labels: { color: '#e8edf5', font: { size: 11 } }, position: 'bottom' }
+                            }
+                        }
+                    });
+                }
+                
+                // Create performance chart
+                const ctx2 = elements.perfCanvas?.getContext('2d');
+                if (ctx2) {
+                    perfChart = new Chart(ctx2, {
+                        type: 'bar',
+                        data: {
+                            labels: appState.sources.map(s => s.name),
+                            datasets: [{
+                                label: 'Время ответа (сек)',
+                                data: appState.sources.map(s => s.latency),
+                                backgroundColor: '#3b82f6',
+                                borderRadius: 6
+                            }]
+                        },
+                        options: {
+                            indexAxis: 'y',
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                x: { max: 3, ticks: { color: '#9ca3af' }, grid: { color: 'rgba(59,130,246,0.1)' } },
+                                y: { ticks: { color: '#e8edf5' }, grid: { display: false } }
+                            },
+                            plugins: { legend: { labels: { color: '#e8edf5' }, position: 'bottom' } }
+                        }
+                    });
+                }
+                
+                addActivity('📊', 'Графики загружены', 'Chart.js успешно инициализирован');
+                return true;
+            } catch (e) {
+                console.error('Chart init error:', e);
+                addActivity('⚠️', 'Ошибка графиков', e.message);
+                return false;
+            }
+        }
+        
+        function updateCharts() {
+            if (!chartLibraryLoaded || !threatChart || !perfChart) {
+                // Try to reinit
+                if (typeof Chart !== 'undefined') {
+                    initCharts();
+                }
+                return;
+            }
+            
+            try {
+                if (threatChart) {
+                    threatChart.data.datasets[0].data = [
+                        appState.threats.malware || 0,
+                        appState.threats.phishing || 0,
+                        appState.threats.tracking || 0
+                    ];
+                    threatChart.update('none');
+                }
+                
+                if (perfChart) {
+                    perfChart.data.labels = appState.sources.map(s => s.name);
+                    perfChart.data.datasets[0].data = appState.sources.map(s => s.latency);
+                    perfChart.update('none');
+                }
+            } catch (e) {
+                console.error('Chart update error:', e);
             }
         }
 
-        // --------------------- SECURE PARSER ---------------------
-        class BlocklistAnalyzer {
-            static parseAndAnalyze(rawText, startTime) {
-                if (!rawText || typeof rawText !== 'string') {
-                    throw new Error('Invalid blocklist data');
+        // ==================== UPDATE UI ====================
+        function updateStatsUI() {
+            if (elements.totalDomains) {
+                elements.totalDomains.classList.add('updating');
+                elements.totalDomains.textContent = appState.totalDomains.toLocaleString();
+                setTimeout(() => elements.totalDomains.classList.remove('updating'), 400);
+            }
+            if (elements.execTime) {
+                elements.execTime.classList.add('updating');
+                elements.execTime.textContent = `${appState.execTimeSec.toFixed(2)}s`;
+                setTimeout(() => elements.execTime.classList.remove('updating'), 400);
+            }
+            if (elements.fileSize) {
+                elements.fileSize.classList.add('updating');
+                elements.fileSize.textContent = `${appState.fileSizeMB.toFixed(2)} MB`;
+                setTimeout(() => elements.fileSize.classList.remove('updating'), 400);
+            }
+            if (elements.efficiency) {
+                elements.efficiency.classList.add('updating');
+                elements.efficiency.textContent = `${appState.efficiency}%`;
+                setTimeout(() => elements.efficiency.classList.remove('updating'), 400);
+            }
+        }
+        
+        function updateSourcesTable() {
+            if (!elements.sourcesBody) return;
+            
+            const categoryMap = { malware: 'Вредоносное ПО', phishing: 'Фишинг', tracking: 'Отслеживание' };
+            const badgeMap = { malware: 'badge-danger', phishing: 'badge-warning', tracking: 'badge-blue' };
+            
+            const rows = appState.sources.map(src => `
+                <tr>
+                    <td><strong>${escapeHtml(src.name)}</strong></td>
+                    <td><span class="badge ${badgeMap[src.category]}">${categoryMap[src.category] || 'Разное'}</span></td>
+                    <td>${src.domains.toLocaleString()}</td>
+                    <td>${src.latency.toFixed(2)}s</td>
+                    <td><span class="badge badge-success">Активен</span></td>
+                </tr>
+            `).join('');
+            
+            elements.sourcesBody.innerHTML = rows;
+        }
+
+        // ==================== DATA FETCHING ====================
+        async function fetchBlocklistWithRetry() {
+            for (let attempt = 1; attempt <= CONFIG.maxRetries; attempt++) {
+                for (const urlBuilder of CONFIG.urls) {
+                    try {
+                        const url = urlBuilder(CONFIG.githubUser, CONFIG.githubRepo);
+                        const response = await fetch(url, {
+                            headers: { 'Accept': 'text/plain,application/json' }
+                        });
+                        
+                        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                        
+                        let text = await response.text();
+                        
+                        // Handle GitHub API response
+                        if (text.includes('"content"')) {
+                            try {
+                                const json = JSON.parse(text);
+                                if (json.content) {
+                                    text = atob(json.content.replace(/\s/g, ''));
+                                }
+                            } catch (e) {}
+                        }
+                        
+                        return text;
+                    } catch (err) {
+                        console.warn(`Attempt ${attempt} failed:`, err.message);
+                    }
                 }
+                if (attempt < CONFIG.maxRetries) {
+                    await new Promise(r => setTimeout(r, 1000 * attempt));
+                }
+            }
+            throw new Error('Не удалось загрузить blocklist');
+        }
+        
+        async function refreshData() {
+            if (elements.refreshSpinner) elements.refreshSpinner.style.display = 'block';
+            const startTime = performance.now();
+            
+            try {
+                const rawData = await fetchBlocklistWithRetry();
                 
-                const lines = rawText.split(/\r?\n/);
-                const fileSizeMB = rawText.length / (1024 * 1024);
+                // Parse blocklist
+                const lines = rawData.split(/\r?\n/);
+                const fileSizeMB = rawData.length / (1024 * 1024);
                 const domainSet = new Set();
                 const domainRegex = /^(?:127\.0\.0\.1|0\.0\.0\.0)\s+([a-zA-Z0-9.\-]+)$/i;
                 
                 for (const line of lines) {
                     const trimmed = line.trim();
                     if (!trimmed || trimmed.startsWith('#')) continue;
-                    
                     const match = domainRegex.exec(trimmed);
                     if (match && match[1]) {
                         domainSet.add(match[1].toLowerCase());
@@ -981,266 +703,109 @@
                     }
                 }
                 
-                const malwareKeywords = ['malware', 'exploit', 'botnet', 'trojan', 'ransom', 'virus', 'worm'];
-                const phishingKeywords = ['phish', 'login', 'secure', 'verify', 'bank', 'signin', 'account'];
-                const trackingKeywords = ['track', 'analytics', 'pixel', 'metrics', 'adserver', 'doubleclick', 'facebook', 'google-analytics'];
+                // Categorize
+                const malwareKw = ['malware', 'exploit', 'botnet', 'trojan', 'ransom', 'virus'];
+                const phishingKw = ['phish', 'login', 'secure', 'verify', 'bank', 'signin'];
+                const trackingKw = ['track', 'analytics', 'pixel', 'metrics', 'adserver', 'doubleclick'];
                 
                 let malware = 0, phishing = 0, tracking = 0;
-                
                 for (const domain of domainSet) {
                     const lower = domain;
-                    if (malwareKeywords.some(k => lower.includes(k))) malware++;
-                    else if (phishingKeywords.some(k => lower.includes(k))) phishing++;
-                    else if (trackingKeywords.some(k => lower.includes(k))) tracking++;
+                    if (malwareKw.some(k => lower.includes(k))) malware++;
+                    else if (phishingKw.some(k => lower.includes(k))) phishing++;
+                    else if (trackingKw.some(k => lower.includes(k))) tracking++;
                 }
+                const other = domainSet.size - malware - phishing - tracking;
                 
-                const other = domainSet.size - (malware + phishing + tracking);
-                const execTime = (performance.now() - startTime) / 1000;
+                // Update state
+                appState.totalDomains = domainSet.size;
+                appState.fileSizeMB = fileSizeMB;
+                appState.execTimeSec = (performance.now() - startTime) / 1000;
+                appState.lastUpdate = new Date();
+                appState.threats = { malware, phishing, tracking: tracking + other };
                 
-                return {
-                    totalDomains: domainSet.size,
-                    fileSizeMB: Math.min(fileSizeMB, 100),
-                    execTimeSec: Math.min(execTime, 10),
-                    threats: { 
-                        malware: Math.min(malware, domainSet.size), 
-                        phishing: Math.min(phishing, domainSet.size), 
-                        tracking: Math.min(tracking + other, domainSet.size) 
-                    }
-                };
-            }
-            
-            static distributeToSources(totalDomains, sources) {
-                if (totalDomains === 0) return sources.map(s => ({ ...s, domains: 0 }));
-                
-                const perSource = Math.floor(totalDomains / sources.length);
-                const remainder = totalDomains - (perSource * (sources.length - 1));
-                return sources.map((src, idx) => ({
+                // Distribute domains to sources
+                const perSource = Math.floor(appState.totalDomains / appState.sources.length);
+                const remainder = appState.totalDomains - (perSource * (appState.sources.length - 1));
+                appState.sources = appState.sources.map((src, idx) => ({
                     ...src,
-                    domains: idx === sources.length - 1 ? Math.max(0, remainder) : Math.max(0, perSource)
+                    domains: idx === appState.sources.length - 1 ? Math.max(0, remainder) : Math.max(0, perSource)
                 }));
-            }
-        }
-
-        // --------------------- CHART MANAGER WITH MEMORY CLEANUP ---------------------
-        class ChartManager {
-            constructor() {
-                this.threatChart = null;
-                this.performanceChart = null;
-            }
-            
-            init() {
-                const ctxThreat = document.getElementById('threatChart')?.getContext('2d');
-                const ctxPerf = document.getElementById('performanceChart')?.getContext('2d');
                 
-                if (ctxThreat) {
-                    this.threatChart = new Chart(ctxThreat, {
-                        type: 'doughnut',
-                        data: { 
-                            labels: ['Malware', 'Phishing', 'Tracking'], 
-                            datasets: [{ 
-                                data: [0, 0, 0], 
-                                backgroundColor: ['#ef4444', '#f59e0b', '#3b82f6'], 
-                                borderWidth: 0, 
-                                hoverOffset: 8 
-                            }] 
-                        },
-                        options: { 
-                            responsive: true, 
-                            maintainAspectRatio: false, 
-                            plugins: { 
-                                legend: { 
-                                    labels: { color: '#e8edf5', font: { size: 12 } },
-                                    position: 'bottom'
-                                } 
-                            } 
-                        }
-                    });
-                }
+                // Update UI
+                updateStatsUI();
+                updateSourcesTable();
+                updateCharts();
                 
-                if (ctxPerf) {
-                    this.performanceChart = new Chart(ctxPerf, {
-                        type: 'bar',
-                        data: { 
-                            labels: [], 
-                            datasets: [{ 
-                                label: 'Время ответа (сек)', 
-                                data: [], 
-                                backgroundColor: '#3b82f6', 
-                                borderRadius: 8,
-                                barPercentage: 0.7
-                            }] 
-                        },
-                        options: { 
-                            indexAxis: 'y', 
-                            responsive: true, 
-                            maintainAspectRatio: false, 
-                            scales: { 
-                                x: { 
-                                    max: 3, 
-                                    ticks: { color: '#9ca3af' },
-                                    grid: { color: 'rgba(59, 130, 246, 0.1)' }
-                                }, 
-                                y: { 
-                                    ticks: { color: '#e8edf5' },
-                                    grid: { display: false }
-                                } 
-                            }, 
-                            plugins: { 
-                                legend: { 
-                                    labels: { color: '#e8edf5' },
-                                    position: 'bottom'
-                                } 
-                            } 
-                        }
-                    });
-                }
-            }
-            
-            updateThreats(threats) {
-                if (this.threatChart && this.threatChart.data) {
-                    this.threatChart.data.datasets[0].data = [
-                        threats.malware || 0, 
-                        threats.phishing || 0, 
-                        threats.tracking || 0
-                    ];
-                    this.threatChart.update('none');
-                }
-            }
-            
-            updatePerformance(sources) {
-                if (this.performanceChart && this.performanceChart.data) {
-                    this.performanceChart.data.labels = sources.map(s => s.name);
-                    this.performanceChart.data.datasets[0].data = sources.map(s => s.latency);
-                    this.performanceChart.update('none');
-                }
-            }
-            
-            destroy() {
-                if (this.threatChart) {
-                    this.threatChart.destroy();
-                    this.threatChart = null;
-                }
-                if (this.performanceChart) {
-                    this.performanceChart.destroy();
-                    this.performanceChart = null;
-                }
-            }
-        }
-
-        // --------------------- MAIN CONTROLLER ---------------------
-        class DashboardController {
-            constructor() {
-                this.state = new AppState();
-                this.ui = new UIManager();
-                this.fetcher = new DataFetcher(CONFIG);
-                this.charts = new ChartManager();
-                this.updateTimer = null;
-                this.clockTimer = null;
-                this.isUpdating = false;
-                this.isDestroyed = false;
-            }
-            
-            async start() {
-                try {
-                    this.charts.init();
-                    this.startRealTimeClock();
-                    await this.refreshData();
-                    this.updateTimer = setInterval(() => this.refreshData(), CONFIG.updateIntervalMs);
-                } catch (error) {
-                    console.error('Failed to start dashboard:', error);
-                    this.ui.addActivity('❌', 'Ошибка инициализации', error.message);
-                }
-            }
-            
-            async refreshData() {
-                if (this.isUpdating || this.isDestroyed) return;
-                this.isUpdating = true;
-                this.ui.setLoading(true);
-                const startPerf = performance.now();
+                addActivity('✅', 'Синхронизация', `${appState.totalDomains.toLocaleString()} доменов за ${appState.execTimeSec.toFixed(2)}с`);
                 
-                try {
-                    const rawData = await this.fetcher.loadBlocklist();
-                    const analysis = BlocklistAnalyzer.parseAndAnalyze(rawData, startPerf);
-                    
-                    this.state.totalDomains = analysis.totalDomains;
-                    this.state.execTimeSec = analysis.execTimeSec;
-                    this.state.fileSizeMB = analysis.fileSizeMB;
-                    this.state.threats = analysis.threats;
-                    this.state.lastUpdate = new Date();
-                    
-                    const updatedSources = BlocklistAnalyzer.distributeToSources(this.state.totalDomains, this.state.sources);
-                    this.state.sources = updatedSources;
-                    
-                    this.ui.updateStats(this.state);
-                    this.ui.updateSourcesTable(this.state.sources);
-                    this.charts.updateThreats(this.state.threats);
-                    this.charts.updatePerformance(this.state.sources);
-                    
-                    this.ui.addActivity('✅', 'Синхронизация завершена', 
-                        `${this.state.totalDomains.toLocaleString()} доменов, время ${this.state.execTimeSec.toFixed(2)}с`);
-                } catch (error) {
-                    console.error('Refresh error:', error);
-                    this.ui.addActivity('❌', 'Ошибка обновления', error.message);
-                } finally {
-                    this.ui.setLoading(false);
-                    this.isUpdating = false;
-                }
-            }
-            
-            startRealTimeClock() {
-                const updateClock = () => {
-                    if (this.isDestroyed) return;
-                    const now = new Date();
-                    const timeStr = now.toLocaleTimeString('ru-RU', { hour12: false });
-                    const timeEl = document.getElementById('liveTime');
-                    if (timeEl) timeEl.textContent = timeStr;
-                };
-                updateClock();
-                this.clockTimer = setInterval(updateClock, 1000);
-            }
-            
-            destroy() {
-                this.isDestroyed = true;
-                if (this.updateTimer) {
-                    clearInterval(this.updateTimer);
-                    this.updateTimer = null;
-                }
-                if (this.clockTimer) {
-                    clearInterval(this.clockTimer);
-                    this.clockTimer = null;
-                }
-                if (this.fetcher) {
-                    this.fetcher.abort();
-                }
-                if (this.charts) {
-                    this.charts.destroy();
-                }
-            }
-        }
-        
-        // Secure initialization
-        let app = null;
-        
-        window.addEventListener('DOMContentLoaded', () => {
-            try {
-                app = new DashboardController();
-                app.start().catch(err => {
-                    console.error('Critical startup error:', err);
-                    const container = document.getElementById('activityContainer');
-                    if (container) {
-                        container.innerHTML = '<div class="activity-item"><div class="activity-icon">⚠️</div><div class="activity-content"><div class="activity-title">Критическая ошибка</div><div class="activity-desc">Не удалось инициализировать панель. Проверьте соединение с интернетом.</div></div></div>';
-                    }
-                });
             } catch (error) {
-                console.error('Fatal error:', error);
+                console.error('Refresh error:', error);
+                addActivity('❌', 'Ошибка обновления', error.message);
+            } finally {
+                if (elements.refreshSpinner) elements.refreshSpinner.style.display = 'none';
             }
-        });
+        }
         
-        // Cleanup on page unload
-        window.addEventListener('beforeunload', () => {
-            if (app) {
-                app.destroy();
+        // ==================== CLOCK ====================
+        function startClock() {
+            const update = () => {
+                if (elements.liveTime) {
+                    elements.liveTime.textContent = new Date().toLocaleTimeString('ru-RU');
+                }
+            };
+            update();
+            setInterval(update, 1000);
+        }
+        
+        // ==================== LOAD CHART LIBRARY DYNAMICALLY ====================
+        function loadChartLibrary() {
+            return new Promise((resolve, reject) => {
+                if (typeof Chart !== 'undefined') {
+                    resolve();
+                    return;
+                }
+                
+                const script = document.createElement('script');
+                script.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js';
+                script.onload = () => {
+                    addActivity('📊', 'Chart.js загружен', 'Библиотека графиков успешно загружена');
+                    resolve();
+                };
+                script.onerror = () => {
+                    addActivity('⚠️', 'Chart.js не загружен', 'Графики будут отображаться в текстовом режиме');
+                    reject(new Error('Chart.js failed to load'));
+                };
+                document.head.appendChild(script);
+            });
+        }
+        
+        // ==================== INITIALIZATION ====================
+        async function init() {
+            startClock();
+            addActivity('🚀', 'Панель запущена', 'Инициализация компонентов');
+            
+            // Try to load Chart.js
+            try {
+                await loadChartLibrary();
+                initCharts();
+            } catch (e) {
+                console.warn('Charts not available, using fallback');
+                if (elements.threatFallback) elements.threatFallback.innerHTML = '📊 Графики временно недоступны<br><span style="font-size:12px">Проверьте подключение к интернету</span>';
+                if (elements.perfFallback) elements.perfFallback.innerHTML = '📊 Графики временно недоступны<br><span style="font-size:12px">Проверьте подключение к интернету</span>';
             }
+            
+            // Initial data load
+            await refreshData();
+            
+            // Auto-refresh
+            setInterval(() => refreshData(), CONFIG.updateIntervalMs);
+        }
+        
+        // Start the app
+        init().catch(err => {
+            console.error('Init error:', err);
+            addActivity('❌', 'Критическая ошибка', err.message);
         });
     </script>
 </body>
