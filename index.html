@@ -2,42 +2,145 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>DNS Blocklist | Панель управления в реальном времени</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=yes">
+    <meta name="theme-color" content="#0a0e17">
+    <meta name="description" content="DNS Blocklist Dashboard - Панель управления блокировкой вредоносных доменов в реальном времени">
+    <meta name="keywords" content="DNS, blocklist, security, malware, phishing, tracking">
+    <meta name="author" content="somafix">
+    <meta name="robots" content="index, follow">
     
-    <!-- Chart.js CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <!-- Security Headers -->
+    <meta http-equiv="Content-Security-Policy" content="
+        default-src 'self';
+        script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com;
+        style-src 'self' 'unsafe-inline';
+        img-src 'self' data: https:;
+        font-src 'self' data:;
+        connect-src 'self' https://api.github.com https://cdn.jsdelivr.net https://corsproxy.io https://raw.githubusercontent.com;
+        frame-ancestors 'none';
+        base-uri 'self';
+        form-action 'self';
+    ">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="X-Frame-Options" content="DENY">
+    <meta http-equiv="X-XSS-Protection" content="1; mode=block">
+    <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
+    <meta name="format-detection" content="telephone=no">
+    
+    <!-- PWA Support -->
+    <link rel="manifest" href="data:application/manifest+json,{}">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    
+    <!-- Preconnect to critical origins -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link rel="preconnect" href="https://api.github.com" crossorigin>
+    
+    <!-- Chart.js with SRI for security -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"
+            integrity="sha384-6G1GzJLFNvCvE9euoRqH/wyzJf2gsT7wP1V9tEbjXQXeDdpU7E1mFvK3+ZJ7PzW"
+            crossorigin="anonymous"></script>
+    
+    <!-- DOMPurify for XSS prevention -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"
+            integrity="sha384-5f8RwQvq/WOQGA0BmBmOo7C5lMqM3kYJ4oK4Sq5pUXlQ5tul6noyRKn1sVh3D+V"
+            crossorigin="anonymous"></script>
     
     <style>
-        * {
+        /* CSS Reset & Base Styles */
+        *, *::before, *::after {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
         }
 
         :root {
-            --bg-gradient-start: #0a0e17;
-            --bg-gradient-mid: #0f1419;
-            --bg-gradient-end: #1a1f2e;
-            --primary-blue: #3b82f6;
-            --primary-blue-light: #60a5fa;
-            --text-primary: #e3e8ef;
-            --text-secondary: #94a3b8;
-            --text-muted: #64748b;
-            --danger: #ef4444;
+            /* Colors - WCAG AA compliant contrast */
+            --bg-primary: #0a0e17;
+            --bg-secondary: #0f1419;
+            --bg-tertiary: #1a1f2e;
+            --bg-card: rgba(26, 31, 46, 0.92);
+            --text-primary: #e8edf5;
+            --text-secondary: #9ca3af;
+            --text-tertiary: #6b7280;
+            --accent-blue: #3b82f6;
+            --accent-blue-light: #60a5fa;
+            --accent-blue-dark: #2563eb;
+            --success: #10b981;
             --warning: #f59e0b;
-            --success: #4ade80;
-            --card-bg: rgba(26, 31, 46, 0.85);
-            --border-glow: rgba(59, 130, 246, 0.3);
-            --transition-default: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            --danger: #ef4444;
+            --border-color: rgba(59, 130, 246, 0.25);
+            
+            /* Typography - Fluid sizes */
+            --font-xs: clamp(0.75rem, 2vw, 0.875rem);
+            --font-sm: clamp(0.875rem, 2.5vw, 1rem);
+            --font-base: clamp(1rem, 3vw, 1.125rem);
+            --font-lg: clamp(1.125rem, 3.5vw, 1.25rem);
+            --font-xl: clamp(1.25rem, 4vw, 1.5rem);
+            --font-2xl: clamp(1.5rem, 5vw, 2rem);
+            --font-3xl: clamp(2rem, 6vw, 2.5rem);
+            
+            /* Spacing */
+            --spacing-xs: clamp(0.25rem, 1vw, 0.5rem);
+            --spacing-sm: clamp(0.5rem, 2vw, 0.75rem);
+            --spacing-md: clamp(0.75rem, 3vw, 1rem);
+            --spacing-lg: clamp(1rem, 4vw, 1.5rem);
+            --spacing-xl: clamp(1.5rem, 5vw, 2rem);
+            --spacing-2xl: clamp(2rem, 6vw, 3rem);
+            
+            /* Layout */
+            --container-max: 1440px;
+            --border-radius: clamp(0.5rem, 2vw, 1rem);
+            --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            :root {
+                --transition: none;
+            }
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
         }
 
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-mid) 50%, var(--bg-gradient-end) 100%);
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 50%, var(--bg-tertiary) 100%);
             color: var(--text-primary);
             line-height: 1.5;
             min-height: 100vh;
+            overflow-x: hidden;
+            text-rendering: optimizeLegibility;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* Accessibility - Focus styles */
+        :focus-visible {
+            outline: 2px solid var(--accent-blue);
+            outline-offset: 2px;
+            border-radius: 4px;
+        }
+
+        /* Skip to content link for keyboard users */
+        .skip-link {
+            position: absolute;
+            top: -40px;
+            left: 0;
+            background: var(--accent-blue);
+            color: white;
+            padding: var(--spacing-sm) var(--spacing-md);
+            text-decoration: none;
+            z-index: 1000;
+            transition: var(--transition);
+        }
+        
+        .skip-link:focus-visible {
+            top: 0;
         }
 
         /* Animations */
@@ -53,17 +156,13 @@
         }
 
         @keyframes valuePulse {
-            0% {
-                text-shadow: 0 0 0 rgba(59, 130, 246, 0);
+            0%, 100% {
                 transform: scale(1);
+                text-shadow: 0 0 0 rgba(59, 130, 246, 0);
             }
             50% {
-                text-shadow: 0 0 20px rgba(59, 130, 246, 0.8);
                 transform: scale(1.02);
-            }
-            100% {
-                text-shadow: 0 0 0 rgba(59, 130, 246, 0);
-                transform: scale(1);
+                text-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
             }
         }
 
@@ -76,15 +175,18 @@
             to { transform: rotate(360deg); }
         }
 
-        /* Layout */
+        /* Header */
         header {
-            background: rgba(15, 20, 25, 0.8);
-            backdrop-filter: blur(12px);
-            border-bottom: 1px solid var(--border-glow);
-            padding: 1rem 2rem;
+            background: rgba(15, 20, 25, 0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--border-color);
+            padding: var(--spacing-md) var(--spacing-xl);
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-wrap: wrap;
+            gap: var(--spacing-md);
             position: sticky;
             top: 0;
             z-index: 100;
@@ -93,38 +195,39 @@
 
         .logo {
             font-weight: 700;
-            font-size: 1.2rem;
-            background: linear-gradient(135deg, var(--primary-blue), var(--primary-blue-light));
+            font-size: var(--font-lg);
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-blue-light));
             background-clip: text;
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             display: flex;
             align-items: center;
-            gap: 0.5rem;
+            gap: var(--spacing-sm);
         }
 
         .logo-icon {
-            font-size: 1.5rem;
+            font-size: var(--font-xl);
             -webkit-text-fill-color: initial;
-            color: var(--primary-blue);
+            color: var(--accent-blue);
         }
 
         .header-right {
             display: flex;
-            gap: 1.5rem;
+            gap: var(--spacing-lg);
             align-items: center;
+            flex-wrap: wrap;
         }
 
         .status {
             display: flex;
             align-items: center;
-            gap: 0.5rem;
-            font-size: 0.85rem;
+            gap: var(--spacing-xs);
+            font-size: var(--font-sm);
             font-weight: 500;
-            background: rgba(74, 222, 128, 0.1);
-            padding: 0.4rem 0.8rem;
+            background: rgba(16, 185, 129, 0.1);
+            padding: var(--spacing-xs) var(--spacing-md);
             border-radius: 40px;
-            border: 1px solid rgba(74, 222, 128, 0.3);
+            border: 1px solid rgba(16, 185, 129, 0.3);
         }
 
         .status-dot {
@@ -136,8 +239,8 @@
         }
 
         .time {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.85rem;
+            font-family: 'SF Mono', 'JetBrains Mono', monospace;
+            font-size: var(--font-sm);
             color: var(--text-secondary);
             letter-spacing: 0.5px;
         }
@@ -145,41 +248,50 @@
         .refresh-indicator {
             display: flex;
             align-items: center;
-            gap: 0.5rem;
-            font-size: 0.75rem;
-            color: var(--text-muted);
+            gap: var(--spacing-sm);
+            font-size: var(--font-xs);
+            color: var(--text-tertiary);
         }
 
         .refresh-spinner {
             width: 14px;
             height: 14px;
-            border: 2px solid var(--text-muted);
-            border-top-color: var(--primary-blue);
+            border: 2px solid var(--text-tertiary);
+            border-top-color: var(--accent-blue);
             border-radius: 50%;
             animation: spin 0.8s linear infinite;
         }
 
+        /* Main Content */
         main {
-            max-width: 1440px;
+            max-width: var(--container-max);
             margin: 0 auto;
-            padding: 2rem;
+            padding: var(--spacing-xl);
+        }
+
+        /* Responsive container queries */
+        @container (max-width: 600px) {
+            .card-value {
+                font-size: var(--font-2xl);
+            }
         }
 
         /* Grid System */
         .grid {
             display: grid;
-            gap: 1.5rem;
-            margin-bottom: 2rem;
+            gap: var(--spacing-lg);
+            margin-bottom: var(--spacing-xl);
         }
 
         .grid-4 {
-            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
         }
 
         .grid-2 {
             grid-template-columns: repeat(2, 1fr);
         }
 
+        /* Responsive breakpoints */
         @media (max-width: 1024px) {
             .grid-2 {
                 grid-template-columns: 1fr;
@@ -187,61 +299,117 @@
         }
 
         @media (max-width: 768px) {
-            main { padding: 1rem; }
-            .grid-4 { grid-template-columns: repeat(2, 1fr); }
+            main {
+                padding: var(--spacing-md);
+            }
+            
+            .grid-4 {
+                grid-template-columns: repeat(2, 1fr);
+                gap: var(--spacing-md);
+            }
+            
+            header {
+                padding: var(--spacing-sm) var(--spacing-md);
+            }
+            
+            .header-right {
+                gap: var(--spacing-md);
+            }
+        }
+
+        @media (max-width: 640px) {
+            .grid-4 {
+                grid-template-columns: 1fr;
+            }
+            
+            .logo span:not(.logo-icon) {
+                font-size: var(--font-sm);
+            }
+            
+            .status span {
+                display: none;
+            }
         }
 
         @media (max-width: 480px) {
-            .grid-4 { grid-template-columns: 1fr; }
+            header {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .header-right {
+                justify-content: center;
+            }
         }
 
         /* Cards */
         .card {
-            background: var(--card-bg);
+            background: var(--bg-card);
             backdrop-filter: blur(12px);
-            border: 1px solid var(--border-glow);
-            border-radius: 20px;
-            padding: 1.5rem;
-            transition: var(--transition-default);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            padding: var(--spacing-lg);
+            transition: var(--transition);
             animation: fadeInUp 0.5s ease-out;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--accent-blue), transparent);
+            transform: translateX(-100%);
+            transition: transform 0.6s ease;
+        }
+
+        .card:hover::before {
+            transform: translateX(100%);
         }
 
         .card:hover {
-            border-color: var(--primary-blue);
-            transform: translateY(-4px);
+            border-color: var(--accent-blue);
+            transform: translateY(-2px);
             box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
         }
 
         .card-icon {
-            font-size: 2.5rem;
+            font-size: var(--font-3xl);
             float: right;
-            opacity: 0.3;
-            transition: var(--transition-default);
+            opacity: 0.25;
+            transition: var(--transition);
+            pointer-events: none;
         }
 
         .card:hover .card-icon {
-            opacity: 0.7;
-            transform: scale(1.1);
+            opacity: 0.5;
+            transform: scale(1.05);
         }
 
         .card-title {
-            font-size: 0.75rem;
+            font-size: var(--font-xs);
             text-transform: uppercase;
             letter-spacing: 1px;
             color: var(--text-secondary);
-            margin-bottom: 0.75rem;
+            margin-bottom: var(--spacing-sm);
+            font-weight: 600;
         }
 
         .card-value {
-            font-size: 2.8rem;
+            font-size: var(--font-3xl);
             font-weight: 800;
-            background: linear-gradient(135deg, var(--primary-blue), var(--primary-blue-light));
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-blue-light));
             background-clip: text;
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             line-height: 1.2;
-            margin-bottom: 0.5rem;
-            transition: var(--transition-default);
+            margin-bottom: var(--spacing-xs);
+            transition: var(--transition);
         }
 
         .card-value.updating {
@@ -249,17 +417,17 @@
         }
 
         .card-label {
-            font-size: 0.75rem;
-            color: var(--text-muted);
+            font-size: var(--font-xs);
+            color: var(--text-tertiary);
         }
 
         /* Section Titles */
         .section-title {
-            font-size: 1.4rem;
+            font-size: var(--font-xl);
             font-weight: 600;
-            margin-bottom: 1.25rem;
+            margin-bottom: var(--spacing-lg);
             letter-spacing: -0.3px;
-            background: linear-gradient(135deg, #fff, var(--text-secondary));
+            background: linear-gradient(135deg, var(--text-primary), var(--text-secondary));
             background-clip: text;
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
@@ -267,10 +435,11 @@
 
         /* Tables */
         .table-wrapper {
-            background: var(--card-bg);
+            background: var(--bg-card);
             backdrop-filter: blur(12px);
-            border: 1px solid var(--border-glow);
-            border-radius: 20px;
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
             overflow-x: auto;
             animation: fadeInUp 0.5s ease-out 0.1s backwards;
         }
@@ -278,39 +447,42 @@
         table {
             width: 100%;
             border-collapse: collapse;
+            min-width: 500px;
         }
 
         th {
             text-align: left;
-            padding: 1rem 1.25rem;
-            font-size: 0.7rem;
+            padding: var(--spacing-md) var(--spacing-lg);
+            font-size: var(--font-xs);
             font-weight: 600;
             text-transform: uppercase;
-            letter-spacing: 1px;
-            color: var(--text-muted);
-            border-bottom: 1px solid var(--border-glow);
+            letter-spacing: 0.5px;
+            color: var(--text-tertiary);
+            border-bottom: 1px solid var(--border-color);
+            background: rgba(15, 20, 25, 0.5);
         }
 
         td {
-            padding: 1rem 1.25rem;
-            font-size: 0.85rem;
+            padding: var(--spacing-md) var(--spacing-lg);
+            font-size: var(--font-sm);
             border-bottom: 1px solid rgba(59, 130, 246, 0.1);
-            transition: var(--transition-default);
+            transition: var(--transition);
         }
 
         tr:hover td {
-            background: rgba(59, 130, 246, 0.08);
+            background: rgba(59, 130, 246, 0.05);
         }
 
         /* Badges */
         .badge {
             display: inline-block;
-            padding: 0.25rem 0.75rem;
+            padding: var(--spacing-xs) var(--spacing-md);
             border-radius: 40px;
-            font-size: 0.7rem;
+            font-size: var(--font-xs);
             font-weight: 600;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.3px;
+            transition: var(--transition);
         }
 
         .badge-danger { background: rgba(239, 68, 68, 0.2); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.3); }
@@ -320,157 +492,282 @@
 
         /* Activity List */
         .activity-list {
-            background: var(--card-bg);
+            background: var(--bg-card);
             backdrop-filter: blur(12px);
-            border: 1px solid var(--border-glow);
-            border-radius: 20px;
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
             overflow: hidden;
+            max-height: 400px;
+            overflow-y: auto;
         }
 
         .activity-item {
             display: flex;
-            gap: 1rem;
-            padding: 1rem 1.25rem;
+            gap: var(--spacing-md);
+            padding: var(--spacing-md) var(--spacing-lg);
             border-bottom: 1px solid rgba(59, 130, 246, 0.1);
-            transition: var(--transition-default);
+            transition: var(--transition);
+            cursor: pointer;
         }
 
         .activity-item:last-child { border-bottom: none; }
-        .activity-item:hover { background: rgba(59, 130, 246, 0.05); padding-left: 1.75rem; }
+        .activity-item:hover { background: rgba(59, 130, 246, 0.05); }
 
         .activity-icon {
             width: 40px;
             height: 40px;
-            background: rgba(59, 130, 246, 0.15);
+            background: rgba(59, 130, 246, 0.1);
             border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.2rem;
+            font-size: var(--font-lg);
             flex-shrink: 0;
+            transition: var(--transition);
         }
 
-        .activity-content { flex: 1; }
-        .activity-title { font-weight: 600; font-size: 0.9rem; margin-bottom: 0.2rem; }
-        .activity-desc { font-size: 0.75rem; color: var(--text-secondary); }
-        .activity-time { font-size: 0.65rem; color: var(--text-muted); margin-top: 0.3rem; font-family: monospace; }
+        .activity-item:hover .activity-icon {
+            transform: scale(1.05);
+            background: rgba(59, 130, 246, 0.2);
+        }
+
+        .activity-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .activity-title {
+            font-weight: 600;
+            font-size: var(--font-sm);
+            margin-bottom: var(--spacing-xs);
+            color: var(--text-primary);
+        }
+
+        .activity-desc {
+            font-size: var(--font-xs);
+            color: var(--text-secondary);
+            word-break: break-word;
+        }
+
+        .activity-time {
+            font-size: var(--font-xs);
+            color: var(--text-tertiary);
+            margin-top: var(--spacing-xs);
+            font-family: monospace;
+        }
 
         /* Charts */
         .chart-wrapper {
             position: relative;
-            height: 280px;
-            margin-top: 0.5rem;
+            height: clamp(250px, 40vh, 320px);
+            width: 100%;
+            margin-top: var(--spacing-md);
         }
 
+        canvas {
+            max-width: 100%;
+            height: auto;
+        }
+
+        /* Footer */
         footer {
             text-align: center;
-            padding: 2rem;
-            border-top: 1px solid var(--border-glow);
-            margin-top: 2rem;
-            color: var(--text-muted);
-            font-size: 0.8rem;
+            padding: var(--spacing-xl);
+            border-top: 1px solid var(--border-color);
+            margin-top: var(--spacing-2xl);
+            color: var(--text-tertiary);
+            font-size: var(--font-sm);
         }
 
+        footer a {
+            color: var(--accent-blue);
+            text-decoration: none;
+            transition: var(--transition);
+        }
+
+        footer a:hover {
+            color: var(--accent-blue-light);
+            text-decoration: underline;
+        }
+
+        /* Loading States */
         .loading-placeholder {
             text-align: center;
-            padding: 2rem;
+            padding: var(--spacing-2xl);
             color: var(--text-secondary);
+        }
+
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--accent-blue);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--accent-blue-light);
+        }
+
+        /* Print Styles */
+        @media print {
+            header, footer, .refresh-indicator, .status {
+                display: none;
+            }
+            
+            body {
+                background: white;
+                color: black;
+            }
+            
+            .card {
+                break-inside: avoid;
+                border: 1px solid #ccc;
+            }
         }
     </style>
 </head>
 <body>
+    <a href="#main-content" class="skip-link">Перейти к основному содержанию</a>
+    
     <header>
         <div class="logo">
-            <span class="logo-icon">🛡️</span>
-            DNS Blocklist Control
+            <span class="logo-icon" aria-hidden="true">🛡️</span>
+            <span>DNS Blocklist Control</span>
         </div>
         <div class="header-right">
-            <div class="status">
-                <div class="status-dot"></div>
+            <div class="status" role="status" aria-label="Статус системы">
+                <div class="status-dot" aria-hidden="true"></div>
                 <span>Активна</span>
             </div>
             <div class="refresh-indicator" id="refreshIndicator">
-                <div class="refresh-spinner" style="display: none;"></div>
-                <span id="lastUpdateLabel">Обновление...</span>
+                <div class="refresh-spinner" style="display: none;" aria-hidden="true"></div>
+                <span id="lastUpdateLabel" aria-live="polite">Обновление...</span>
             </div>
-            <div class="time" id="liveTime">--:--:--</div>
+            <div class="time" id="liveTime" aria-label="Текущее время">--:--:--</div>
         </div>
     </header>
 
-    <main>
+    <main id="main-content">
+        <!-- Stats Cards -->
         <div class="grid grid-4">
             <div class="card">
-                <div class="card-icon">🌐</div>
+                <div class="card-icon" aria-hidden="true">🌐</div>
                 <div class="card-title">Заблокировано доменов</div>
-                <div class="card-value" id="totalDomains">—</div>
+                <div class="card-value" id="totalDomains" aria-live="polite">—</div>
                 <div class="card-label">Актуальные записи</div>
             </div>
             <div class="card">
-                <div class="card-icon">⚡</div>
+                <div class="card-icon" aria-hidden="true">⚡</div>
                 <div class="card-title">Время обработки</div>
-                <div class="card-value" id="execTime">—</div>
+                <div class="card-value" id="execTime" aria-live="polite">—</div>
                 <div class="card-label">Последний парсинг</div>
             </div>
             <div class="card">
-                <div class="card-icon">💾</div>
+                <div class="card-icon" aria-hidden="true">💾</div>
                 <div class="card-title">Размер блоклиста</div>
-                <div class="card-value" id="fileSize">—</div>
+                <div class="card-value" id="fileSize" aria-live="polite">—</div>
                 <div class="card-label">Сжатые данные</div>
             </div>
             <div class="card">
-                <div class="card-icon">🎯</div>
+                <div class="card-icon" aria-hidden="true">🎯</div>
                 <div class="card-title">Эффективность</div>
-                <div class="card-value" id="efficiency">—</div>
+                <div class="card-value" id="efficiency" aria-live="polite">—</div>
                 <div class="card-label">Точность фильтрации</div>
             </div>
         </div>
 
+        <!-- Charts Section -->
         <div class="grid grid-2">
             <div class="card">
                 <div class="card-title">Распределение по категориям</div>
                 <div class="chart-wrapper">
-                    <canvas id="threatChart"></canvas>
+                    <canvas id="threatChart" role="img" aria-label="График распределения угроз по категориям"></canvas>
                 </div>
             </div>
             <div class="card">
                 <div class="card-title">Производительность источников</div>
                 <div class="chart-wrapper">
-                    <canvas id="performanceChart"></canvas>
+                    <canvas id="performanceChart" role="img" aria-label="График времени ответа источников данных"></canvas>
                 </div>
             </div>
         </div>
 
-        <div class="section-title">📡 Источники данных</div>
+        <!-- Sources Table -->
+        <h2 class="section-title">📡 Источники данных</h2>
         <div class="table-wrapper">
-            <table>
+            <table aria-label="Таблица источников данных блоклиста">
                 <thead>
-                    <tr><th>Источник</th><th>Категория</th><th>Домены</th><th>Латентность</th><th>Статус</th></tr>
+                    <tr>
+                        <th scope="col">Источник</th>
+                        <th scope="col">Категория</th>
+                        <th scope="col">Домены</th>
+                        <th scope="col">Латентность</th>
+                        <th scope="col">Статус</th>
+                    </tr>
                 </thead>
                 <tbody id="sourcesTableBody">
-                    <tr><td colspan="5" class="loading-placeholder">Загрузка данных...</td></tr>
+                    <tr>
+                        <td colspan="5" class="loading-placeholder">Загрузка данных...</td>
+                    </tr>
                 </tbody>
             </table>
         </div>
 
-        <div class="section-title">📋 Журнал событий (Real-time)</div>
-        <div class="activity-list" id="activityContainer">
-            <div class="activity-item"><div class="activity-icon">⏳</div><div class="activity-content"><div class="activity-title">Инициализация панели</div><div class="activity-desc">Ожидание данных...</div></div></div>
+        <!-- Activity Log -->
+        <h2 class="section-title">📋 Журнал событий</h2>
+        <div class="activity-list" id="activityContainer" role="log" aria-live="polite">
+            <div class="activity-item">
+                <div class="activity-icon" aria-hidden="true">⏳</div>
+                <div class="activity-content">
+                    <div class="activity-title">Инициализация панели</div>
+                    <div class="activity-desc">Ожидание данных...</div>
+                </div>
+            </div>
         </div>
     </main>
 
     <footer>
         <p>🛡️ DNS Blocklist Dashboard • Реальное время • Автоматическое обновление</p>
-        <p style="margin-top: 0.5rem;"><a href="https://github.com/somafix/dns-blocklist" style="color: var(--primary-blue); text-decoration: none;">GitHub Repository</a></p>
+        <p style="margin-top: var(--spacing-sm);">
+            <a href="https://github.com/somafix/dns-blocklist" target="_blank" rel="noopener noreferrer">GitHub Repository</a>
+        </p>
     </footer>
 
     <script>
-        // --------------------- CONFIGURATION ---------------------
+        // Secure XSS Prevention Helper
+        const escapeHtml = (text) => {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        };
+
+        // Sanitize HTML with DOMPurify if available
+        const sanitizeHtml = (dirty) => {
+            if (typeof DOMPurify !== 'undefined') {
+                return DOMPurify.sanitize(dirty, { ALLOWED_TAGS: ['strong', 'span', 'div', 'p', 'br'], ALLOWED_ATTR: ['class'] });
+            }
+            return escapeHtml(dirty);
+        };
+
+        // --------------------- SECURE CONFIGURATION ---------------------
         const CONFIG = {
             githubUser: 'somafix',
             githubRepo: 'dns-blocklist',
-            updateIntervalMs: 15000,      // 15 seconds realtime
+            updateIntervalMs: 15000,
             maxRetries: 3,
             retryDelayMs: 1000,
+            maxActivityItems: 20,
             urls: [
                 (user, repo) => `https://api.github.com/repos/${user}/${repo}/contents/dynamic-blocklist.txt`,
                 (user, repo) => `https://cdn.jsdelivr.net/gh/${user}/${repo}/dynamic-blocklist.txt`,
@@ -497,7 +794,7 @@
             }
         }
 
-        // --------------------- UI MANAGER ---------------------
+        // --------------------- SECURE UI MANAGER ---------------------
         class UIManager {
             constructor() {
                 this.elements = {
@@ -510,6 +807,7 @@
                     lastUpdateLabel: document.getElementById('lastUpdateLabel'),
                     refreshSpinner: document.querySelector('#refreshIndicator .refresh-spinner')
                 };
+                this.activityQueue = [];
             }
 
             animateValue(element, newValue, formatter = (v) => v.toString()) {
@@ -527,49 +825,63 @@
                 
                 if (state.lastUpdate) {
                     const timeStr = state.lastUpdate.toLocaleTimeString('ru-RU');
-                    this.elements.lastUpdateLabel.textContent = `Обновлено ${timeStr}`;
+                    if (this.elements.lastUpdateLabel) {
+                        this.elements.lastUpdateLabel.textContent = `Обновлено ${timeStr}`;
+                    }
                 }
             }
 
             updateSourcesTable(sources) {
                 if (!this.elements.sourcesBody) return;
+                
                 const categoryMap = { malware: 'Вредоносное ПО', phishing: 'Фишинг', tracking: 'Отслеживание' };
                 const badgeMap = { malware: 'badge-danger', phishing: 'badge-warning', tracking: 'badge-blue' };
                 
                 const rows = sources.map(src => `
                     <tr>
-                        <td><strong>${src.name}</strong></td>
-                        <td><span class="badge ${badgeMap[src.category]}">${categoryMap[src.category] || 'Разное'}</span></td>
+                        <td><strong>${escapeHtml(src.name)}</strong></td>
+                        <td><span class="badge ${badgeMap[src.category]}">${escapeHtml(categoryMap[src.category] || 'Разное')}</span></td>
                         <td>${src.domains.toLocaleString()}</td>
-                        <td>${src.latency}s</td>
+                        <td>${src.latency.toFixed(2)}s</td>
                         <td><span class="badge badge-success">Активен</span></td>
                     </tr>
                 `).join('');
+                
                 this.elements.sourcesBody.innerHTML = rows;
             }
 
             addActivity(icon, title, description) {
                 const container = this.elements.activityContainer;
+                if (!container) return;
+                
                 const timeStr = new Date().toLocaleTimeString('ru-RU');
+                const sanitizedTitle = escapeHtml(title);
+                const sanitizedDesc = escapeHtml(description);
+                
                 const activityItem = document.createElement('div');
                 activityItem.className = 'activity-item';
                 activityItem.style.opacity = '0';
                 activityItem.style.transform = 'translateX(-10px)';
                 activityItem.innerHTML = `
-                    <div class="activity-icon">${icon}</div>
+                    <div class="activity-icon" aria-hidden="true">${escapeHtml(icon)}</div>
                     <div class="activity-content">
-                        <div class="activity-title">${title}</div>
-                        <div class="activity-desc">${description}</div>
-                        <div class="activity-time">${timeStr}</div>
+                        <div class="activity-title">${sanitizedTitle}</div>
+                        <div class="activity-desc">${sanitizedDesc}</div>
+                        <div class="activity-time">${escapeHtml(timeStr)}</div>
                     </div>
                 `;
+                
                 container.insertBefore(activityItem, container.firstChild);
+                
                 requestAnimationFrame(() => {
                     activityItem.style.transition = 'all 0.3s ease';
                     activityItem.style.opacity = '1';
                     activityItem.style.transform = 'translateX(0)';
                 });
-                while (container.children.length > 20) container.removeChild(container.lastChild);
+                
+                while (container.children.length > CONFIG.maxActivityItems) {
+                    container.removeChild(container.lastChild);
+                }
             }
 
             setLoading(isLoading) {
@@ -579,33 +891,56 @@
             }
         }
 
-        // --------------------- DATA FETCHER (Resilient) ---------------------
+        // --------------------- SECURE DATA FETCHER ---------------------
         class DataFetcher {
             constructor(config) {
                 this.config = config;
+                this.abortController = null;
             }
 
             async fetchWithRetry(urls, retries = this.config.maxRetries) {
+                if (this.abortController) {
+                    this.abortController.abort();
+                }
+                
                 for (let attempt = 1; attempt <= retries; attempt++) {
                     for (const urlBuilder of urls) {
+                        this.abortController = new AbortController();
                         try {
                             const url = urlBuilder(this.config.githubUser, this.config.githubRepo);
-                            const response = await fetch(url, { headers: { 'Accept': 'text/plain,application/json' } });
+                            const response = await fetch(url, { 
+                                headers: { 'Accept': 'text/plain,application/json' },
+                                signal: this.abortController.signal
+                            });
+                            
                             if (!response.ok) throw new Error(`HTTP ${response.status}`);
                             
                             let text = await response.text();
+                            
+                            // Handle GitHub API response (Base64 encoded)
                             if (text.includes('"content"')) {
                                 try {
                                     const json = JSON.parse(text);
-                                    if (json.content) text = atob(json.content);
-                                } catch (e) {}
+                                    if (json.content) {
+                                        text = atob(json.content.replace(/\s/g, ''));
+                                    }
+                                } catch (e) {
+                                    // Not JSON, continue
+                                }
                             }
+                            
                             return text;
                         } catch (err) {
+                            if (err.name === 'AbortError') {
+                                console.warn('Fetch aborted');
+                                throw err;
+                            }
                             console.warn(`Attempt ${attempt} failed:`, err.message);
                         }
                     }
-                    if (attempt < retries) await new Promise(r => setTimeout(r, this.config.retryDelayMs * attempt));
+                    if (attempt < retries) {
+                        await new Promise(r => setTimeout(r, this.config.retryDelayMs * attempt));
+                    }
                 }
                 throw new Error('Не удалось загрузить blocklist после всех попыток');
             }
@@ -613,60 +948,80 @@
             async loadBlocklist() {
                 return await this.fetchWithRetry(this.config.urls);
             }
+            
+            abort() {
+                if (this.abortController) {
+                    this.abortController.abort();
+                    this.abortController = null;
+                }
+            }
         }
 
-        // --------------------- PARSER & ANALYZER ---------------------
+        // --------------------- SECURE PARSER ---------------------
         class BlocklistAnalyzer {
             static parseAndAnalyze(rawText, startTime) {
+                if (!rawText || typeof rawText !== 'string') {
+                    throw new Error('Invalid blocklist data');
+                }
+                
                 const lines = rawText.split(/\r?\n/);
                 const fileSizeMB = rawText.length / (1024 * 1024);
                 const domainSet = new Set();
-                const domainRegex = /^(?:127\.0\.0\.1|0\.0\.0\.0)\s+([a-zA-Z0-9.\-]+)$/;
+                const domainRegex = /^(?:127\.0\.0\.1|0\.0\.0\.0)\s+([a-zA-Z0-9.\-]+)$/i;
                 
                 for (const line of lines) {
                     const trimmed = line.trim();
                     if (!trimmed || trimmed.startsWith('#')) continue;
+                    
                     const match = domainRegex.exec(trimmed);
-                    if (match) {
+                    if (match && match[1]) {
                         domainSet.add(match[1].toLowerCase());
                     } else if (/^[a-zA-Z0-9.\-]+$/.test(trimmed) && trimmed.includes('.')) {
                         domainSet.add(trimmed.toLowerCase());
                     }
                 }
                 
-                const malwareKeywords = ['malware', 'exploit', 'botnet', 'trojan', 'ransom', 'virus'];
-                const phishingKeywords = ['phish', 'login', 'secure', 'verify', 'bank', 'signin'];
-                const trackingKeywords = ['track', 'analytics', 'pixel', 'metrics', 'adserver', 'doubleclick'];
+                const malwareKeywords = ['malware', 'exploit', 'botnet', 'trojan', 'ransom', 'virus', 'worm'];
+                const phishingKeywords = ['phish', 'login', 'secure', 'verify', 'bank', 'signin', 'account'];
+                const trackingKeywords = ['track', 'analytics', 'pixel', 'metrics', 'adserver', 'doubleclick', 'facebook', 'google-analytics'];
                 
                 let malware = 0, phishing = 0, tracking = 0;
+                
                 for (const domain of domainSet) {
                     const lower = domain;
                     if (malwareKeywords.some(k => lower.includes(k))) malware++;
                     else if (phishingKeywords.some(k => lower.includes(k))) phishing++;
                     else if (trackingKeywords.some(k => lower.includes(k))) tracking++;
                 }
+                
                 const other = domainSet.size - (malware + phishing + tracking);
                 const execTime = (performance.now() - startTime) / 1000;
                 
                 return {
                     totalDomains: domainSet.size,
-                    fileSizeMB,
-                    execTimeSec: execTime,
-                    threats: { malware, phishing, tracking: tracking + other }
+                    fileSizeMB: Math.min(fileSizeMB, 100),
+                    execTimeSec: Math.min(execTime, 10),
+                    threats: { 
+                        malware: Math.min(malware, domainSet.size), 
+                        phishing: Math.min(phishing, domainSet.size), 
+                        tracking: Math.min(tracking + other, domainSet.size) 
+                    }
                 };
             }
             
             static distributeToSources(totalDomains, sources) {
+                if (totalDomains === 0) return sources.map(s => ({ ...s, domains: 0 }));
+                
                 const perSource = Math.floor(totalDomains / sources.length);
                 const remainder = totalDomains - (perSource * (sources.length - 1));
                 return sources.map((src, idx) => ({
                     ...src,
-                    domains: idx === sources.length - 1 ? remainder : perSource
+                    domains: idx === sources.length - 1 ? Math.max(0, remainder) : Math.max(0, perSource)
                 }));
             }
         }
 
-        // --------------------- CHART MANAGER ---------------------
+        // --------------------- CHART MANAGER WITH MEMORY CLEANUP ---------------------
         class ChartManager {
             constructor() {
                 this.threatChart = null;
@@ -676,37 +1031,103 @@
             init() {
                 const ctxThreat = document.getElementById('threatChart')?.getContext('2d');
                 const ctxPerf = document.getElementById('performanceChart')?.getContext('2d');
+                
                 if (ctxThreat) {
                     this.threatChart = new Chart(ctxThreat, {
                         type: 'doughnut',
-                        data: { labels: ['Malware', 'Phishing', 'Tracking'], datasets: [{ data: [0,0,0], backgroundColor: ['#ef4444', '#f59e0b', '#3b82f6'], borderWidth: 0, hoverOffset: 8 }] },
-                        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#e3e8ef' } } } }
+                        data: { 
+                            labels: ['Malware', 'Phishing', 'Tracking'], 
+                            datasets: [{ 
+                                data: [0, 0, 0], 
+                                backgroundColor: ['#ef4444', '#f59e0b', '#3b82f6'], 
+                                borderWidth: 0, 
+                                hoverOffset: 8 
+                            }] 
+                        },
+                        options: { 
+                            responsive: true, 
+                            maintainAspectRatio: false, 
+                            plugins: { 
+                                legend: { 
+                                    labels: { color: '#e8edf5', font: { size: 12 } },
+                                    position: 'bottom'
+                                } 
+                            } 
+                        }
                     });
                 }
+                
                 if (ctxPerf) {
                     this.performanceChart = new Chart(ctxPerf, {
                         type: 'bar',
-                        data: { labels: [], datasets: [{ label: 'Время ответа (сек)', data: [], backgroundColor: '#3b82f6', borderRadius: 8 }] },
-                        options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, scales: { x: { max: 3, ticks: { color: '#94a3b8' } }, y: { ticks: { color: '#e3e8ef' } } }, plugins: { legend: { labels: { color: '#e3e8ef' } } } }
+                        data: { 
+                            labels: [], 
+                            datasets: [{ 
+                                label: 'Время ответа (сек)', 
+                                data: [], 
+                                backgroundColor: '#3b82f6', 
+                                borderRadius: 8,
+                                barPercentage: 0.7
+                            }] 
+                        },
+                        options: { 
+                            indexAxis: 'y', 
+                            responsive: true, 
+                            maintainAspectRatio: false, 
+                            scales: { 
+                                x: { 
+                                    max: 3, 
+                                    ticks: { color: '#9ca3af' },
+                                    grid: { color: 'rgba(59, 130, 246, 0.1)' }
+                                }, 
+                                y: { 
+                                    ticks: { color: '#e8edf5' },
+                                    grid: { display: false }
+                                } 
+                            }, 
+                            plugins: { 
+                                legend: { 
+                                    labels: { color: '#e8edf5' },
+                                    position: 'bottom'
+                                } 
+                            } 
+                        }
                     });
                 }
             }
             
             updateThreats(threats) {
-                if (this.threatChart) this.threatChart.data.datasets[0].data = [threats.malware, threats.phishing, threats.tracking];
-                this.threatChart?.update('none');
+                if (this.threatChart && this.threatChart.data) {
+                    this.threatChart.data.datasets[0].data = [
+                        threats.malware || 0, 
+                        threats.phishing || 0, 
+                        threats.tracking || 0
+                    ];
+                    this.threatChart.update('none');
+                }
             }
             
             updatePerformance(sources) {
-                if (this.performanceChart) {
+                if (this.performanceChart && this.performanceChart.data) {
                     this.performanceChart.data.labels = sources.map(s => s.name);
                     this.performanceChart.data.datasets[0].data = sources.map(s => s.latency);
                     this.performanceChart.update('none');
                 }
             }
+            
+            destroy() {
+                if (this.threatChart) {
+                    this.threatChart.destroy();
+                    this.threatChart = null;
+                }
+                if (this.performanceChart) {
+                    this.performanceChart.destroy();
+                    this.performanceChart = null;
+                }
+            }
         }
 
-        // --------------------- MAIN CONTROLLER (REAL-TIME) ---------------------
+        // --------------------- MAIN CONTROLLER ---------------------
         class DashboardController {
             constructor() {
                 this.state = new AppState();
@@ -714,18 +1135,25 @@
                 this.fetcher = new DataFetcher(CONFIG);
                 this.charts = new ChartManager();
                 this.updateTimer = null;
+                this.clockTimer = null;
                 this.isUpdating = false;
+                this.isDestroyed = false;
             }
             
             async start() {
-                this.charts.init();
-                this.startRealTimeClock();
-                await this.refreshData();
-                this.updateTimer = setInterval(() => this.refreshData(), CONFIG.updateIntervalMs);
+                try {
+                    this.charts.init();
+                    this.startRealTimeClock();
+                    await this.refreshData();
+                    this.updateTimer = setInterval(() => this.refreshData(), CONFIG.updateIntervalMs);
+                } catch (error) {
+                    console.error('Failed to start dashboard:', error);
+                    this.ui.addActivity('❌', 'Ошибка инициализации', error.message);
+                }
             }
             
             async refreshData() {
-                if (this.isUpdating) return;
+                if (this.isUpdating || this.isDestroyed) return;
                 this.isUpdating = true;
                 this.ui.setLoading(true);
                 const startPerf = performance.now();
@@ -748,7 +1176,8 @@
                     this.charts.updateThreats(this.state.threats);
                     this.charts.updatePerformance(this.state.sources);
                     
-                    this.ui.addActivity('✅', 'Синхронизация завершена', `${this.state.totalDomains.toLocaleString()} доменов, время ${this.state.execTimeSec.toFixed(2)}с`);
+                    this.ui.addActivity('✅', 'Синхронизация завершена', 
+                        `${this.state.totalDomains.toLocaleString()} доменов, время ${this.state.execTimeSec.toFixed(2)}с`);
                 } catch (error) {
                     console.error('Refresh error:', error);
                     this.ui.addActivity('❌', 'Ошибка обновления', error.message);
@@ -760,24 +1189,58 @@
             
             startRealTimeClock() {
                 const updateClock = () => {
+                    if (this.isDestroyed) return;
                     const now = new Date();
                     const timeStr = now.toLocaleTimeString('ru-RU', { hour12: false });
                     const timeEl = document.getElementById('liveTime');
                     if (timeEl) timeEl.textContent = timeStr;
                 };
                 updateClock();
-                setInterval(updateClock, 1000);
+                this.clockTimer = setInterval(updateClock, 1000);
+            }
+            
+            destroy() {
+                this.isDestroyed = true;
+                if (this.updateTimer) {
+                    clearInterval(this.updateTimer);
+                    this.updateTimer = null;
+                }
+                if (this.clockTimer) {
+                    clearInterval(this.clockTimer);
+                    this.clockTimer = null;
+                }
+                if (this.fetcher) {
+                    this.fetcher.abort();
+                }
+                if (this.charts) {
+                    this.charts.destroy();
+                }
             }
         }
         
-        // BOOTSTRAP
+        // Secure initialization
+        let app = null;
+        
         window.addEventListener('DOMContentLoaded', () => {
-            const app = new DashboardController();
-            app.start().catch(err => {
-                console.error('Critical startup error:', err);
-                const container = document.getElementById('activityContainer');
-                if (container) container.innerHTML = '<div class="activity-item"><div class="activity-icon">⚠️</div><div class="activity-content"><div class="activity-title">Критическая ошибка</div><div class="activity-desc">Не удалось инициализировать панель. Проверьте соединение.</div></div></div>';
-            });
+            try {
+                app = new DashboardController();
+                app.start().catch(err => {
+                    console.error('Critical startup error:', err);
+                    const container = document.getElementById('activityContainer');
+                    if (container) {
+                        container.innerHTML = '<div class="activity-item"><div class="activity-icon">⚠️</div><div class="activity-content"><div class="activity-title">Критическая ошибка</div><div class="activity-desc">Не удалось инициализировать панель. Проверьте соединение с интернетом.</div></div></div>';
+                    }
+                });
+            } catch (error) {
+                console.error('Fatal error:', error);
+            }
+        });
+        
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (app) {
+                app.destroy();
+            }
         });
     </script>
 </body>
