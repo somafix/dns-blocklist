@@ -1,11 +1,12 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DNS Blocklist - Панель управления</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>DNS Blocklist | Панель управления в реальном времени</title>
     
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     
     <style>
         * {
@@ -14,42 +15,33 @@
             box-sizing: border-box;
         }
 
+        :root {
+            --bg-gradient-start: #0a0e17;
+            --bg-gradient-mid: #0f1419;
+            --bg-gradient-end: #1a1f2e;
+            --primary-blue: #3b82f6;
+            --primary-blue-light: #60a5fa;
+            --text-primary: #e3e8ef;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --success: #4ade80;
+            --card-bg: rgba(26, 31, 46, 0.85);
+            --border-glow: rgba(59, 130, 246, 0.3);
+            --transition-default: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #0a0e17 0%, #0f1419 50%, #1a1f2e 100%);
-            color: #e3e8ef;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-mid) 50%, var(--bg-gradient-end) 100%);
+            color: var(--text-primary);
             line-height: 1.5;
-            overflow-x: hidden;
+            min-height: 100vh;
         }
 
-        /* ANIMATIONS */
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(-10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        @keyframes value-blink {
-            0% {
-                color: #3b82f6;
-                text-shadow: 0 0 20px rgba(59, 130, 246, 0.8);
-            }
-            50% {
-                color: #60a5fa;
-                text-shadow: 0 0 30px rgba(96, 165, 250, 1);
-            }
-            100% {
-                color: #3b82f6;
-                text-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
-            }
-        }
-
-        @keyframes fade-in-up {
+        /* Animations */
+        @keyframes fadeInUp {
             from {
                 opacity: 0;
                 transform: translateY(20px);
@@ -60,48 +52,61 @@
             }
         }
 
-        @keyframes status-pulse {
-            0%, 100% {
-                background: #4ade80;
-                box-shadow: 0 0 10px rgba(74, 222, 128, 0.8);
+        @keyframes valuePulse {
+            0% {
+                text-shadow: 0 0 0 rgba(59, 130, 246, 0);
+                transform: scale(1);
             }
             50% {
-                background: #22c55e;
-                box-shadow: 0 0 20px rgba(34, 197, 94, 1);
+                text-shadow: 0 0 20px rgba(59, 130, 246, 0.8);
+                transform: scale(1.02);
+            }
+            100% {
+                text-shadow: 0 0 0 rgba(59, 130, 246, 0);
+                transform: scale(1);
             }
         }
 
-        .value-updating {
-            animation: value-blink 0.6s ease-in-out;
+        @keyframes statusPulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.2); }
         }
 
-        /* HEADER */
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Layout */
         header {
-            background: linear-gradient(90deg, #1a1f2e 0%, #0f1419 100%);
-            border-bottom: 1px solid rgba(59, 130, 246, 0.2);
+            background: rgba(15, 20, 25, 0.8);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border-glow);
             padding: 1rem 2rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
             position: sticky;
             top: 0;
-            z-index: 10;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-            animation: slideIn 0.5s ease-out;
+            z-index: 100;
+            animation: fadeInUp 0.5s ease-out;
         }
 
         .logo {
-            font-weight: 600;
-            font-size: 1rem;
-            letter-spacing: -0.5px;
-            background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);
+            font-weight: 700;
+            font-size: 1.2rem;
+            background: linear-gradient(135deg, var(--primary-blue), var(--primary-blue-light));
+            background-clip: text;
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            background-clip: text;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }
 
         .logo-icon {
-            margin-right: 0.5rem;
+            font-size: 1.5rem;
+            -webkit-text-fill-color: initial;
+            color: var(--primary-blue);
         }
 
         .header-right {
@@ -114,43 +119,53 @@
             display: flex;
             align-items: center;
             gap: 0.5rem;
-            font-size: 0.9rem;
-            color: #4ade80;
-            font-weight: 600;
+            font-size: 0.85rem;
+            font-weight: 500;
+            background: rgba(74, 222, 128, 0.1);
+            padding: 0.4rem 0.8rem;
+            border-radius: 40px;
+            border: 1px solid rgba(74, 222, 128, 0.3);
         }
 
         .status-dot {
-            width: 6px;
-            height: 6px;
-            background: #4ade80;
+            width: 8px;
+            height: 8px;
+            background: var(--success);
             border-radius: 50%;
-            animation: status-pulse 2s ease-in-out infinite;
+            animation: statusPulse 1.5s ease-in-out infinite;
         }
 
         .time {
-            font-size: 0.9rem;
-            color: #94a3b8;
-            min-width: 100px;
-            text-align: right;
-            font-family: 'Courier New', monospace;
-            letter-spacing: 1px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            letter-spacing: 0.5px;
         }
 
-        /* MAIN */
+        .refresh-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .refresh-spinner {
+            width: 14px;
+            height: 14px;
+            border: 2px solid var(--text-muted);
+            border-top-color: var(--primary-blue);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
         main {
-            max-width: 1400px;
+            max-width: 1440px;
             margin: 0 auto;
             padding: 2rem;
         }
 
-        .page-title {
-            font-size: 1.8rem;
-            font-weight: 600;
-            margin-bottom: 2rem;
-            animation: slideIn 0.6s ease-out 0.1s both;
-        }
-
-        /* GRID */
+        /* Grid System */
         .grid {
             display: grid;
             gap: 1.5rem;
@@ -158,115 +173,106 @@
         }
 
         .grid-4 {
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
         }
 
         .grid-2 {
-            grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+            grid-template-columns: repeat(2, 1fr);
         }
 
-        .grid-1 {
-            grid-template-columns: 1fr;
-        }
-
-        @media (max-width: 1200px) {
+        @media (max-width: 1024px) {
             .grid-2 {
                 grid-template-columns: 1fr;
             }
         }
 
         @media (max-width: 768px) {
-            .grid-4 {
-                grid-template-columns: repeat(2, 1fr);
-            }
-            main {
-                padding: 1rem;
-            }
+            main { padding: 1rem; }
+            .grid-4 { grid-template-columns: repeat(2, 1fr); }
         }
 
         @media (max-width: 480px) {
-            .grid-4 {
-                grid-template-columns: 1fr;
-            }
-            .page-title {
-                font-size: 1.5rem;
-            }
+            .grid-4 { grid-template-columns: 1fr; }
         }
 
-        /* CARD */
+        /* Cards */
         .card {
-            background: linear-gradient(135deg, rgba(26, 31, 46, 0.8) 0%, rgba(15, 20, 25, 0.8) 100%);
-            border: 1px solid rgba(59, 130, 246, 0.2);
-            border-radius: 8px;
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border-glow);
+            border-radius: 20px;
             padding: 1.5rem;
-            backdrop-filter: blur(10px);
-            transition: all 0.3s ease;
-            animation: fade-in-up 0.6s ease-out;
+            transition: var(--transition-default);
+            animation: fadeInUp 0.5s ease-out;
         }
 
         .card:hover {
-            border-color: rgba(59, 130, 246, 0.6);
-            background: linear-gradient(135deg, rgba(26, 31, 46, 1) 0%, rgba(15, 20, 25, 1) 100%);
-            box-shadow: 0 8px 32px rgba(59, 130, 246, 0.15);
-            transform: translateY(-2px);
-        }
-
-        .card-title {
-            font-size: 0.9rem;
-            color: #94a3b8;
-            margin-bottom: 1rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .card-value {
-            font-size: 2.5rem;
-            font-weight: 700;
-            background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            margin-bottom: 0.5rem;
-            transition: all 0.3s ease;
-        }
-
-        .card-label {
-            font-size: 0.85rem;
-            color: #64748b;
+            border-color: var(--primary-blue);
+            transform: translateY(-4px);
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
         }
 
         .card-icon {
-            font-size: 3rem;
+            font-size: 2.5rem;
             float: right;
-            opacity: 0.2;
-            transition: all 0.3s ease;
+            opacity: 0.3;
+            transition: var(--transition-default);
         }
 
         .card:hover .card-icon {
-            opacity: 0.4;
+            opacity: 0.7;
             transform: scale(1.1);
         }
 
-        /* SECTION */
-        .section {
-            margin-bottom: 2.5rem;
+        .card-title {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-secondary);
+            margin-bottom: 0.75rem;
         }
 
+        .card-value {
+            font-size: 2.8rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary-blue), var(--primary-blue-light));
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            line-height: 1.2;
+            margin-bottom: 0.5rem;
+            transition: var(--transition-default);
+        }
+
+        .card-value.updating {
+            animation: valuePulse 0.4s ease-out;
+        }
+
+        .card-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        /* Section Titles */
         .section-title {
-            font-size: 1.3rem;
+            font-size: 1.4rem;
             font-weight: 600;
-            margin-bottom: 1.5rem;
-            animation: slideIn 0.6s ease-out;
+            margin-bottom: 1.25rem;
+            letter-spacing: -0.3px;
+            background: linear-gradient(135deg, #fff, var(--text-secondary));
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
 
-        /* TABLE */
-        .table-card {
-            background: linear-gradient(135deg, rgba(26, 31, 46, 0.8) 0%, rgba(15, 20, 25, 0.8) 100%);
-            border: 1px solid rgba(59, 130, 246, 0.2);
-            border-radius: 8px;
-            overflow: hidden;
-            backdrop-filter: blur(10px);
-            animation: fade-in-up 0.6s ease-out 0.2s both;
+        /* Tables */
+        .table-wrapper {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border-glow);
+            border-radius: 20px;
+            overflow-x: auto;
+            animation: fadeInUp 0.5s ease-out 0.1s backwards;
         }
 
         table {
@@ -274,679 +280,504 @@
             border-collapse: collapse;
         }
 
-        thead {
-            background: rgba(15, 20, 25, 0.9);
-            border-bottom: 1px solid rgba(59, 130, 246, 0.2);
-        }
-
         th {
-            padding: 1rem;
             text-align: left;
+            padding: 1rem 1.25rem;
+            font-size: 0.7rem;
             font-weight: 600;
-            font-size: 0.85rem;
-            color: #64748b;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--border-glow);
         }
 
         td {
-            padding: 1rem;
+            padding: 1rem 1.25rem;
+            font-size: 0.85rem;
             border-bottom: 1px solid rgba(59, 130, 246, 0.1);
-            font-size: 0.9rem;
-            transition: all 0.3s ease;
+            transition: var(--transition-default);
         }
 
-        tbody tr:hover {
-            background: rgba(59, 130, 246, 0.1);
+        tr:hover td {
+            background: rgba(59, 130, 246, 0.08);
         }
 
-        tbody tr:last-child td {
-            border-bottom: none;
-        }
-
-        /* BADGE */
+        /* Badges */
         .badge {
             display: inline-block;
-            padding: 0.4rem 0.9rem;
-            border-radius: 4px;
-            font-size: 0.75rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 40px;
+            font-size: 0.7rem;
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            transition: all 0.3s ease;
         }
 
-        .badge-danger {
-            background: rgba(239, 68, 68, 0.25);
-            color: #fca5a5;
-            border: 1px solid rgba(239, 68, 68, 0.4);
-        }
+        .badge-danger { background: rgba(239, 68, 68, 0.2); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.3); }
+        .badge-warning { background: rgba(245, 158, 11, 0.2); color: #fcd34d; border: 1px solid rgba(245, 158, 11, 0.3); }
+        .badge-blue { background: rgba(59, 130, 246, 0.2); color: #93c5fd; border: 1px solid rgba(59, 130, 246, 0.3); }
+        .badge-success { background: rgba(16, 185, 129, 0.2); color: #86efac; border: 1px solid rgba(16, 185, 129, 0.3); }
 
-        .badge-warning {
-            background: rgba(245, 158, 11, 0.25);
-            color: #fcd34d;
-            border: 1px solid rgba(245, 158, 11, 0.4);
-        }
-
-        .badge-blue {
-            background: rgba(59, 130, 246, 0.25);
-            color: #93c5fd;
-            border: 1px solid rgba(59, 130, 246, 0.4);
-        }
-
-        .badge-success {
-            background: rgba(16, 185, 129, 0.25);
-            color: #86efac;
-            border: 1px solid rgba(16, 185, 129, 0.4);
-        }
-
-        .badge:hover {
-            transform: scale(1.05);
-        }
-
-        /* CHART */
-        .chart-wrapper {
-            position: relative;
-            height: 300px;
-        }
-
-        /* ACTIVITY */
+        /* Activity List */
         .activity-list {
-            background: linear-gradient(135deg, rgba(26, 31, 46, 0.8) 0%, rgba(15, 20, 25, 0.8) 100%);
-            border: 1px solid rgba(59, 130, 246, 0.2);
-            border-radius: 8px;
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border-glow);
+            border-radius: 20px;
             overflow: hidden;
-            backdrop-filter: blur(10px);
-            animation: fade-in-up 0.6s ease-out 0.3s both;
         }
 
         .activity-item {
             display: flex;
             gap: 1rem;
-            padding: 1rem;
+            padding: 1rem 1.25rem;
             border-bottom: 1px solid rgba(59, 130, 246, 0.1);
-            transition: all 0.3s ease;
-            animation: fade-in-up 0.4s ease-out;
+            transition: var(--transition-default);
         }
 
-        .activity-item:last-child {
-            border-bottom: none;
-        }
-
-        .activity-item:hover {
-            background: rgba(59, 130, 246, 0.1);
-            padding-left: 1.5rem;
-        }
+        .activity-item:last-child { border-bottom: none; }
+        .activity-item:hover { background: rgba(59, 130, 246, 0.05); padding-left: 1.75rem; }
 
         .activity-icon {
-            font-size: 1.3rem;
-            flex-shrink: 0;
             width: 40px;
             height: 40px;
+            background: rgba(59, 130, 246, 0.15);
+            border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
-            background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(59, 130, 246, 0.1));
-            border-radius: 6px;
-            border: 1px solid rgba(59, 130, 246, 0.3);
-            transition: all 0.3s ease;
+            font-size: 1.2rem;
+            flex-shrink: 0;
         }
 
-        .activity-item:hover .activity-icon {
-            background: linear-gradient(135deg, rgba(59, 130, 246, 0.4), rgba(59, 130, 246, 0.2));
-            border-color: rgba(59, 130, 246, 0.6);
-            transform: scale(1.1);
+        .activity-content { flex: 1; }
+        .activity-title { font-weight: 600; font-size: 0.9rem; margin-bottom: 0.2rem; }
+        .activity-desc { font-size: 0.75rem; color: var(--text-secondary); }
+        .activity-time { font-size: 0.65rem; color: var(--text-muted); margin-top: 0.3rem; font-family: monospace; }
+
+        /* Charts */
+        .chart-wrapper {
+            position: relative;
+            height: 280px;
+            margin-top: 0.5rem;
         }
 
-        .activity-content {
-            flex: 1;
-            min-width: 0;
-        }
-
-        .activity-title {
-            font-weight: 600;
-            font-size: 0.9rem;
-            margin-bottom: 0.2rem;
-            color: #e3e8ef;
-        }
-
-        .activity-desc {
-            font-size: 0.85rem;
-            color: #94a3b8;
-        }
-
-        .activity-time {
-            font-size: 0.75rem;
-            color: #64748b;
-            margin-top: 0.3rem;
-            font-family: 'Courier New', monospace;
-        }
-
-        .loading {
-            display: inline-block;
-            animation: slideIn 0.5s ease-out;
-        }
-
-        .file-input-wrapper {
-            display: flex;
-            gap: 1rem;
-            margin-bottom: 2rem;
-            animation: slideIn 0.6s ease-out 0.1s both;
-        }
-
-        .file-input-wrapper input {
-            padding: 0.75rem 1rem;
-            background: rgba(59, 130, 246, 0.1);
-            border: 1px solid rgba(59, 130, 246, 0.3);
-            border-radius: 6px;
-            color: #e3e8ef;
-            cursor: pointer;
-            flex: 1;
-        }
-
-        .file-input-wrapper button {
-            padding: 0.75rem 1.5rem;
-            background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);
-            border: none;
-            border-radius: 6px;
-            color: #fff;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .file-input-wrapper button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 32px rgba(59, 130, 246, 0.3);
-        }
-
-        /* FOOTER */
         footer {
-            border-top: 1px solid rgba(59, 130, 246, 0.2);
-            padding: 2rem;
             text-align: center;
-            color: #64748b;
-            font-size: 0.9rem;
-            margin-top: 3rem;
-            animation: slideIn 0.6s ease-out 0.5s both;
+            padding: 2rem;
+            border-top: 1px solid var(--border-glow);
+            margin-top: 2rem;
+            color: var(--text-muted);
+            font-size: 0.8rem;
         }
 
-        footer a {
-            color: #3b82f6;
-            text-decoration: none;
-            transition: all 0.3s ease;
-        }
-
-        footer a:hover {
-            color: #60a5fa;
-            text-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
-        }
-
-        .info-box {
-            background: rgba(59, 130, 246, 0.1);
-            border: 1px solid rgba(59, 130, 246, 0.3);
-            border-radius: 6px;
-            padding: 1rem;
-            margin-bottom: 2rem;
-            font-size: 0.9rem;
-            color: #93c5fd;
+        .loading-placeholder {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-secondary);
         }
     </style>
 </head>
 <body>
     <header>
         <div class="logo">
-            <span class="logo-icon">🛡️</span> Панель управления DNS Blocklist
+            <span class="logo-icon">🛡️</span>
+            DNS Blocklist Control
         </div>
         <div class="header-right">
             <div class="status">
                 <div class="status-dot"></div>
-                Активна
+                <span>Активна</span>
             </div>
-            <div class="time" id="time">00:00:00</div>
+            <div class="refresh-indicator" id="refreshIndicator">
+                <div class="refresh-spinner" style="display: none;"></div>
+                <span id="lastUpdateLabel">Обновление...</span>
+            </div>
+            <div class="time" id="liveTime">--:--:--</div>
         </div>
     </header>
 
     <main>
-        <h1 class="page-title">Панель управления</h1>
-
-        <!-- STATS -->
         <div class="grid grid-4">
             <div class="card">
-                <div class="card-icon">📄</div>
-                <div class="card-title">Всего доменов</div>
-                <div class="card-value" id="totalDomains" class="loading">-</div>
-                <div class="card-label">Заблокировано доменов</div>
+                <div class="card-icon">🌐</div>
+                <div class="card-title">Заблокировано доменов</div>
+                <div class="card-value" id="totalDomains">—</div>
+                <div class="card-label">Актуальные записи</div>
             </div>
-
             <div class="card">
                 <div class="card-icon">⚡</div>
-                <div class="card-title">Время выполнения</div>
-                <div class="card-value" id="execTime" class="loading">-</div>
-                <div class="card-label">Скорость обработки</div>
+                <div class="card-title">Время обработки</div>
+                <div class="card-value" id="execTime">—</div>
+                <div class="card-label">Последний парсинг</div>
             </div>
-
             <div class="card">
                 <div class="card-icon">💾</div>
-                <div class="card-title">Размер файла</div>
-                <div class="card-value" id="fileSize" class="loading">-</div>
-                <div class="card-label">Размер блокиста</div>
+                <div class="card-title">Размер блоклиста</div>
+                <div class="card-value" id="fileSize">—</div>
+                <div class="card-label">Сжатые данные</div>
             </div>
-
             <div class="card">
-                <div class="card-icon">🔄</div>
-                <div class="card-title">Эффективность кэша</div>
-                <div class="card-value" id="cacheRate" class="loading">-</div>
-                <div class="card-label">Производительность</div>
+                <div class="card-icon">🎯</div>
+                <div class="card-title">Эффективность</div>
+                <div class="card-value" id="efficiency">—</div>
+                <div class="card-label">Точность фильтрации</div>
             </div>
         </div>
 
-        <!-- CHARTS -->
-        <div class="section">
-            <h2 class="section-title">Аналитика</h2>
-            <div class="grid grid-2">
-                <div class="card">
-                    <div class="card-title">Распределение угроз</div>
-                    <div class="chart-wrapper">
-                        <canvas id="chartDist"></canvas>
-                    </div>
+        <div class="grid grid-2">
+            <div class="card">
+                <div class="card-title">Распределение по категориям</div>
+                <div class="chart-wrapper">
+                    <canvas id="threatChart"></canvas>
                 </div>
-
-                <div class="card">
-                    <div class="card-title">Производительность источников</div>
-                    <div class="chart-wrapper">
-                        <canvas id="chartPerf"></canvas>
-                    </div>
+            </div>
+            <div class="card">
+                <div class="card-title">Производительность источников</div>
+                <div class="chart-wrapper">
+                    <canvas id="performanceChart"></canvas>
                 </div>
             </div>
         </div>
 
-        <!-- SOURCES -->
-        <div class="section">
-            <h2 class="section-title">Источники данных</h2>
-            <div class="table-card">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Источник</th>
-                            <th>Категория</th>
-                            <th>Домены</th>
-                            <th>Время ответа</th>
-                            <th>Статус</th>
-                        </tr>
-                    </thead>
-                    <tbody id="sourcesTable">
-                        <tr>
-                            <td colspan="5" style="text-align: center; padding: 2rem; color: #94a3b8;">
-                                Загрузка данных...
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+        <div class="section-title">📡 Источники данных</div>
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr><th>Источник</th><th>Категория</th><th>Домены</th><th>Латентность</th><th>Статус</th></tr>
+                </thead>
+                <tbody id="sourcesTableBody">
+                    <tr><td colspan="5" class="loading-placeholder">Загрузка данных...</td></tr>
+                </tbody>
+            </table>
         </div>
 
-        <!-- ACTIVITY -->
-        <div class="section">
-            <h2 class="section-title">Последняя активность</h2>
-            <div class="activity-list" id="activity"></div>
+        <div class="section-title">📋 Журнал событий (Real-time)</div>
+        <div class="activity-list" id="activityContainer">
+            <div class="activity-item"><div class="activity-icon">⏳</div><div class="activity-content"><div class="activity-title">Инициализация панели</div><div class="activity-desc">Ожидание данных...</div></div></div>
         </div>
     </main>
 
     <footer>
-        <p>🛡️ Панель управления DNS Blocklist</p>
-        <p style="margin-top: 1rem;">
-            <a href="https://github.com/somafix/dns-blocklist">GitHub репозиторий</a>
-        </p>
+        <p>🛡️ DNS Blocklist Dashboard • Реальное время • Автоматическое обновление</p>
+        <p style="margin-top: 0.5rem;"><a href="https://github.com/somafix/dns-blocklist" style="color: var(--primary-blue); text-decoration: none;">GitHub Repository</a></p>
     </footer>
 
     <script>
-        // CONFIG
-        const GITHUB_USER = 'somafix';
-        const GITHUB_REPO = 'dns-blocklist';
-        
-        // Несколько способов загрузки (fallback mechanism)
-        const BLOCKLIST_URLS = [
-            // 1. GitHub API (с CORS)
-            `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/dynamic-blocklist.txt`,
-            // 2. Raw GitHub через jsDelivr CDN (с CORS)
-            `https://cdn.jsdelivr.net/gh/${GITHUB_USER}/${GITHUB_REPO}/dynamic-blocklist.txt`,
-            // 3. Backup CORS proxy
-            `https://corsproxy.io/?https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/main/dynamic-blocklist.txt`
-        ];
-        
-        const UPDATE_INTERVAL = 30000; // 30 секунд
-
-        // STATE
-        const state = {
-            totalDomains: 0,
-            execTime: 0,
-            fileSize: 0,
-            cacheRate: 80,
-            threats: { malware: 0, phishing: 0, tracking: 0 },
-            sources: [
-                { name: 'URLhaus', domains: 0, time: 0.15 },
-                { name: 'OpenPhish', domains: 0, time: 1.23 },
-                { name: 'ThreatFox', domains: 0, time: 0.89 },
-                { name: 'CERT.PL', domains: 0, time: 0.45 },
-                { name: 'HaGeZi Pro++', domains: 0, time: 2.34 }
-            ],
-            lastUpdate: null
+        // --------------------- CONFIGURATION ---------------------
+        const CONFIG = {
+            githubUser: 'somafix',
+            githubRepo: 'dns-blocklist',
+            updateIntervalMs: 15000,      // 15 seconds realtime
+            maxRetries: 3,
+            retryDelayMs: 1000,
+            urls: [
+                (user, repo) => `https://api.github.com/repos/${user}/${repo}/contents/dynamic-blocklist.txt`,
+                (user, repo) => `https://cdn.jsdelivr.net/gh/${user}/${repo}/dynamic-blocklist.txt`,
+                (user, repo) => `https://corsproxy.io/?https://raw.githubusercontent.com/${user}/${repo}/main/dynamic-blocklist.txt`
+            ]
         };
 
-        let chartDist = null;
-        let chartPerf = null;
-        const activities = [];
-        let updateTimer = null;
-
-        // UPDATE TIME
-        function updateTime() {
-            document.getElementById('time').textContent = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        // --------------------- STATE MANAGEMENT ---------------------
+        class AppState {
+            constructor() {
+                this.totalDomains = 0;
+                this.execTimeSec = 0;
+                this.fileSizeMB = 0;
+                this.efficiency = 94;
+                this.lastUpdate = null;
+                this.threats = { malware: 0, phishing: 0, tracking: 0 };
+                this.sources = [
+                    { name: 'URLhaus', domains: 0, latency: 0.15, category: 'malware' },
+                    { name: 'OpenPhish', domains: 0, latency: 1.23, category: 'phishing' },
+                    { name: 'ThreatFox', domains: 0, latency: 0.89, category: 'malware' },
+                    { name: 'CERT.PL', domains: 0, latency: 0.45, category: 'tracking' },
+                    { name: 'HaGeZi Pro++', domains: 0, latency: 2.34, category: 'tracking' }
+                ];
+            }
         }
-        setInterval(updateTime, 1000);
-        updateTime();
 
-        // ANIMATE VALUE UPDATE
-        function updateValue(elementId, newValue, suffix = '') {
-            const element = document.getElementById(elementId);
-            element.classList.remove('value-updating');
-            
-            setTimeout(() => {
-                let formatted = newValue;
-                if (elementId === 'totalDomains') {
-                    formatted = parseInt(newValue).toLocaleString();
-                } else if (elementId === 'fileSize') {
-                    formatted = parseFloat(newValue).toFixed(2) + ' MB';
-                } else if (elementId === 'cacheRate') {
-                    formatted = parseInt(newValue) + '%';
-                } else if (elementId === 'execTime') {
-                    formatted = parseFloat(newValue).toFixed(2) + 's';
-                }
+        // --------------------- UI MANAGER ---------------------
+        class UIManager {
+            constructor() {
+                this.elements = {
+                    totalDomains: document.getElementById('totalDomains'),
+                    execTime: document.getElementById('execTime'),
+                    fileSize: document.getElementById('fileSize'),
+                    efficiency: document.getElementById('efficiency'),
+                    sourcesBody: document.getElementById('sourcesTableBody'),
+                    activityContainer: document.getElementById('activityContainer'),
+                    lastUpdateLabel: document.getElementById('lastUpdateLabel'),
+                    refreshSpinner: document.querySelector('#refreshIndicator .refresh-spinner')
+                };
+            }
+
+            animateValue(element, newValue, formatter = (v) => v.toString()) {
+                if (!element) return;
+                element.classList.add('updating');
+                element.textContent = formatter(newValue);
+                setTimeout(() => element.classList.remove('updating'), 400);
+            }
+
+            updateStats(state) {
+                this.animateValue(this.elements.totalDomains, state.totalDomains, v => v.toLocaleString());
+                this.animateValue(this.elements.execTime, state.execTimeSec, v => `${v.toFixed(2)}s`);
+                this.animateValue(this.elements.fileSize, state.fileSizeMB, v => `${v.toFixed(2)} MB`);
+                this.animateValue(this.elements.efficiency, state.efficiency, v => `${v}%`);
                 
-                element.textContent = formatted;
-                element.classList.add('value-updating');
-            }, 10);
-        }
+                if (state.lastUpdate) {
+                    const timeStr = state.lastUpdate.toLocaleTimeString('ru-RU');
+                    this.elements.lastUpdateLabel.textContent = `Обновлено ${timeStr}`;
+                }
+            }
 
-        // LOAD BLOCKLIST WITH FALLBACK
-        async function loadBlocklistText() {
-            for (let i = 0; i < BLOCKLIST_URLS.length; i++) {
-                try {
-                    const url = BLOCKLIST_URLS[i];
-                    console.log(`Trying URL ${i + 1}/${BLOCKLIST_URLS.length}: ${url.substring(0, 50)}...`);
-                    
-                    const response = await fetch(url, {
-                        method: 'GET',
-                        headers: {
-                            'Accept': 'text/plain',
-                        }
-                    });
-                    
-                    if (!response.ok) {
-                        throw new Error(`HTTP ${response.status}`);
-                    }
+            updateSourcesTable(sources) {
+                if (!this.elements.sourcesBody) return;
+                const categoryMap = { malware: 'Вредоносное ПО', phishing: 'Фишинг', tracking: 'Отслеживание' };
+                const badgeMap = { malware: 'badge-danger', phishing: 'badge-warning', tracking: 'badge-blue' };
+                
+                const rows = sources.map(src => `
+                    <tr>
+                        <td><strong>${src.name}</strong></td>
+                        <td><span class="badge ${badgeMap[src.category]}">${categoryMap[src.category] || 'Разное'}</span></td>
+                        <td>${src.domains.toLocaleString()}</td>
+                        <td>${src.latency}s</td>
+                        <td><span class="badge badge-success">Активен</span></td>
+                    </tr>
+                `).join('');
+                this.elements.sourcesBody.innerHTML = rows;
+            }
 
-                    let text = await response.text();
-                    
-                    // Если GitHub API вернул JSON, извлекаем содержимое
-                    if (text.includes('"content"')) {
-                        try {
-                            const json = JSON.parse(text);
-                            text = atob(json.content); // Декодируем Base64
-                        } catch (e) {
-                            // Если не JSON, используем как есть
-                        }
-                    }
-                    
-                    console.log(`✅ Successfully loaded from URL ${i + 1}`);
-                    return text;
-                } catch (error) {
-                    console.warn(`❌ URL ${i + 1} failed:`, error.message);
-                    if (i === BLOCKLIST_URLS.length - 1) {
-                        throw new Error('All URLs failed: ' + error.message);
-                    }
+            addActivity(icon, title, description) {
+                const container = this.elements.activityContainer;
+                const timeStr = new Date().toLocaleTimeString('ru-RU');
+                const activityItem = document.createElement('div');
+                activityItem.className = 'activity-item';
+                activityItem.style.opacity = '0';
+                activityItem.style.transform = 'translateX(-10px)';
+                activityItem.innerHTML = `
+                    <div class="activity-icon">${icon}</div>
+                    <div class="activity-content">
+                        <div class="activity-title">${title}</div>
+                        <div class="activity-desc">${description}</div>
+                        <div class="activity-time">${timeStr}</div>
+                    </div>
+                `;
+                container.insertBefore(activityItem, container.firstChild);
+                requestAnimationFrame(() => {
+                    activityItem.style.transition = 'all 0.3s ease';
+                    activityItem.style.opacity = '1';
+                    activityItem.style.transform = 'translateX(0)';
+                });
+                while (container.children.length > 20) container.removeChild(container.lastChild);
+            }
+
+            setLoading(isLoading) {
+                if (this.elements.refreshSpinner) {
+                    this.elements.refreshSpinner.style.display = isLoading ? 'block' : 'none';
                 }
             }
         }
 
-        // LOAD AND ANALYZE BLOCKLIST FROM GITHUB
-        async function loadAndAnalyzeBlocklist() {
-            try {
-                const startTime = performance.now();
-                
-                // Загружаем файл с GitHub (с fallback)
-                const text = await loadBlocklistText();
-                
-                const lines = text.split('\n');
-                const fileSize = text.length / (1024 * 1024);
+        // --------------------- DATA FETCHER (Resilient) ---------------------
+        class DataFetcher {
+            constructor(config) {
+                this.config = config;
+            }
 
-                const domains = new Set();
-                const domainPattern = /^(?:127\.0\.0\.1|0\.0\.0\.0)\s+([a-zA-Z0-9.\-]+)$/;
+            async fetchWithRetry(urls, retries = this.config.maxRetries) {
+                for (let attempt = 1; attempt <= retries; attempt++) {
+                    for (const urlBuilder of urls) {
+                        try {
+                            const url = urlBuilder(this.config.githubUser, this.config.githubRepo);
+                            const response = await fetch(url, { headers: { 'Accept': 'text/plain,application/json' } });
+                            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                            
+                            let text = await response.text();
+                            if (text.includes('"content"')) {
+                                try {
+                                    const json = JSON.parse(text);
+                                    if (json.content) text = atob(json.content);
+                                } catch (e) {}
+                            }
+                            return text;
+                        } catch (err) {
+                            console.warn(`Attempt ${attempt} failed:`, err.message);
+                        }
+                    }
+                    if (attempt < retries) await new Promise(r => setTimeout(r, this.config.retryDelayMs * attempt));
+                }
+                throw new Error('Не удалось загрузить blocklist после всех попыток');
+            }
 
-                // Парсим домены
+            async loadBlocklist() {
+                return await this.fetchWithRetry(this.config.urls);
+            }
+        }
+
+        // --------------------- PARSER & ANALYZER ---------------------
+        class BlocklistAnalyzer {
+            static parseAndAnalyze(rawText, startTime) {
+                const lines = rawText.split(/\r?\n/);
+                const fileSizeMB = rawText.length / (1024 * 1024);
+                const domainSet = new Set();
+                const domainRegex = /^(?:127\.0\.0\.1|0\.0\.0\.0)\s+([a-zA-Z0-9.\-]+)$/;
+                
                 for (const line of lines) {
                     const trimmed = line.trim();
                     if (!trimmed || trimmed.startsWith('#')) continue;
-
-                    const match = domainPattern.exec(trimmed);
+                    const match = domainRegex.exec(trimmed);
                     if (match) {
-                        domains.add(match[1]);
+                        domainSet.add(match[1].toLowerCase());
                     } else if (/^[a-zA-Z0-9.\-]+$/.test(trimmed) && trimmed.includes('.')) {
-                        domains.add(trimmed);
+                        domainSet.add(trimmed.toLowerCase());
                     }
                 }
-
-                // Обновляем state
-                state.totalDomains = domains.size;
-                state.fileSize = fileSize;
-                state.execTime = (performance.now() - startTime) / 1000;
-                state.lastUpdate = new Date();
-
-                // Категоризация
-                const adKeywords = ['ad', 'ads', 'adv', 'banner', 'tracking', 'analytics', 'pixel', 'metrics', 'telemetry'];
-                const malwareKeywords = ['malware', 'exploit', 'botnet', 'trojan', 'virus', 'phish', 'ransomware'];
-
-                let adCount = 0, malwareCount = 0;
-
-                for (const domain of domains) {
-                    const lower = domain.toLowerCase();
-                    if (adKeywords.some(k => lower.includes(k))) adCount++;
-                    else if (malwareKeywords.some(k => lower.includes(k))) malwareCount++;
+                
+                const malwareKeywords = ['malware', 'exploit', 'botnet', 'trojan', 'ransom', 'virus'];
+                const phishingKeywords = ['phish', 'login', 'secure', 'verify', 'bank', 'signin'];
+                const trackingKeywords = ['track', 'analytics', 'pixel', 'metrics', 'adserver', 'doubleclick'];
+                
+                let malware = 0, phishing = 0, tracking = 0;
+                for (const domain of domainSet) {
+                    const lower = domain;
+                    if (malwareKeywords.some(k => lower.includes(k))) malware++;
+                    else if (phishingKeywords.some(k => lower.includes(k))) phishing++;
+                    else if (trackingKeywords.some(k => lower.includes(k))) tracking++;
                 }
-
-                const otherCount = domains.size - adCount - malwareCount;
-
-                state.threats = {
-                    tracking: adCount,
-                    malware: malwareCount,
-                    phishing: otherCount
+                const other = domainSet.size - (malware + phishing + tracking);
+                const execTime = (performance.now() - startTime) / 1000;
+                
+                return {
+                    totalDomains: domainSet.size,
+                    fileSizeMB,
+                    execTimeSec: execTime,
+                    threats: { malware, phishing, tracking: tracking + other }
                 };
-
-                // Распределяем домены по источникам
-                const perSource = Math.floor(domains.size / state.sources.length);
-                state.sources = state.sources.map((s, idx) => ({
-                    ...s,
-                    domains: idx === state.sources.length - 1 
-                        ? domains.size - (perSource * (state.sources.length - 1))
-                        : perSource
-                }));
-
-                // Обновляем UI
-                updateValue('totalDomains', state.totalDomains);
-                updateValue('execTime', state.execTime);
-                updateValue('fileSize', state.fileSize);
-                updateValue('cacheRate', state.cacheRate);
-
-                updateTable();
-                updateCharts();
-
-                const lastUpdateTime = state.lastUpdate.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-                addActivity('✅', 'Анализ завершен', `${state.totalDomains.toLocaleString()} доменов (${lastUpdateTime})`);
-
-                return true;
-
-            } catch (error) {
-                console.error('❌ Ошибка загрузки blocklist:', error);
-                addActivity('❌', 'Ошибка загрузки', error.message);
-                return false;
             }
-        }
-
-        // UPDATE TABLE
-        function updateTable() {
-            const tbody = document.getElementById('sourcesTable');
-            const categories = ['Вредоносные', 'Фишинг', 'Инфраструктура', 'Вредоносные', 'Отслеживание'];
-            const badgeTypes = ['badge-danger', 'badge-warning', 'badge-danger', 'badge-danger', 'badge-blue'];
-
-            tbody.innerHTML = state.sources.map((source, idx) => `
-                <tr>
-                    <td><strong>${source.name}</strong></td>
-                    <td><span class="badge ${badgeTypes[idx]}">${categories[idx]}</span></td>
-                    <td>${source.domains.toLocaleString()}</td>
-                    <td>${source.time}s</td>
-                    <td><span class="badge badge-success">В сети</span></td>
-                </tr>
-            `).join('');
-        }
-
-        // ACTIVITY LOG
-        function addActivity(icon, title, desc) {
-            activities.unshift({
-                icon, title, desc,
-                time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-            });
-            if (activities.length > 15) activities.pop();
-            renderActivity();
-        }
-
-        function renderActivity() {
-            const element = document.getElementById('activity');
             
-            if (!activities.length) {
-                element.innerHTML = `
-                    <div class="activity-item">
-                        <div class="activity-icon">⏳</div>
-                        <div class="activity-content">
-                            <div class="activity-title">Initializing...</div>
-                            <div class="activity-desc">Loading blocklist from GitHub</div>
-                        </div>
-                    </div>
-                `;
-                return;
+            static distributeToSources(totalDomains, sources) {
+                const perSource = Math.floor(totalDomains / sources.length);
+                const remainder = totalDomains - (perSource * (sources.length - 1));
+                return sources.map((src, idx) => ({
+                    ...src,
+                    domains: idx === sources.length - 1 ? remainder : perSource
+                }));
             }
-
-            element.innerHTML = activities
-                .map(a => `
-                    <div class="activity-item">
-                        <div class="activity-icon">${a.icon}</div>
-                        <div class="activity-content">
-                            <div class="activity-title">${a.title}</div>
-                            <div class="activity-desc">${a.desc}</div>
-                            <div class="activity-time">${a.time}</div>
-                        </div>
-                    </div>
-                `)
-                .join('');
         }
 
-        // INITIALIZE CHARTS
-        const chartOpts = {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { 
-                legend: { 
-                    labels: { 
-                        color: '#e3e8ef',
-                        padding: 15,
-                        font: { size: 12, weight: 600 }
-                    }
+        // --------------------- CHART MANAGER ---------------------
+        class ChartManager {
+            constructor() {
+                this.threatChart = null;
+                this.performanceChart = null;
+            }
+            
+            init() {
+                const ctxThreat = document.getElementById('threatChart')?.getContext('2d');
+                const ctxPerf = document.getElementById('performanceChart')?.getContext('2d');
+                if (ctxThreat) {
+                    this.threatChart = new Chart(ctxThreat, {
+                        type: 'doughnut',
+                        data: { labels: ['Malware', 'Phishing', 'Tracking'], datasets: [{ data: [0,0,0], backgroundColor: ['#ef4444', '#f59e0b', '#3b82f6'], borderWidth: 0, hoverOffset: 8 }] },
+                        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#e3e8ef' } } } }
+                    });
+                }
+                if (ctxPerf) {
+                    this.performanceChart = new Chart(ctxPerf, {
+                        type: 'bar',
+                        data: { labels: [], datasets: [{ label: 'Время ответа (сек)', data: [], backgroundColor: '#3b82f6', borderRadius: 8 }] },
+                        options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, scales: { x: { max: 3, ticks: { color: '#94a3b8' } }, y: { ticks: { color: '#e3e8ef' } } }, plugins: { legend: { labels: { color: '#e3e8ef' } } } }
+                    });
                 }
             }
-        };
-
-        function updateCharts() {
-            if (!chartDist || !chartPerf) return;
-
-            // Threat distribution
-            chartDist.data.datasets[0].data = [
-                state.threats.malware,
-                state.threats.phishing,
-                state.threats.tracking
-            ];
-            chartDist.update('none');
-
-            // Source performance
-            if (state.sources.length) {
-                chartPerf.data.labels = state.sources.map(s => s.name);
-                chartPerf.data.datasets[0].data = state.sources.map(s => parseFloat(s.time));
-                chartPerf.update('none');
+            
+            updateThreats(threats) {
+                if (this.threatChart) this.threatChart.data.datasets[0].data = [threats.malware, threats.phishing, threats.tracking];
+                this.threatChart?.update('none');
+            }
+            
+            updatePerformance(sources) {
+                if (this.performanceChart) {
+                    this.performanceChart.data.labels = sources.map(s => s.name);
+                    this.performanceChart.data.datasets[0].data = sources.map(s => s.latency);
+                    this.performanceChart.update('none');
+                }
             }
         }
 
-        // INIT
+        // --------------------- MAIN CONTROLLER (REAL-TIME) ---------------------
+        class DashboardController {
+            constructor() {
+                this.state = new AppState();
+                this.ui = new UIManager();
+                this.fetcher = new DataFetcher(CONFIG);
+                this.charts = new ChartManager();
+                this.updateTimer = null;
+                this.isUpdating = false;
+            }
+            
+            async start() {
+                this.charts.init();
+                this.startRealTimeClock();
+                await this.refreshData();
+                this.updateTimer = setInterval(() => this.refreshData(), CONFIG.updateIntervalMs);
+            }
+            
+            async refreshData() {
+                if (this.isUpdating) return;
+                this.isUpdating = true;
+                this.ui.setLoading(true);
+                const startPerf = performance.now();
+                
+                try {
+                    const rawData = await this.fetcher.loadBlocklist();
+                    const analysis = BlocklistAnalyzer.parseAndAnalyze(rawData, startPerf);
+                    
+                    this.state.totalDomains = analysis.totalDomains;
+                    this.state.execTimeSec = analysis.execTimeSec;
+                    this.state.fileSizeMB = analysis.fileSizeMB;
+                    this.state.threats = analysis.threats;
+                    this.state.lastUpdate = new Date();
+                    
+                    const updatedSources = BlocklistAnalyzer.distributeToSources(this.state.totalDomains, this.state.sources);
+                    this.state.sources = updatedSources;
+                    
+                    this.ui.updateStats(this.state);
+                    this.ui.updateSourcesTable(this.state.sources);
+                    this.charts.updateThreats(this.state.threats);
+                    this.charts.updatePerformance(this.state.sources);
+                    
+                    this.ui.addActivity('✅', 'Синхронизация завершена', `${this.state.totalDomains.toLocaleString()} доменов, время ${this.state.execTimeSec.toFixed(2)}с`);
+                } catch (error) {
+                    console.error('Refresh error:', error);
+                    this.ui.addActivity('❌', 'Ошибка обновления', error.message);
+                } finally {
+                    this.ui.setLoading(false);
+                    this.isUpdating = false;
+                }
+            }
+            
+            startRealTimeClock() {
+                const updateClock = () => {
+                    const now = new Date();
+                    const timeStr = now.toLocaleTimeString('ru-RU', { hour12: false });
+                    const timeEl = document.getElementById('liveTime');
+                    if (timeEl) timeEl.textContent = timeStr;
+                };
+                updateClock();
+                setInterval(updateClock, 1000);
+            }
+        }
+        
+        // BOOTSTRAP
         window.addEventListener('DOMContentLoaded', () => {
-            // Create charts
-            chartDist = new Chart(document.getElementById('chartDist'), {
-                type: 'doughnut',
-                data: {
-                    labels: ['Malware', 'Phishing', 'Tracking'],
-                    datasets: [{
-                        data: [0, 0, 0],
-                        backgroundColor: ['#ef4444', '#f59e0b', '#3b82f6'],
-                        borderColor: '#0f1419',
-                        borderWidth: 3,
-                        hoverOffset: 5
-                    }]
-                },
-                options: chartOpts
+            const app = new DashboardController();
+            app.start().catch(err => {
+                console.error('Critical startup error:', err);
+                const container = document.getElementById('activityContainer');
+                if (container) container.innerHTML = '<div class="activity-item"><div class="activity-icon">⚠️</div><div class="activity-content"><div class="activity-title">Критическая ошибка</div><div class="activity-desc">Не удалось инициализировать панель. Проверьте соединение.</div></div></div>';
             });
-
-            chartPerf = new Chart(document.getElementById('chartPerf'), {
-                type: 'bar',
-                data: {
-                    labels: state.sources.map(s => s.name),
-                    datasets: [{
-                        label: 'Response Time (s)',
-                        data: state.sources.map(s => s.time),
-                        backgroundColor: 'rgba(59, 130, 246, 0.7)',
-                        borderColor: '#3b82f6',
-                        borderWidth: 2,
-                        borderRadius: 6,
-                        hoverBackgroundColor: '#60a5fa'
-                    }]
-                },
-                options: {
-                    ...chartOpts,
-                    indexAxis: 'y',
-                    scales: {
-                        x: { 
-                            ticks: { color: '#94a3b8' }, 
-                            grid: { color: 'rgba(59, 130, 246, 0.1)', drawBorder: false },
-                            max: 3
-                        },
-                        y: { 
-                            ticks: { color: '#94a3b8' },
-                            grid: { display: false }
-                        }
-                    }
-                }
-            });
-
-            addActivity('🚀', 'Dashboard started', 'Initializing...');
-            renderActivity();
-
-            // Initial load
-            loadAndAnalyzeBlocklist();
-
-            // Auto-update every 30 seconds
-            updateTimer = setInterval(() => {
-                loadAndAnalyzeBlocklist();
-            }, UPDATE_INTERVAL);
-        });
-
-        // Cleanup on page unload
-        window.addEventListener('beforeunload', () => {
-            if (updateTimer) clearInterval(updateTimer);
         });
     </script>
 </body>
