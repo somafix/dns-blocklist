@@ -650,3 +650,24 @@
 2026-03-26 19:14:40 [INFO] [SEQ:000043] ✅ OISD Emergency: 0 domains, 0 new [2.68s]
 2026-03-26 19:14:40 [INFO] [SEQ:000044] Cache saved: 12 entries
 2026-03-26 19:14:40 [INFO] [SEQ:000045] Blocklist generated: dynamic-blocklist.txt (18,546 domains)
+2026-03-26 23:16:51 [INFO] [SEQ:000001] Security hardening applied
+2026-03-26 23:16:51 [INFO] [SEQ:000002] GC configured with optimized thresholds (ENABLED)
+2026-03-26 23:16:51 [INFO] [SEQ:000003] Running network diagnostics...
+2026-03-26 23:16:52 [INFO] [SEQ:000004] Cache loaded: 3 entries
+2026-03-26 23:16:52 [INFO] [SEQ:000005] Attempting StevenBlack (primary): https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts
+2026-03-26 23:16:52 [INFO] [SEQ:000006] Fetched https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts (2,623,924 bytes)
+2026-03-26 23:16:53 [INFO] [SEQ:000007] ✅ StevenBlack: 87,418 domains, 87,418 new [0.18s]
+2026-03-26 23:16:53 [INFO] [SEQ:000008] Attempting AdAway (primary): https://adaway.org/hosts.txt
+2026-03-26 23:16:53 [INFO] [SEQ:000009] Fetched https://adaway.org/hosts.txt (243,454 bytes)
+2026-03-26 23:16:53 [INFO] [SEQ:000010] ✅ AdAway: 6,540 domains, 16 new [0.23s]
+2026-03-26 23:16:53 [INFO] [SEQ:000011] Attempting HaGeZi Ultimate (primary): https://raw.githubusercontent.com/hagezi/dns-blocklists/main/hosts/ultimate.txt
+2026-03-26 23:16:56 [INFO] [SEQ:000012] Fetched https://raw.githubusercontent.com/hagezi/dns-blocklists/main/hosts/ultimate.txt (17,554,328 bytes)
+2026-03-26 23:16:58 [INFO] [SEQ:000013] ✅ HaGeZi Ultimate: 300,000 domains, 287,982 new [3.47s]
+2026-03-26 23:16:58 [INFO] [SEQ:000015] Attempting SomeoneWhoCares (primary): https://someonewhocares.org/hosts/zero/hosts
+2026-03-26 23:16:58 [INFO] [SEQ:000016] Fetched https://someonewhocares.org/hosts/zero/hosts (350,230 bytes)
+2026-03-26 23:16:58 [INFO] [SEQ:000017] ✅ SomeoneWhoCares: 12,413 domains, 43 new [0.14s]
+2026-03-26 23:16:58 [INFO] [SEQ:000018] Attempting OISD Emergency (primary): https://big.oisd.nl/domainswild2
+2026-03-26 23:17:00 [INFO] [SEQ:000019] Fetched https://big.oisd.nl/domainswild2 (7,046,002 bytes)
+2026-03-26 23:17:00 [INFO] [SEQ:000020] ✅ OISD Emergency: 0 domains, 0 new [2.23s]
+2026-03-26 23:17:00 [INFO] [SEQ:000021] Cache saved: 5 entries
+2026-03-26 23:17:00 [INFO] [SEQ:000022] Blocklist generated: dynamic-blocklist.txt (375,459 domains)
