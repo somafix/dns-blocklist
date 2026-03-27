@@ -9,6 +9,11 @@ on:
     paths:
       - 'update_blocklist.py'
 
+# Важно: Добавляем permissions
+permissions:
+  contents: write
+  actions: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -16,6 +21,9 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
     
     - name: Set up Python
       uses: actions/setup-python@v5
@@ -28,19 +36,29 @@ jobs:
         pip install aiohttp aiofiles pyyaml
     
     - name: Run blocklist builder
+      id: build
       run: |
         python update_blocklist.py
+      continue-on-error: false
     
     - name: Check if files changed
       id: git-check
       run: |
-        git diff --exit-code || echo "changes=true" >> $GITHUB_OUTPUT
+        git config --global user.name 'GitHub Actions'
+        git config --global user.email 'actions@github.com'
+        git add dynamic-blocklist.txt
+        if git diff --cached --quiet; then
+          echo "changes=false" >> $GITHUB_OUTPUT
+          echo "No changes to commit"
+        else
+          echo "changes=true" >> $GITHUB_OUTPUT
+          echo "Changes detected"
+        fi
     
     - name: Commit and push
       if: steps.git-check.outputs.changes == 'true'
       run: |
-        git config --global user.name 'GitHub Actions'
-        git config --global user.email 'actions@github.com'
-        git add dynamic-blocklist.txt
         git commit -m "Auto-update blocklist [skip ci]"
-        git push
+        git push origin HEAD:main
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
