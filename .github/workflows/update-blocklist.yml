@@ -2,13 +2,12 @@ name: DNS Blocklist Builder
 
 on:
   schedule:
-    - cron: '0 */6 * * *'  # Каждые 6 часов
-  workflow_dispatch:  # Ручной запуск
+    - cron: '0 */6 * * *'  # Every 6 hours
+  workflow_dispatch:  # Manual trigger
   push:
     branches: [ main ]
     paths:
       - 'update_blocklist.py'
-      - 'requirements.txt'
 
 jobs:
   build:
@@ -17,35 +16,31 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
     
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
         python-version: '3.11'
-        cache: 'pip'  # Кэширование зависимостей
     
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install aiohttp aiofiles pyyaml  # На случай если requirements.txt еще не создан
+        pip install aiohttp aiofiles pyyaml
     
     - name: Run blocklist builder
       run: |
-        python3 update_blocklist.py
+        python update_blocklist.py
     
     - name: Check if files changed
       id: git-check
       run: |
         git diff --exit-code || echo "changes=true" >> $GITHUB_OUTPUT
     
-    - name: Commit and push to main
+    - name: Commit and push
       if: steps.git-check.outputs.changes == 'true'
       run: |
         git config --global user.name 'GitHub Actions'
         git config --global user.email 'actions@github.com'
-        git add dynamic-blocklist.txt *.log
+        git add dynamic-blocklist.txt
         git commit -m "Auto-update blocklist [skip ci]"
         git push
