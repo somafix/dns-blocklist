@@ -1,14 +1,7 @@
 #!/usr/bin/env python3
 """
-DNS Security Blocklist Builder - Enterprise Grade (v6.0.0)
-Author: Security Research Team
-License: MIT
-
-Fully refactored with:
-- Complete type safety
-- Async-first architecture
-- Comprehensive security hardening
-- Production-ready deployment
+DNS Security Blocklist Builder - Enterprise Grade (v6.0.1)
+Fixed: Missing include_sources/exclude_sources attributes
 """
 
 import sys
@@ -46,7 +39,7 @@ import aiofiles
 import yaml
 
 # ============================================================================
-# DEPENDENCY MANAGEMENT WITH PROPER ERROR HANDLING
+# DEPENDENCY MANAGEMENT
 # ============================================================================
 
 class DependencyManager:
@@ -84,23 +77,23 @@ class DependencyManager:
         except ImportError:
             pass
 
-# Load dependencies immediately
+# Load dependencies
 DependencyManager.load_all()
 
 # ============================================================================
-# CONSTANTS & CONFIGURATION
+# CONSTANTS
 # ============================================================================
 
-VERSION = "6.0.0"
+VERSION = "6.0.1"
 VERSION_INFO = {
     'major': 6,
     'minor': 0,
-    'patch': 0,
+    'patch': 1,
     'build': datetime.now().strftime('%Y%m%d')
 }
 
 class Constants:
-    """Centralized constants with validation"""
+    """Centralized constants"""
     
     # Domain validation
     MAX_DOMAIN_LEN: int = 253
@@ -128,13 +121,12 @@ class Constants:
     # Bloom filter
     BLOOM_FILTER_FP_RATE: float = 0.01
     
-    # Reserved TLDs (security)
+    # Reserved TLDs
     RESERVED_TLDS: Set[str] = frozenset({
         'localhost', 'local', 'example', 'invalid', 'test', 'lan',
         'internal', 'localdomain', 'home', 'arpa', 'onion', 'i2p'
     })
     
-    # User agent for requests
     USER_AGENT: str = (
         'Mozilla/5.0 (X11; Linux x86_64) '
         'AppleWebKit/537.36 (KHTML, like Gecko) '
@@ -166,7 +158,7 @@ class DomainStatus(Enum):
 
 @dataclass(frozen=True)
 class DomainRecord:
-    """Immutable domain record with full tracking"""
+    """Immutable domain record"""
     domain: str
     source: str
     timestamp: datetime
@@ -174,7 +166,6 @@ class DomainRecord:
     hash: str = field(init=False)
     
     def __post_init__(self) -> None:
-        # Use object.__setattr__ because dataclass is frozen
         object.__setattr__(self, 'hash', hashlib.sha256(
             self.domain.lower().encode()
         ).hexdigest()[:16])
@@ -188,15 +179,12 @@ class DomainRecord:
         return self.domain.lower() == other.domain.lower()
     
     def to_hosts_entry(self) -> str:
-        """Format as hosts file entry"""
         return f"0.0.0.0 {self.domain}"
     
     def to_dnsmasq_entry(self) -> str:
-        """Format as dnsmasq entry"""
         return f"address=/{self.domain}/0.0.0.0"
     
     def to_unbound_entry(self) -> str:
-        """Format as unbound entry"""
         return f"local-zone: \"{self.domain}\" always_nxdomain"
 
 @dataclass
@@ -211,13 +199,6 @@ class SourceStats:
     error: Optional[str] = None
     last_fetch: Optional[datetime] = None
     quality_score: float = 0.0
-    
-    @property
-    def success_rate(self) -> float:
-        """Calculate success rate"""
-        if self.total_domains == 0:
-            return 0.0
-        return self.valid_domains / self.total_domains
 
 @dataclass
 class BuildMetrics:
@@ -234,14 +215,12 @@ class BuildMetrics:
     
     @property
     def duration(self) -> float:
-        """Calculate build duration in seconds"""
         if self.end_time:
             return (self.end_time - self.start_time).total_seconds()
         return (datetime.now(timezone.utc) - self.start_time).total_seconds()
     
     @property
     def domains_per_second(self) -> float:
-        """Calculate processing rate"""
         if self.duration == 0:
             return 0.0
         return self.domains_validated / self.duration
@@ -262,6 +241,10 @@ class SecurityConfig:
     ssl_verify: bool = True
     allowed_domains: Set[str] = field(default_factory=set)
     blocked_domains: Set[str] = field(default_factory=set)
+    
+    # Source filtering - FIXED: added missing fields
+    include_sources: List[str] = field(default_factory=list)
+    exclude_sources: List[str] = field(default_factory=list)
     
     # Validation
     min_domain_length: int = 3
@@ -297,7 +280,7 @@ class SecurityConfig:
     notify_on_failure: bool = True
     
     def validate(self) -> 'SecurityConfig':
-        """Validate configuration and fix common issues"""
+        """Validate configuration"""
         if self.max_domains < 1000:
             raise ValueError("max_domains must be at least 1000")
         
@@ -311,6 +294,21 @@ class SecurityConfig:
         self.output_path.parent.mkdir(parents=True, exist_ok=True)
         
         return self
+    
+    def should_include_source(self, source_name: str) -> bool:
+        """Check if source should be included based on filters"""
+        source_lower = source_name.lower()
+        
+        # If include list is specified, only include those
+        if self.include_sources:
+            return source_lower in [s.lower() for s in self.include_sources]
+        
+        # If exclude list is specified, exclude those
+        if self.exclude_sources:
+            return source_lower not in [s.lower() for s in self.exclude_sources]
+        
+        # Include all by default
+        return True
     
     @classmethod
     def from_file(cls, path: Path) -> 'SecurityConfig':
@@ -328,11 +326,11 @@ class SecurityConfig:
         return cls(**filtered)
 
 # ============================================================================
-# DOMAIN VALIDATION ENGINE
+# DOMAIN VALIDATION
 # ============================================================================
 
 class DomainValidator:
-    """High-performance domain validation with caching"""
+    """High-performance domain validation"""
     
     def __init__(self, config: SecurityConfig) -> None:
         self._config = config
@@ -341,8 +339,7 @@ class DomainValidator:
         self._load_public_suffixes()
     
     def _load_public_suffixes(self) -> None:
-        """Load public suffix list for validation"""
-        # Built-in common TLDs
+        """Load public suffix list"""
         common_tlds = {
             'com', 'org', 'net', 'edu', 'gov', 'mil', 'int',
             'uk', 'de', 'jp', 'cn', 'ru', 'fr', 'br', 'au',
@@ -352,21 +349,18 @@ class DomainValidator:
     
     @lru_cache(maxsize=Constants.DNS_CACHE_SIZE)
     def _validate_syntax(self, domain: str) -> Optional[DomainStatus]:
-        """Validate domain syntax with caching"""
+        """Validate domain syntax"""
         domain_lower = domain.lower().strip()
         
-        # Basic length checks
         if len(domain_lower) < Constants.MIN_DOMAIN_LEN:
-            return DomainStatus.TOO_LONG if len(domain_lower) == 0 else DomainStatus.INVALID_FORMAT
+            return DomainStatus.INVALID_FORMAT
         
         if len(domain_lower) > Constants.MAX_DOMAIN_LEN:
             return DomainStatus.TOO_LONG
         
-        # Check for reserved TLDs
         if domain_lower.split('.')[-1] in Constants.RESERVED_TLDS:
             return DomainStatus.RESERVED
         
-        # Validate each label
         labels = domain_lower.split('.')
         for label in labels:
             if len(label) > Constants.MAX_LABEL_LEN:
@@ -376,7 +370,6 @@ class DomainValidator:
             if not re.match(r'^[a-z0-9\-]+$', label):
                 return DomainStatus.INVALID_FORMAT
         
-        # Check for suspicious patterns
         suspicious = ['xn--', '--', '.-', '-.']
         if any(pattern in domain_lower for pattern in suspicious):
             return DomainStatus.SUSPICIOUS
@@ -385,12 +378,10 @@ class DomainValidator:
     
     def validate(self, domain: str, source: str) -> DomainRecord:
         """Validate domain and return record"""
-        # Check cache first
         if domain in self._cache:
             status = self._cache[domain]
         else:
             status = self._validate_syntax(domain)
-            # Only cache valid domains to save memory
             if status == DomainStatus.VALID:
                 self._cache[domain] = status
         
@@ -403,11 +394,10 @@ class DomainValidator:
     
     @property
     def cache_size(self) -> int:
-        """Get current cache size"""
         return len(self._cache)
 
 # ============================================================================
-# SOURCE MANAGER WITH ASYNC FETCHING
+# SOURCE MANAGEMENT
 # ============================================================================
 
 class SourceDefinition(NamedTuple):
@@ -418,79 +408,6 @@ class SourceDefinition(NamedTuple):
     enabled: bool = True
     quality: float = 0.8
     max_size_mb: int = 50
-
-class SourceFetcher:
-    """Asynchronous source fetcher with retry logic"""
-    
-    def __init__(self, config: SecurityConfig, session: aiohttp.ClientSession) -> None:
-        self._config = config
-        self._session = session
-        self._logger = logging.getLogger(__name__)
-    
-    async def fetch(self, source: SourceDefinition) -> Tuple[SourceDefinition, Optional[str], Optional[str]]:
-        """
-        Fetch source content with retries and error handling
-        
-        Returns:
-            Tuple of (source, content, error_message)
-        """
-        start_time = time.time()
-        
-        for attempt in range(self._config.max_retries):
-            try:
-                timeout = aiohttp.ClientTimeout(total=self._config.timeout_seconds)
-                headers = {
-                    'User-Agent': Constants.USER_AGENT,
-                    'Accept': 'text/plain,text/html,*/*'
-                }
-                
-                async with self._session.get(
-                    source.url,
-                    timeout=timeout,
-                    headers=headers,
-                    ssl=self._config.ssl_verify
-                ) as response:
-                    if response.status != 200:
-                        error = f"HTTP {response.status}"
-                        if attempt < self._config.max_retries - 1:
-                            await asyncio.sleep(Constants.RETRY_BACKOFF ** attempt)
-                            continue
-                        return source, None, error
-                    
-                    # Check content length
-                    content_length = response.headers.get('Content-Length')
-                    if content_length and int(content_length) > source.max_size_mb * 1024 * 1024:
-                        return source, None, f"Size exceeds limit ({source.max_size_mb}MB)"
-                    
-                    content = await response.text()
-                    
-                    # Basic validation
-                    if len(content) < 10:
-                        return source, None, "Content too short"
-                    
-                    fetch_time = time.time() - start_time
-                    self._logger.debug(f"Fetched {source.name} in {fetch_time:.2f}s")
-                    return source, content, None
-                    
-            except asyncio.TimeoutError:
-                error = "Timeout"
-                if attempt < self._config.max_retries - 1:
-                    await asyncio.sleep(Constants.RETRY_BACKOFF ** attempt)
-                    continue
-                return source, None, error
-                
-            except aiohttp.ClientError as e:
-                error = f"Client error: {e}"
-                if attempt < self._config.max_retries - 1:
-                    await asyncio.sleep(Constants.RETRY_BACKOFF ** attempt)
-                    continue
-                return source, None, error
-                
-            except Exception as e:
-                self._logger.error(f"Unexpected error fetching {source.name}: {e}")
-                return source, None, str(e)
-        
-        return source, None, "Max retries exceeded"
 
 class SourceParser:
     """Parse different blocklist formats"""
@@ -506,9 +423,7 @@ class SourceParser:
             
             parts = line.split()
             if len(parts) >= 2:
-                # Skip IP part, take domain
                 domain = parts[1].lower()
-                # Skip localhost entries
                 if domain not in ('localhost', 'localhost.localdomain', 'local'):
                     domains.add(domain)
         
@@ -523,7 +438,6 @@ class SourceParser:
             if not line or line.startswith('#') or line.startswith('!'):
                 continue
             
-            # Remove comments
             if '#' in line:
                 line = line.split('#')[0].strip()
             
@@ -541,7 +455,6 @@ class SourceParser:
             if not line or line.startswith('!') or line.startswith('['):
                 continue
             
-            # AdBlock format: ||example.com^
             if line.startswith('||') and '^' in line:
                 domain = line[2:].split('^')[0]
                 if '/' not in domain:
@@ -558,7 +471,6 @@ class SourceParser:
             if not line or line.startswith('#'):
                 continue
             
-            # URLhaus format: domain,url,...
             if ',' in line:
                 parts = line.split(',')
                 if parts and parts[0]:
@@ -569,7 +481,6 @@ class SourceParser:
 class SourceManager:
     """Manages all blocklist sources"""
     
-    # Built-in sources
     SOURCES: List[SourceDefinition] = [
         SourceDefinition(
             name='StevenBlack',
@@ -631,22 +542,14 @@ class SourceManager:
     
     def _get_sources(self) -> List[SourceDefinition]:
         """Get filtered sources based on config"""
-        sources = self.SOURCES.copy()
-        
-        if self._config.include_sources:
-            sources = [s for s in sources if s.name.lower() in self._config.include_sources]
-        
-        if self._config.exclude_sources:
-            sources = [s for s in sources if s.name.lower() not in self._config.exclude_sources]
-        
-        return sources
+        # FIXED: use should_include_source method
+        return [s for s in self.SOURCES if self._config.should_include_source(s.name)]
     
     async def fetch_all(self) -> Dict[str, Set[str]]:
         """Fetch all sources concurrently"""
         sources = self._get_sources()
         self._logger.info(f"Fetching {len(sources)} sources...")
         
-        # Create semaphore for concurrency control
         semaphore = asyncio.Semaphore(Constants.MAX_CONCURRENT_DOWNLOADS)
         
         async def fetch_with_semaphore(source: SourceDefinition) -> Tuple[str, Optional[Set[str]], Optional[str]]:
@@ -661,13 +564,12 @@ class SourceManager:
                     )
                     return source.name, None, error
                 
-                # Parse based on type
                 domains = self._parse_content(content, source.source_type)
                 
                 self._stats[source.name] = SourceStats(
                     name=source.name,
                     total_domains=len(domains),
-                    valid_domains=0,  # Will be updated later
+                    valid_domains=0,
                     fetch_time=0.0,
                     fetch_size=len(content),
                     last_fetch=datetime.now(timezone.utc),
@@ -676,11 +578,9 @@ class SourceManager:
                 
                 return source.name, domains, None
         
-        # Fetch all sources concurrently
         tasks = [fetch_with_semaphore(source) for source in sources]
         results = await asyncio.gather(*tasks, return_exceptions=True)
         
-        # Process results
         domains_by_source: Dict[str, Set[str]] = {}
         
         for result in results:
@@ -709,15 +609,79 @@ class SourceManager:
         elif source_type == SourceType.URLHAUS:
             return SourceParser.parse_urlhaus(content)
         else:
-            # Default to domain parser
             return SourceParser.parse_domains(content)
     
     def get_stats(self) -> Dict[str, SourceStats]:
-        """Get source statistics"""
         return self._stats.copy()
 
+class SourceFetcher:
+    """Asynchronous source fetcher"""
+    
+    def __init__(self, config: SecurityConfig, session: aiohttp.ClientSession) -> None:
+        self._config = config
+        self._session = session
+        self._logger = logging.getLogger(__name__)
+    
+    async def fetch(self, source: SourceDefinition) -> Tuple[SourceDefinition, Optional[str], Optional[str]]:
+        """Fetch source content with retries"""
+        start_time = time.time()
+        
+        for attempt in range(self._config.max_retries):
+            try:
+                timeout = aiohttp.ClientTimeout(total=self._config.timeout_seconds)
+                headers = {
+                    'User-Agent': Constants.USER_AGENT,
+                    'Accept': 'text/plain,text/html,*/*'
+                }
+                
+                async with self._session.get(
+                    source.url,
+                    timeout=timeout,
+                    headers=headers,
+                    ssl=self._config.ssl_verify
+                ) as response:
+                    if response.status != 200:
+                        error = f"HTTP {response.status}"
+                        if attempt < self._config.max_retries - 1:
+                            await asyncio.sleep(Constants.RETRY_BACKOFF ** attempt)
+                            continue
+                        return source, None, error
+                    
+                    content_length = response.headers.get('Content-Length')
+                    if content_length and int(content_length) > source.max_size_mb * 1024 * 1024:
+                        return source, None, f"Size exceeds limit ({source.max_size_mb}MB)"
+                    
+                    content = await response.text()
+                    
+                    if len(content) < 10:
+                        return source, None, "Content too short"
+                    
+                    fetch_time = time.time() - start_time
+                    self._logger.debug(f"Fetched {source.name} in {fetch_time:.2f}s")
+                    return source, content, None
+                    
+            except asyncio.TimeoutError:
+                error = "Timeout"
+                if attempt < self._config.max_retries - 1:
+                    await asyncio.sleep(Constants.RETRY_BACKOFF ** attempt)
+                    continue
+                return source, None, error
+                
+            except aiohttp.ClientError as e:
+                error = f"Client error: {e}"
+                if attempt < self._config.max_retries - 1:
+                    await asyncio.sleep(Constants.RETRY_BACKOFF ** attempt)
+                    continue
+                return source, None, error
+                
+            except Exception as e:
+                self._logger.error(f"Unexpected error fetching {source.name}: {e}")
+                return source, None, str(e)
+        
+        return source, None, "Max retries exceeded"
+
 # ============================================================================
-# DOMAIN PROCESSOR WITH DEDUPLICATION
+# DOMAIN PROCESSOR
 # ============================================================================
 
 class DomainProcessor:
@@ -735,7 +699,6 @@ class DomainProcessor:
         total_before = sum(len(domains) for domains in domains_by_source.values())
         self._logger.info(f"Processing {total_before:,} raw domains from {len(domains_by_source)} sources")
         
-        # Process each source
         for source_name, domains in domains_by_source.items():
             stats = SourceStats(name=source_name)
             stats.total_domains = len(domains)
@@ -744,12 +707,10 @@ class DomainProcessor:
                 record = self._validator.validate(domain, source_name)
                 
                 if record.status == DomainStatus.VALID:
-                    # Deduplicate
                     if record.domain not in self._domains:
                         self._domains[record.domain] = record
                         stats.valid_domains += 1
                     else:
-                        # Track duplicate
                         stats.invalid_domains += 1
                 else:
                     stats.invalid_domains += 1
@@ -764,22 +725,17 @@ class DomainProcessor:
         
         self._logger.info(f"Final unique domains: {len(self._domains):,}")
         
-        # Enforce domain limit
         if len(self._domains) > self._config.max_domains:
             self._logger.warning(f"Truncating to {self._config.max_domains:,} domains")
-            # Keep first N domains (ordered by insertion)
             self._domains = dict(list(self._domains.items())[:self._config.max_domains])
     
     def get_domains(self) -> List[str]:
-        """Get sorted list of domains"""
         return sorted(self._domains.keys())
     
     def get_count(self) -> int:
-        """Get total domain count"""
         return len(self._domains)
     
     def get_stats(self) -> Dict[str, SourceStats]:
-        """Get processing statistics"""
         return self._stats.copy()
 
 # ============================================================================
@@ -799,18 +755,13 @@ class OutputGenerator:
         tmp_path = output_path.with_suffix(f'{Constants.TEMP_SUFFIX}')
         
         try:
-            # Write to temporary file
             async with aiofiles.open(tmp_path, 'w', encoding='utf-8') as f:
-                # Header
                 await f.write("# DNS Security Blocklist\n")
                 await f.write(f"# Generated: {datetime.now(timezone.utc).isoformat()}\n")
                 await f.write(f"# Version: {VERSION}\n")
                 await f.write(f"# Total domains: {len(domains):,}\n")
-                await f.write("#\n")
-                await f.write("# This list blocks malware, phishing, and tracking domains\n")
-                await f.write("# Use at your own risk\n\n")
+                await f.write("#\n\n")
                 
-                # Write domains
                 batch_size = Constants.DEFAULT_BATCH_SIZE
                 for i in range(0, len(domains), batch_size):
                     batch = domains[i:i + batch_size]
@@ -822,13 +773,10 @@ class OutputGenerator:
                         elif self._config.output_format == 'unbound':
                             await f.write(f"local-zone: \"{domain}\" always_nxdomain\n")
                         else:
-                            # Default: plain domains
                             await f.write(f"{domain}\n")
                     
-                    # Flush batch
                     await f.flush()
             
-            # Compress if needed
             if self._config.output_compression:
                 compressed_path = output_path.with_suffix('.gz')
                 with open(tmp_path, 'rb') as f_in:
@@ -839,10 +787,8 @@ class OutputGenerator:
                 os.unlink(tmp_path)
                 return compressed_path
             
-            # Atomic move
             shutil.move(tmp_path, output_path)
             
-            # Create backup
             backup_path = output_path.with_suffix(f'{Constants.BACKUP_SUFFIX}')
             shutil.copy2(output_path, backup_path)
             
@@ -851,7 +797,6 @@ class OutputGenerator:
             
         except Exception as e:
             self._logger.error(f"Failed to generate output: {e}")
-            # Cleanup temp file
             if tmp_path.exists():
                 tmp_path.unlink()
             raise
@@ -872,7 +817,6 @@ class MetricsCollector:
             self._setup_prometheus()
     
     def _setup_prometheus(self) -> None:
-        """Setup Prometheus metrics"""
         try:
             from prometheus_client import start_http_server, Counter, Histogram, Gauge
             
@@ -880,14 +824,12 @@ class MetricsCollector:
             self.build_duration = Histogram('blocklist_build_duration_seconds', 'Build duration')
             self.sources_total = Counter('blocklist_sources_total', 'Total sources processed')
             
-            # Start metrics server
             start_http_server(self._config.metrics_port)
             self._logger.info(f"Metrics server started on port {self._config.metrics_port}")
         except Exception as e:
             self._logger.warning(f"Failed to start Prometheus metrics: {e}")
     
     def start(self) -> None:
-        """Start metrics collection"""
         self._metrics.start_time = datetime.now(timezone.utc)
         
         if DependencyManager.HAS_PSUTIL:
@@ -895,13 +837,11 @@ class MetricsCollector:
             self._process = psutil.Process()
     
     def update_memory(self) -> None:
-        """Update memory metrics"""
         if DependencyManager.HAS_PSUTIL and hasattr(self, '_process'):
             memory_mb = self._process.memory_info().rss / 1024 / 1024
             self._metrics.memory_peak_mb = max(self._metrics.memory_peak_mb, memory_mb)
     
     def finish(self, domains: int, sources_processed: int, sources_failed: int) -> BuildMetrics:
-        """Finish metrics collection"""
         self._metrics.end_time = datetime.now(timezone.utc)
         self._metrics.domains_validated = domains
         self._metrics.sources_processed = sources_processed
@@ -922,46 +862,34 @@ class HealthCheckServer:
     def __init__(self, config: SecurityConfig) -> None:
         self._config = config
         self._logger = logging.getLogger(__name__)
-        self._started = False
+        self._server: Optional[asyncio.Server] = None
     
     async def start(self) -> None:
-        """Start health check server"""
         if not self._config.health_check_enabled:
             return
         
         try:
-            # Simple HTTP server for health checks
             self._server = await asyncio.start_server(
                 self._handle_request,
                 '127.0.0.1',
                 self._config.health_check_port
             )
             
-            self._started = True
             self._logger.info(f"Health check server started on port {self._config.health_check_port}")
-            
-            # Run in background
             asyncio.create_task(self._server.serve_forever())
             
         except Exception as e:
             self._logger.warning(f"Failed to start health check server: {e}")
     
-    async def _handle_request(
-        self,
-        reader: asyncio.StreamReader,
-        writer: asyncio.StreamWriter
-    ) -> None:
-        """Handle health check request"""
+    async def _handle_request(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         try:
-            # Read request
             await reader.read(1024)
             
-            # Send response
             response = (
                 "HTTP/1.1 200 OK\r\n"
                 "Content-Type: application/json\r\n"
                 "Connection: close\r\n\r\n"
-                '{"status":"healthy","version":"' + VERSION + '"}\r\n'
+                f'{{"status":"healthy","version":"{VERSION}"}}\r\n'
             )
             writer.write(response.encode())
             await writer.drain()
@@ -973,18 +901,17 @@ class HealthCheckServer:
             await writer.wait_closed()
     
     async def stop(self) -> None:
-        """Stop health check server"""
-        if self._started:
+        if self._server:
             self._server.close()
             await self._server.wait_closed()
             self._logger.debug("Health check server stopped")
 
 # ============================================================================
-# MAIN BUILDER CLASS
+# MAIN BUILDER
 # ============================================================================
 
 class SecurityBlocklistBuilder:
-    """Main orchestrator for blocklist building"""
+    """Main orchestrator"""
     
     def __init__(self, config: SecurityConfig) -> None:
         self._config = config.validate()
@@ -993,24 +920,17 @@ class SecurityBlocklistBuilder:
         self._metrics = MetricsCollector(config)
         self._health_server = HealthCheckServer(config)
         
-        # Lazy-loaded components
         self._validator: Optional[DomainValidator] = None
         self._source_manager: Optional[SourceManager] = None
         self._processor: Optional[DomainProcessor] = None
         self._output_generator: Optional[OutputGenerator] = None
-        
-        # HTTP session
         self._session: Optional[aiohttp.ClientSession] = None
     
     def _setup_logging(self) -> logging.Logger:
-        """Setup logging configuration"""
         logger = logging.getLogger('DNSBlocklist')
         logger.setLevel(getattr(logging, self._config.log_level))
-        
-        # Clear existing handlers
         logger.handlers.clear()
         
-        # Console handler
         console = logging.StreamHandler()
         console.setFormatter(logging.Formatter(
             '%(asctime)s [%(levelname)s] %(message)s',
@@ -1018,7 +938,6 @@ class SecurityBlocklistBuilder:
         ))
         logger.addHandler(console)
         
-        # File handler
         if self._config.log_file:
             try:
                 file_handler = logging.FileHandler(self._config.log_file)
@@ -1032,7 +951,6 @@ class SecurityBlocklistBuilder:
         return logger
     
     def _setup_signal_handlers(self) -> None:
-        """Setup graceful shutdown handlers"""
         def signal_handler(sig: int, frame: Any) -> None:
             self._logger.info(f"Received signal {sig}, shutting down...")
             self._shutdown.set()
@@ -1041,8 +959,6 @@ class SecurityBlocklistBuilder:
         signal.signal(signal.SIGTERM, signal_handler)
     
     async def _initialize(self) -> None:
-        """Initialize all components"""
-        # Create HTTP session with connection pooling
         connector = aiohttp.TCPConnector(
             limit=Constants.MAX_CONCURRENT_DOWNLOADS,
             ttl_dns_cache=300,
@@ -1054,43 +970,31 @@ class SecurityBlocklistBuilder:
             timeout=aiohttp.ClientTimeout(total=self._config.timeout_seconds)
         )
         
-        # Initialize components
         self._validator = DomainValidator(self._config)
         self._source_manager = SourceManager(self._config, self._session)
         self._processor = DomainProcessor(self._config, self._validator)
         self._output_generator = OutputGenerator(self._config)
         
-        # Start health check server
         await self._health_server.start()
     
     async def _cleanup(self) -> None:
-        """Cleanup resources"""
-        # Stop health server
         await self._health_server.stop()
-        
-        # Close HTTP session
         if self._session:
             await self._session.close()
-        
-        # Force garbage collection
         gc.collect()
     
     async def run(self) -> int:
-        """Main execution entry point"""
         self._setup_signal_handlers()
         self._metrics.start()
         
         try:
-            # Initialize
             self._logger.info(f"DNS Security Blocklist Builder v{VERSION}")
             await self._initialize()
             
-            # Check shutdown
             if self._shutdown.is_set():
                 self._logger.warning("Shutdown requested before start")
                 return 130
             
-            # Fetch sources
             self._logger.info("Fetching blocklist sources...")
             domains_by_source = await self._source_manager.fetch_all()
             
@@ -1098,7 +1002,6 @@ class SecurityBlocklistBuilder:
                 self._logger.error("No sources fetched successfully")
                 return 1
             
-            # Process domains
             self._logger.info("Processing domains...")
             await self._processor.process_sources(domains_by_source)
             
@@ -1106,12 +1009,10 @@ class SecurityBlocklistBuilder:
                 self._logger.error("No valid domains collected")
                 return 1
             
-            # Generate output
             self._logger.info("Generating output...")
             domains = self._processor.get_domains()
             output_path = await self._output_generator.generate(domains)
             
-            # Update metrics
             sources_processed = len(self._source_manager.get_stats())
             sources_failed = sum(1 for s in self._source_manager.get_stats().values() if s.error)
             
@@ -1121,7 +1022,6 @@ class SecurityBlocklistBuilder:
                 sources_failed=sources_failed
             )
             
-            # Print report
             self._print_report(metrics, self._processor.get_stats())
             
             self._logger.info(f"Build completed successfully: {output_path}")
@@ -1139,7 +1039,6 @@ class SecurityBlocklistBuilder:
             await self._cleanup()
     
     def _print_report(self, metrics: BuildMetrics, source_stats: Dict[str, SourceStats]) -> None:
-        """Print build report"""
         sep = "=" * 80
         print(f"\n{sep}")
         print(f"🔒 DNS SECURITY BLOCKLIST REPORT v{VERSION}")
@@ -1167,11 +1066,10 @@ class SecurityBlocklistBuilder:
         print(sep)
 
 # ============================================================================
-# CLI ARGUMENTS
+# CLI & MAIN
 # ============================================================================
 
 def parse_args() -> argparse.Namespace:
-    """Parse command line arguments"""
     parser = argparse.ArgumentParser(
         description='DNS Security Blocklist Builder - Enterprise Grade',
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -1184,73 +1082,22 @@ Examples:
         """
     )
     
-    parser.add_argument(
-        '-c', '--config',
-        type=Path,
-        help='Configuration YAML file'
-    )
-    
-    parser.add_argument(
-        '-o', '--output',
-        type=Path,
-        help='Output file path (default: dynamic-blocklist.txt)'
-    )
-    
-    parser.add_argument(
-        '--format',
-        choices=['hosts', 'dnsmasq', 'unbound', 'domains'],
-        default='hosts',
-        help='Output format (default: hosts)'
-    )
-    
-    parser.add_argument(
-        '--max-domains',
-        type=int,
-        default=500000,
-        help='Maximum domains to keep (default: 500000)'
-    )
-    
-    parser.add_argument(
-        '--exclude',
-        nargs='+',
-        help='Source names to exclude'
-    )
-    
-    parser.add_argument(
-        '--include',
-        nargs='+',
-        help='Source names to include'
-    )
-    
-    parser.add_argument(
-        '--list-sources',
-        action='store_true',
-        help='List available sources and exit'
-    )
-    
-    parser.add_argument(
-        '--version',
-        action='version',
-        version=f'%(prog)s {VERSION}'
-    )
-    
-    parser.add_argument(
-        '--verbose', '-v',
-        action='store_true',
-        help='Enable verbose logging'
-    )
+    parser.add_argument('-c', '--config', type=Path, help='Configuration YAML file')
+    parser.add_argument('-o', '--output', type=Path, help='Output file path')
+    parser.add_argument('--format', choices=['hosts', 'dnsmasq', 'unbound', 'domains'], 
+                       default='hosts', help='Output format')
+    parser.add_argument('--max-domains', type=int, default=500000, help='Maximum domains')
+    parser.add_argument('--exclude', nargs='+', help='Source names to exclude')
+    parser.add_argument('--include', nargs='+', help='Source names to include')
+    parser.add_argument('--list-sources', action='store_true', help='List available sources')
+    parser.add_argument('--version', action='version', version=f'%(prog)s {VERSION}')
+    parser.add_argument('--verbose', '-v', action='store_true', help='Enable verbose logging')
     
     return parser.parse_args()
 
-# ============================================================================
-# MAIN ENTRY POINT
-# ============================================================================
-
 async def async_main() -> int:
-    """Async main entry point"""
     args = parse_args()
     
-    # List sources mode
     if args.list_sources:
         print("\n📋 Available blocklist sources:\n")
         for source in SourceManager.SOURCES:
@@ -1261,7 +1108,6 @@ async def async_main() -> int:
             print()
         return 0
     
-    # Load configuration
     config = SecurityConfig()
     
     if args.config:
@@ -1271,7 +1117,6 @@ async def async_main() -> int:
             print(f"❌ Failed to load config: {e}", file=sys.stderr)
             return 1
     
-    # Apply CLI overrides
     if args.output:
         config.output_path = args.output
     
@@ -1282,20 +1127,18 @@ async def async_main() -> int:
         config.max_domains = args.max_domains
     
     if args.exclude:
-        config.exclude_sources = [s.lower() for s in args.exclude]
+        config.exclude_sources = args.exclude
     
     if args.include:
-        config.include_sources = [s.lower() for s in args.include]
+        config.include_sources = args.include
     
     if args.verbose:
         config.log_level = 'DEBUG'
     
-    # Run builder
     builder = SecurityBlocklistBuilder(config)
     return await builder.run()
 
 def main() -> int:
-    """Main entry point with exception handling"""
     try:
         return asyncio.run(async_main())
     except KeyboardInterrupt:
