@@ -1,13 +1,16 @@
-name: Build Blocklist
+# .github/workflows/build-blocklist.yml
+name: Build DNS Blocklist
 
 on:
   schedule:
-    - cron: '0 */6 * * *'  # Каждые 6 часов
+    - cron: '0 */6 * * *'
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     
     steps:
     - uses: actions/checkout@v4
@@ -21,21 +24,23 @@ jobs:
       run: |
         pip install aiohttp aiofiles pyyaml
     
-    - name: Run blocklist builder
+    - name: Build blocklist
       run: |
-        # Используем рабочую директорию вместо /etc
-        python update_blocklist.py --output ./blocklist.txt --format hosts
-        
-    - name: Check if files changed
-      id: changes
-      run: |
-        git add blocklist.txt
-        echo "changed=$(git diff --cached --name-only | wc -l)" >> $GITHUB_OUTPUT
+        python update_blocklist.py \
+          --output ./blocklist.txt \
+          --format hosts \
+          --max-domains 500000
+    
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: blocklist
+        path: blocklist.txt
     
     - name: Commit and push
-      if: steps.changes.outputs.changed != '0'
       run: |
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
-        git commit -m "Update blocklist $(date +'%Y-%m-%d %H:%M:%S')"
+        git add blocklist.txt
+        git diff --quiet && git diff --staged --quiet || git commit -m "Update blocklist $(date -u +'%Y-%m-%d %H:%M:%S')"
         git push
