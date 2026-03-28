@@ -1,47 +1,30 @@
-name: Build DNS Blocklist
+name: Build Blocklist
 
 on:
   schedule:
-    - cron: '0 */6 * * *'  # Каждые 6 часов
-  workflow_dispatch:  # Ручной запуск
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: write  # Нужно для коммита
+      contents: write
     
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-    
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.11'
-    
-    - name: Install dependencies
-      run: |
-        pip install aiohttp aiofiles pyyaml
-    
-    - name: Build blocklist
-      run: |
-        # КЛЮЧЕВО: указываем output в текущую директорию
-        python update_blocklist.py \
-          --output ./blocklist.txt \
-          --format hosts \
-          --max-domains 500000
-    
-    - name: Upload artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: blocklist
-        path: blocklist.txt
-    
-    - name: Commit and push
-      run: |
-        git config user.name "github-actions[bot]"
-        git config user.email "github-actions[bot]@users.noreply.github.com"
-        git add blocklist.txt
-        git diff --quiet && git diff --staged --quiet || git commit -m "Update blocklist $(date -u +'%Y-%m-%d %H:%M:%S')"
-        git push
+      - uses: actions/checkout@v4
+      
+      - name: Build
+        run: |
+          curl -s https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts | grep -E '^0\.0\.0\.0' | awk '{print $2}' | sort -u > blocklist.txt
+          curl -s https://big.oisd.nl/domains >> blocklist.txt
+          sort -u -o blocklist.txt blocklist.txt
+          echo "Total: $(wc -l < blocklist.txt) domains"
+      
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add blocklist.txt
+          git diff --cached --quiet || git commit -m "Update blocklist"
+          git push
