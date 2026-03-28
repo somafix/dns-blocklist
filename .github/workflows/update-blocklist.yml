@@ -1,19 +1,19 @@
-# .github/workflows/build-blocklist.yml
 name: Build DNS Blocklist
 
 on:
   schedule:
-    - cron: '0 */6 * * *'
-  workflow_dispatch:
+    - cron: '0 */6 * * *'  # Каждые 6 часов
+  workflow_dispatch:  # Ручной запуск
 
 jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: write  # Нужно для коммита
     
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout repository
+      uses: actions/checkout@v4
     
     - name: Set up Python
       uses: actions/setup-python@v5
@@ -26,6 +26,7 @@ jobs:
     
     - name: Build blocklist
       run: |
+        # КЛЮЧЕВО: указываем output в текущую директорию
         python update_blocklist.py \
           --output ./blocklist.txt \
           --format hosts \
