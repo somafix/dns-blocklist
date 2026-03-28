@@ -9,6 +9,7 @@
 [![Security: FULLY HARDENED](https://img.shields.io/badge/Security-FULLY_HARDENED-red?style=for-the-badge)](#-comprehensive-protection)
 [![Performance: ⚡⚡⚡⚡⚡](https://img.shields.io/badge/Performance-MAXIMUM-brightgreen?style=for-the-badge)](#-maximum-optimization)
 [![AI Detection: RULE-BASED](https://img.shields.io/badge/AI_Detection-RULE_BASED-purple?style=for-the-badge)](#-ai-powered-threat-detection)
+[![Output: dynamic-blocklist.txt](https://img.shields.io/badge/Output-dynamic--blocklist.txt-blue?style=for-the-badge)](#-output-file)
 [![Version: 7.1.0](https://img.shields.io/badge/Version-7.1.0-blue?style=for-the-badge)](#-version-history)
 
 ---
@@ -18,6 +19,7 @@
 This is **not just a script**. This is **enterprise-grade professional solution** for aggregating and processing DNS blocklists using cutting-edge AI-powered threat detection, comprehensive security hardening, and zero-dependency architecture.
 
 - ✅ **253K+ domains** processed in **~25-30 seconds**
+- ✅ **Output file:** `dynamic-blocklist.txt` (your main updated blocklist)
 - ✅ **AI-powered rule-based tracker detection** — No ML dependencies required
 - ✅ **50+ detection patterns** — Analytics, tracking, advertising, social networks
 - ✅ **Zero memory leaks** — Passed all stress tests
@@ -31,6 +33,38 @@ This is **not just a script**. This is **enterprise-grade professional solution*
 - ✅ **Zero external AI dependencies** — Rule-based system, works offline
 - ✅ **Heuristic detection** — High subdomain count analysis
 - ✅ **Confidence scoring** — All detections with 0.65+ confidence threshold
+
+---
+
+## 📁 OUTPUT FILE
+
+### Main Blocklist Output
+```
+🎯 FILENAME: dynamic-blocklist.txt (your main updated list)
+
+This is the file you use for:
+  ✅ Pi-hole adlists
+  ✅ dnsmasq configuration
+  ✅ Unbound DNS records
+  ✅ AdGuard Home filter lists
+  ✅ DNS resolver configuration
+
+Format: hosts file format (0.0.0.0 domain.com)
+Size: ~8.5 MB (253K+ unique domains)
+Update frequency: Every 6 hours (recommended)
+Includes: AI-detected trackers with confidence scores
+```
+
+### Example Output (dynamic-blocklist.txt)
+```
+0.0.0.0 example.com
+0.0.0.0 google-analytics.com # AI:95% [google_analytics]
+0.0.0.0 pixel.example.com # AI:85% [tracking_pixel,data_collector]
+0.0.0.0 doubleclick.net # AI:95% [doubleclick]
+0.0.0.0 facebook.com/tr # AI:95% [facebook_pixel]
+...
+253,046 unique domains total
+```
 
 ---
 
@@ -105,6 +139,7 @@ This is **not just a script**. This is **enterprise-grade professional solution*
 
 ### Major Changes ⚡
 ```
+[OUTPUT]       Output file: dynamic-blocklist.txt (your main list)
 [AI-IMPROVED]  Rule-based detector enhanced with 50+ patterns
 [PATTERNS]     Comprehensive tracker pattern library added
 [HEURISTIC]    Subdomain analysis for unknown trackers
@@ -117,6 +152,7 @@ This is **not just a script**. This is **enterprise-grade professional solution*
 
 ### What's New in v7.1.0 ✨
 ```
+[OUTPUT]       Main blocklist output: dynamic-blocklist.txt
 [AI-DETECTION] Improved rule-based tracker detection (50+ patterns)
 [ANALYTICS]    Google Analytics, GTM, Amplitude, Mixpanel detection
 [TRACKING]     Pixel, beacon, collector, telemetry detection
@@ -155,6 +191,7 @@ This is **not just a script**. This is **enterprise-grade professional solution*
 ✅ API compatible with existing integrations
 ✅ CLI argument structure preserved and extended
 ✅ Configuration file format (YAML/JSON)
+✅ Output file: dynamic-blocklist.txt (main blocklist)
 ```
 
 ---
@@ -164,6 +201,7 @@ This is **not just a script**. This is **enterprise-grade professional solution*
 ### v7.1.0 (CURRENT - IMPROVED TRACKER DETECTION) ⭐⭐⭐
 ```
 ✅ Production Ready
+✅ Output: dynamic-blocklist.txt (main blocklist)
 ✅ Rule-Based AI Tracker Detection (IMPROVED)
 ✅ 50+ Detection Patterns (NEW)
 ✅ Heuristic Analysis for Unknown Trackers (NEW)
@@ -182,6 +220,7 @@ Security: A+ grade (OWASP + hardening)
 AI Detection: Rule-based (50+ patterns, 0.65 threshold)
 Sources: 6 trusted feeds with auto-failover
 Output formats: hosts, domains, dnsmasq, unbound
+Output file: dynamic-blocklist.txt
 Type hints: 100% coverage
 Error handling: Comprehensive with graceful degradation
 Offline AI: 100% (no external calls needed)
@@ -288,9 +327,9 @@ ai_auto_add: bool = True                   # Auto-add detected trackers
 ai_cache_size: int = 50000                 # Detection cache size
 ```
 
-### Output Format
+### Output Format (in dynamic-blocklist.txt)
 ```
-Domains marked with AI detection in hosts file:
+Domains marked with AI detection:
   0.0.0.0 google-analytics.com # AI:95% [google_analytics]
   0.0.0.0 pixel.example.com # AI:85% [tracking_pixel,data_collector]
 
@@ -465,6 +504,7 @@ python3 blocklist_builder.py --exclude threatfox
 
 ### 3. Result
 ```
+✅ Output: dynamic-blocklist.txt (your main blocklist)
 ✅ 253,046+ unique domains aggregated
 ✅ 25-30 seconds total time (with AI analysis)
 ✅ 98.1% acceptance rate
@@ -474,37 +514,70 @@ python3 blocklist_builder.py --exclude threatfox
 ✅ Detailed audit trail in comments
 ```
 
-### 4. Output Format
+### 4. Output File Format
 ```
-Dynamic blocklist with AI detections:
+dynamic-blocklist.txt format:
 
 0.0.0.0 google-analytics.com # AI:95% [google_analytics]
 0.0.0.0 doubleclick.net # AI:95% [doubleclick]
 0.0.0.0 facebook.com/tr # AI:95% [facebook_pixel]
 0.0.0.0 example.tracker.com # AI:65% [many_subdomains]
 0.0.0.0 normal-domain.com # (no AI detection)
+
+Total domains: 253,046+
+AI-detected trackers: 150-300
+File size: ~8.5 MB
 ```
 
 ### 5. Integration (5 min)
+
+**Pi-hole:**
 ```bash
-# Pi-hole
 scp dynamic-blocklist.txt pi@pihole:/etc/pihole/
+# Then add to Pi-hole adlists in Web UI
+```
 
-# dnsmasq
-sudo cp dynamic-blocklist.txt /etc/dnsmasq.d/
+**dnsmasq:**
+```bash
+sudo cp dynamic-blocklist.txt /etc/dnsmasq.d/blocklist.hosts
+sudo systemctl restart dnsmasq
+```
 
-# Unbound
+**Unbound:**
+```bash
 sed 's/^0\.0\.0\.0 /local-zone: "/' dynamic-blocklist.txt | \
   sed 's/$/" static/' | sudo tee /etc/unbound/blocklist.conf
+sudo systemctl restart unbound
+```
+
+**AdGuard Home:**
+```bash
+# Add dynamic-blocklist.txt as custom filter list in WebUI
+# Or manually:
+cp dynamic-blocklist.txt /opt/adguardhome/data/filters/blocklist.txt
 ```
 
 ### 6. Automation (10 min)
-```bash
-# Cron (every 6 hours)
-0 */6 * * * python3 /path/to/blocklist_builder.py
 
-# GitHub Actions (ready-to-use workflow)
+**Cron (every 6 hours):**
+```bash
+0 */6 * * * cd /path/to/blocklist && python3 blocklist_builder.py
+
+# Or with systemd timer
+[Unit]
+Description=DNS Blocklist Builder
+
+[Timer]
+OnBootSec=10s
+OnUnitActiveSec=6h
+Persistent=true
+
+[Install]
+WantedBy=timers.target
 ```
+
+**GitHub Actions:**
+Ready-to-use workflow provided in repository
 
 ---
 
@@ -522,10 +595,11 @@ CERT.PL             8,234 domains (quality: 0.80)
 TOTAL               344,126+ domains
 
 Auto-failover:      Multiple mirrors per source
-Update frequency:   Every 6 hours (configurable)
+Update frequency:   Every 6 hours (recommended)
 Deduplication:      ~9K removed per run
 SSRF Safe:          All sources whitelisted
 AI Detection:       150-300 trackers per run (NEW v7.1.0)
+Output file:        dynamic-blocklist.txt
 ```
 
 ### Quality Metrics
@@ -611,6 +685,7 @@ MIT License — free use in commercial and personal projects
 
 ## 🎁 v7.1.0 Highlights
 
+✅ **Output File: dynamic-blocklist.txt** — Your main blocklist  
 ✅ **Rule-Based AI Tracker Detection** — 50+ patterns, no ML dependencies  
 ✅ **Heuristic Analysis** — Subdomain count detection for unknown trackers  
 ✅ **100% Offline** — No external calls or internet needed for AI detection  
@@ -634,6 +709,6 @@ MIT License — free use in commercial and personal projects
 
 ---
 
-**v7.1.0 Improved Tracker Detection Edition — Enterprise-grade security with rule-based AI detection, comprehensive error handling, and zero external dependencies. 100% offline capable.**
+**v7.1.0 Improved Tracker Detection Edition — Enterprise-grade security with rule-based AI detection, comprehensive error handling, and zero external dependencies. 100% offline capable. Main output: dynamic-blocklist.txt**
 
 Built for reliability, security, and performance. Enterprise-trusted. No external AI required.
