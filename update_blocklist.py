@@ -2,6 +2,7 @@
 """
 DNS Security Blocklist Builder - Production Ready with AI Detection (v7.1.0)
 Fully working version with rule-based AI tracker detection
+UPDATED: Output file is dynamic-blocklist.txt (your main updated list)
 """
 
 import sys
@@ -150,7 +151,9 @@ class SecurityConfig:
     ssl_verify: bool = True
     include_sources: List[str] = field(default_factory=list)
     exclude_sources: List[str] = field(default_factory=list)
-    output_path: Path = Path('./blocklist.txt')
+    # ========== ИСПРАВЛЕНО: ТЕПЕРЬ ОБНОВЛЯЕТ dynamic-blocklist.txt ==========
+    output_path: Path = Path('./dynamic-blocklist.txt')
+    # ==========================================================================
     output_format: str = 'hosts'
     output_compression: bool = False
     ai_enabled: bool = True
