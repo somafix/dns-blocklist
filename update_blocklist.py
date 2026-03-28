@@ -52,6 +52,14 @@ import aiohttp
 import aiofiles
 import yaml
 
+import os
+import sys
+
+# ФИКС ПРОБЛЕМЫ С ПРАВАМИ
+if not os.access('/etc', os.W_OK) or os.environ.get('GITHUB_ACTIONS'):
+    # Принудительно меняем путь вывода
+    sys.argv.extend(['--output', 'blocklist.txt'])
+
 # Suppress warnings in production
 warnings.filterwarnings('ignore', category=DeprecationWarning)
 warnings.filterwarnings('ignore', category=ResourceWarning)
