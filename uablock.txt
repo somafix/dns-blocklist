@@ -1,75 +1,75 @@
-uamaster.com
-roman.ua
-wedex.com.ua
-inweb.com.ua
-promodo.com
-wezom.com.ua
-netrocket.com.ua
-panem.agency
-kiwi.agency
-redchameleon.agency
-kit.digital
-braintank.agency
-adloonix.com
-epom.com
-cryptotrafficmarket.com
-google-analytics.com
-googletagmanager.com
-doubleclick.net
-googleadservices.com
-googlesyndication.com
-hotlog.ru
-metrica.yandex.ru
-yandex.ru
-liveinternet.ru
-brand24.com
-determ.com
-sendpulse.com
-esputnik.com
-mailchimp.com
-mandrillapp.com
-klaviyo.com
-getresponse.com
-hotjar.com
-crazyegg.com
-fullstory.com
-logrocket.com
-inspectlet.com
-fingerprintjs.com
-cdn.fingerprintjs.com
-maxmind.com
-sift.com
-turnstile.tech
-openx.com
-openx.net
-pubmatic.com
-criteo.com
-outbrain.com
-taboola.com
-clearbit.com
-zoominfo.com
-apollo.io
-rocketreach.co
-hunter.io
-ads.ua
-analytics.ua
-tracker.ua
-pixel.ua
-connect.facebook.net
-graph.facebook.com
-an.facebook.com
-edge-chat.facebook.com
-staticxx.facebook.com
-analytics.tiktok.com
-ct.tiktok.com
-business-api.tiktok.com
-ads.linkedin.com
-analytics.linkedin.com
-snap.licdn.com
-platform.linkedin.com
-analytics.twitter.com
-ads-api.twitter.com
-static.ads-twitter.com
-t.co
-s.youtube.com
-pagead2.googlesyndication.com
+0.0.0.0 uamaster.com
+0.0.0.0 roman.ua
+0.0.0.0 wedex.com.ua
+0.0.0.0 inweb.com.ua
+0.0.0.0 promodo.com
+0.0.0.0 wezom.com.ua
+0.0.0.0 netrocket.com.ua
+0.0.0.0 panem.agency
+0.0.0.0 kiwi.agency
+0.0.0.0 redchameleon.agency
+0.0.0.0 kit.digital
+0.0.0.0 braintank.agency
+0.0.0.0 adloonix.com
+0.0.0.0 epom.com
+0.0.0.0 cryptotrafficmarket.com
+0.0.0.0 google-analytics.com
+0.0.0.0 googletagmanager.com
+0.0.0.0 doubleclick.net
+0.0.0.0 googleadservices.com
+0.0.0.0 googlesyndication.com
+0.0.0.0 hotlog.ru
+0.0.0.0 metrica.yandex.ru
+0.0.0.0 yandex.ru
+0.0.0.0 liveinternet.ru
+0.0.0.0 brand24.com
+0.0.0.0 determ.com
+0.0.0.0 sendpulse.com
+0.0.0.0 esputnik.com
+0.0.0.0 mailchimp.com
+0.0.0.0 mandrillapp.com
+0.0.0.0 klaviyo.com
+0.0.0.0 getresponse.com
+0.0.0.0 hotjar.com
+0.0.0.0 crazyegg.com
+0.0.0.0 fullstory.com
+0.0.0.0 logrocket.com
+0.0.0.0 inspectlet.com
+0.0.0.0 fingerprintjs.com
+0.0.0.0 cdn.fingerprintjs.com
+0.0.0.0 maxmind.com
+0.0.0.0 sift.com
+0.0.0.0 turnstile.tech
+0.0.0.0 openx.com
+0.0.0.0 openx.net
+0.0.0.0 pubmatic.com
+0.0.0.0 criteo.com
+0.0.0.0 outbrain.com
+0.0.0.0 taboola.com
+0.0.0.0 clearbit.com
+0.0.0.0 zoominfo.com
+0.0.0.0 apollo.io
+0.0.0.0 rocketreach.co
+0.0.0.0 hunter.io
+0.0.0.0 ads.ua
+0.0.0.0 analytics.ua
+0.0.0.0 tracker.ua
+0.0.0.0 pixel.ua
+0.0.0.0 connect.facebook.net
+0.0.0.0 graph.facebook.com
+0.0.0.0 an.facebook.com
+0.0.0.0 edge-chat.facebook.com
+0.0.0.0 staticxx.facebook.com
+0.0.0.0 analytics.tiktok.com
+0.0.0.0 ct.tiktok.com
+0.0.0.0 business-api.tiktok.com
+0.0.0.0 ads.linkedin.com
+0.0.0.0 analytics.linkedin.com
+0.0.0.0 snap.licdn.com
+0.0.0.0 platform.linkedin.com
+0.0.0.0 analytics.twitter.com
+0.0.0.0 ads-api.twitter.com
+0.0.0.0 static.ads-twitter.com
+0.0.0.0 t.co
+0.0.0.0 s.youtube.com
+0.0.0.0 pagead2.googlesyndication.com
