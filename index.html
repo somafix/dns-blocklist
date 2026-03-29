@@ -3,451 +3,256 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🔥 HARDCORE ADBLOCK TEST — Экстремальный тест блокировщика рекламы</title>
+    <title>DNS Filter Test — проверка Personal DNS Filter</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
         body {
-            font-family: 'Courier New', monospace;
-            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
-            color: #00ff9d;
-            padding: 20px;
-            min-height: 100vh;
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+            max-width: 900px;
+            margin: 2rem auto;
+            padding: 1.5rem;
+            background: #0a0f1e;
+            color: #e2e8f0;
+            line-height: 1.5;
         }
-        
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-        
-        .header {
-            text-align: center;
-            padding: 40px 20px;
-            background: rgba(0,0,0,0.7);
-            border-radius: 20px;
-            margin-bottom: 30px;
-            border: 2px solid #00ff9d;
-            box-shadow: 0 0 20px rgba(0,255,157,0.3);
-        }
-        
-        h1 {
-            font-size: 3em;
-            margin-bottom: 10px;
-            text-shadow: 0 0 10px #00ff9d;
-        }
-        
-        .sub {
-            color: #ff3366;
-            font-size: 1.2em;
-        }
-        
-        .dashboard {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-        
         .card {
-            background: rgba(0,0,0,0.8);
-            border-radius: 15px;
-            padding: 20px;
-            border: 1px solid #333;
-            transition: all 0.3s;
+            background: #1e293b;
+            border-radius: 1.5rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            border-left: 4px solid #3b82f6;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
         }
-        
-        .card h3 {
-            color: #ffaa44;
-            margin-bottom: 15px;
-            border-bottom: 1px solid #333;
-            padding-bottom: 5px;
+        h1 {
+            color: #60a5fa;
+            margin-top: 0;
         }
-        
-        .result-badge {
-            font-size: 2em;
+        .status {
+            background: #0f172a;
+            padding: 1rem;
+            border-radius: 1rem;
+            font-family: monospace;
             font-weight: bold;
             text-align: center;
-            padding: 20px;
-            border-radius: 10px;
-            margin: 10px 0;
+            font-size: 1.2rem;
         }
-        
-        .blocked {
-            background: #00aa44;
-            color: #000;
-        }
-        
-        .visible {
-            background: #ff3366;
-            color: #fff;
-        }
-        
-        .progress-bar {
-            width: 100%;
-            height: 30px;
-            background: #333;
-            border-radius: 15px;
-            overflow: hidden;
-            margin: 10px 0;
-        }
-        
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #00ff9d, #00aa44);
-            transition: width 0.5s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #000;
+        .badge {
+            display: inline-block;
+            padding: 0.3rem 0.8rem;
+            border-radius: 2rem;
+            font-size: 0.85rem;
             font-weight: bold;
         }
-        
-        .test-zone {
-            background: rgba(0,0,0,0.6);
-            border-radius: 15px;
-            padding: 20px;
-            margin-bottom: 30px;
-            border: 1px solid #ff3366;
+        .blocked {
+            background: #10b981;
+            color: #000;
         }
-        
-        .test-title {
-            font-size: 1.5em;
-            margin-bottom: 20px;
-            color: #ffaa44;
+        .not-blocked {
+            background: #ef4444;
+            color: white;
         }
-        
-        .ad-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 15px;
-            margin: 20px 0;
+        .test-item {
+            background: #0f172a;
+            margin: 0.75rem 0;
+            padding: 0.75rem 1rem;
+            border-radius: 0.75rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.5rem;
         }
-        
-        /* ========== МАССИВ РЕКЛАМНЫХ СЕЛЕКТОРОВ ========== */
-        [class*="ad"],
-        [class*="banner"],
-        [class*="sponsor"],
-        [class*="promo"],
-        [class*="google"],
-        [class*="yandex"],
-        [id*="ad"],
-        [id*="banner"],
-        [id*="sponsor"],
-        [id*="promo"],
-        [class*="adsense"],
-        [class*="advert"],
-        [class*="commercial"],
-        [class*="marketing"],
-        [data-ad],
-        [data-advertisement],
-        [data-ads],
-        
-        /* Популярные рекламные классы */
-        .ad-banner,
-        .banner-ad,
-        .advertisement,
-        .sponsored,
-        .sponsored-content,
-        .promo-box,
-        .google-ad,
-        .yandex-ads,
-        .adblock-test,
-        .ads-container,
-        .ad-wrapper,
-        .ad-slot,
-        .ad-unit,
-        .ad-space,
-        
-        /* ID рекламных блоков */
-        #ad,
-        #ads,
-        #banner,
-        #google_ads,
-        #yandex_ads,
-        #advert,
-        #advertisement,
-        #sponsored,
-        #promo,
-        
-        /* Технические рекламные элементы */
-        .adsbygoogle,
-        .yandex-rtb,
-        [data-google-query-id],
-        [data-ad-client],
-        [data-ad-slot],
-        
-        /* Блоки с подозрительными стилями */
-        [style*="z-index: 999"],
-        [style*="position: fixed"][style*="bottom: 0"],
-        [style*="position: fixed"][style*="top: 0"],
-        
-        /* Элементы с рекламными атрибутами */
-        [href*="doubleclick"],
-        [href*="googlesyndication"],
-        [src*="doubleclick"],
-        [src*="googlesyndication"],
-        iframe[src*="ad"],
-        img[src*="banner"],
-        a[href*="sponsor"]
-    }
+        .domain {
+            font-family: monospace;
+            font-size: 0.85rem;
+            word-break: break-all;
+            color: #94a3b8;
+        }
+        button {
+            background: #3b82f6;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 2rem;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #2563eb;
+        }
+        .hidden-ad {
+            display: none;
+        }
+        .iframe-container {
+            background: #0f172a;
+            border-radius: 0.75rem;
+            padding: 0.5rem;
+            text-align: center;
+        }
+        iframe {
+            width: 100%;
+            height: 200px;
+            border: 1px dashed #475569;
+            border-radius: 0.5rem;
+        }
+        hr {
+            border-color: #334155;
+        }
+        .footer {
+            font-size: 0.8rem;
+            text-align: center;
+            color: #64748b;
+        }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <div class="header">
-        <h1>🔥 HARDCORE ADBLOCK TEST 🔥</h1>
-        <div class="sub">Экстремальный тест-бенчмарк для блокировщиков рекламы</div>
-        <div style="margin-top: 20px; font-size: 0.9em; color: #888;">
-            Чем больше элементов скрыто — тем мощнее твой блокировщик
-        </div>
+<div class="card">
+    <h1>🧪 DNS Filter Test</h1>
+    <p>Проверка работы <strong>Personal DNS Filter</strong> (или любого блокировщика на основе DNS / hosts).</p>
+    <p>✅ Если DNS-фильтр активен — запросы к рекламным доменам будут заблокированы, элементы не загрузятся или покажут ошибку.</p>
+</div>
+
+<div class="card">
+    <h2>📊 Статус блокировки</h2>
+    <div class="status" id="statusMessage">
+        🔄 Проверка...
+    </div>
+</div>
+
+<div class="card">
+    <h2>🌐 Тестовые элементы (реальные рекламные домены)</h2>
+    <p>Эти домены часто встречаются в списках DNS-фильтров (EasyList, AdGuard, Personal DNS Filter).</p>
+    
+    <div class="test-item">
+        <span>📸 <strong>Рекламный баннер (img)</strong><br><span class="domain">doubleclick.net</span></span>
+        <img id="testImg" src="https://ad.doubleclick.net/ddm/trackimp/N1234.123456/B1234567.123456789;dc_trk_aid=123456789;dc_trk_cid=123456789;ord=123456;" 
+             alt="реклама doubleclick" style="max-width:150px; max-height:60px; border:1px solid gray;" 
+             onerror="this.style.opacity='0.3'; this.alt='❌ Блокировка сработала (DNS/сеть)'">
     </div>
 
-    <!-- Панель результатов -->
-    <div class="dashboard">
-        <div class="card">
-            <h3>📊 СТАТУС БЛОКИРОВЩИКА</h3>
-            <div id="blocker-status" class="result-badge">ПРОВЕРКА...</div>
-            <div class="progress-bar">
-                <div id="progress-fill" class="progress-fill" style="width: 0%">0%</div>
-            </div>
-            <div style="margin-top: 10px; font-size: 0.8em; text-align: center;">
-                <span id="blocked-count">0</span> / <span id="total-count">0</span> элементов заблокировано
-            </div>
-        </div>
-        
-        <div class="card">
-            <h3>🎯 МЕТОДЫ ПРОВЕРКИ</h3>
-            <div id="methods-list">
-                <div>🔍 Классические селекторы...</div>
-                <div>🎭 Обфусцированные блоки...</div>
-                <div>📦 iframe-вставки...</div>
-                <div>🔄 Динамическая загрузка...</div>
-                <div>💀 Анти-блокировочные ловушки...</div>
-            </div>
-        </div>
-        
-        <div class="card">
-            <h3>⚡ ВЕРДИКТ</h3>
-            <div id="verdict" style="font-size: 1.2em; text-align: center; padding: 20px;">
-                Загрузка...
-            </div>
-        </div>
+    <div class="test-item">
+        <span>📺 <strong>Рекламный iframe (попытка загрузки)</strong><br><span class="domain">googleadservices.com</span></span>
+        <iframe src="https://googleadservices.com/pagead/conversion/123456789/?random=123" title="ad-test"></iframe>
     </div>
 
-    <!-- ЗОНА 1: КЛАССИЧЕСКАЯ РЕКЛАМА -->
-    <div class="test-zone">
-        <div class="test-title">📢 ЗОНА 1: КЛАССИЧЕСКИЕ РЕКЛАМНЫЕ БЛОКИ</div>
-        <div class="ad-grid">
-            <div class="ad-banner" style="background:#ff3366; padding:20px; text-align:center;">💀 BANNER AD 728x90</div>
-            <div class="banner-ad" style="background:#ff3366; padding:20px; text-align:center;">💀 BANNER AD 300x250</div>
-            <div id="ad" style="background:#ff3366; padding:20px; text-align:center;">💀 AD BLOCK</div>
-            <div class="sponsored" style="background:#ff3366; padding:20px; text-align:center;">💀 SPONSORED CONTENT</div>
-        </div>
+    <div class="test-item">
+        <span>📦 <strong>Скрипт рекламной сети</strong><br><span class="domain">googlesyndication.com</span></span>
+        <div id="scriptTest">⏳ Проверка...</div>
     </div>
 
-    <!-- ЗОНА 2: GOOGLE / YANDEX ЭМУЛЯЦИЯ -->
-    <div class="test-zone">
-        <div class="test-title">🔴 ЗОНА 2: РЕКЛАМНЫЕ СЕТИ (GOOGLE/YANDEX)</div>
-        <div class="ad-grid">
-            <div class="adsbygoogle" style="background:#ff3366; padding:20px;">📢 Google AdSense</div>
-            <div class="yandex-rtb" style="background:#ff3366; padding:20px;">📢 Yandex RTB</div>
-            <div data-ad-client="ca-pub-123456789" style="background:#ff3366; padding:20px;">📢 Ad Client</div>
-            <div data-ad-slot="123456789" style="background:#ff3366; padding:20px;">📢 Ad Slot</div>
-        </div>
+    <div class="test-item">
+        <span>📊 <strong>Пиксель-трекер</strong><br><span class="domain">facebook.com/tr</span></span>
+        <img src="https://www.facebook.com/tr/?id=test123&ev=PageView" width="1" height="1" style="border:0" alt="fb pixel" 
+             onerror="this.style.display='none'; document.getElementById('fbStatus').innerText='❌ Заблокировано'">
+        <span id="fbStatus" style="font-size:0.8rem;">—</span>
     </div>
+</div>
 
-    <!-- ЗОНА 3: iframe-вставки -->
-    <div class="test-zone">
-        <div class="test-title">🖼️ ЗОНА 3: IFRAME-ВСТАВКИ</div>
-        <div class="ad-grid">
-            <iframe src="about:blank" style="width:100%; height:150px; background:#ff3366;" class="ad-iframe"></iframe>
-            <iframe src="about:blank" style="width:100%; height:150px; background:#ff3366;" data-google-query-id="test"></iframe>
-        </div>
-    </div>
+<div class="card">
+    <h2>📡 Популярные домены для DNS-блокировки</h2>
+    <p>Если DNS-фильтр работает, эти домены НЕ должны загружаться:</p>
+    <ul>
+        <li><code>ad.doubleclick.net</code></li>
+        <li><code>googleadservices.com</code></li>
+        <li><code>pagead2.googlesyndication.com</code></li>
+        <li><code>securepubads.g.doubleclick.net</code></li>
+        <li><code>www.facebook.com/tr</code></li>
+        <li><code>analytics.google.com</code></li>
+    </ul>
+    <button id="recheckBtn">🔄 Перепроверить</button>
+</div>
 
-    <!-- ЗОНА 4: ОБФУСЦИРОВАННЫЕ БЛОКИ -->
-    <div class="test-zone">
-        <div class="test-title">🌀 ЗОНА 4: ОБФУСЦИРОВАННЫЕ БЛОКИ (сложные селекторы)</div>
-        <div class="ad-grid">
-            <div class="content-module sponsored-post" style="background:#ff3366; padding:20px;">🎯 Модуль с рекламным классом</div>
-            <div class="article-recommendation sponsored-link" style="background:#ff3366; padding:20px;">🎯 Рекомендация (спонсор)</div>
-            <div class="widget commercial-offer" style="background:#ff3366; padding:20px;">🎯 Коммерческое предложение</div>
-            <div data-advertisement="true" style="background:#ff3366; padding:20px;">🎯 data-advertisement</div>
-        </div>
-    </div>
-
-    <!-- ЗОНА 5: FIXED-ЭЛЕМЕНТЫ -->
-    <div class="test-zone">
-        <div class="test-title">📍 ЗОНА 5: FIXED-ЭЛЕМЕНТЫ (плавающая реклама)</div>
-        <div style="position: fixed; bottom: 0; right: 0; background:#ff3366; padding:15px; z-index:999;">
-            💀 FLOATING AD (должен быть скрыт)
-        </div>
-        <div style="position: fixed; top: 0; left: 0; background:#ff3366; padding:15px; z-index:999;">
-            💀 TOP FIXED AD
-        </div>
-    </div>
-
-    <!-- ЗОНА 6: ССЫЛКИ НА РЕКЛАМНЫЕ ДОМЕНЫ -->
-    <div class="test-zone">
-        <div class="test-title">🔗 ЗОНА 6: РЕКЛАМНЫЕ ССЫЛКИ</div>
-        <div class="ad-grid">
-            <a href="https://doubleclick.net" style="background:#ff3366; padding:20px; display:block; text-align:center;">🔗 doubleclick.net</a>
-            <a href="https://googlesyndication.com" style="background:#ff3366; padding:20px; display:block; text-align:center;">🔗 googlesyndication.com</a>
-            <img src="https://fakeads.com/banner.gif" style="width:100%; background:#ff3366; height:100px;">
-        </div>
-    </div>
-
-    <!-- ЗОНА 7: ДИНАМИЧЕСКИЕ ЭЛЕМЕНТЫ (через JS) -->
-    <div class="test-zone">
-        <div class="test-title">⚡ ЗОНА 7: ДИНАМИЧЕСКИЕ ЭЛЕМЕНТЫ</div>
-        <div id="dynamic-zone" class="ad-grid"></div>
-    </div>
-
-    <!-- ЗОНА 8: СКРЫТЫЕ ЛОВУШКИ -->
-    <div class="test-zone">
-        <div class="test-title">🕳️ ЗОНА 8: ЛОВУШКИ ДЛЯ БЛОКИРОВЩИКОВ</div>
-        <div class="ad-grid">
-            <div class="adblock-test" style="background:#ff3366; padding:20px;">⚠️ adblock-test (проверочный)</div>
-            <div class="anti-adblock" style="background:#ffaa44; padding:20px; color:#000;">⚠️ anti-adblock ловушка</div>
-            <div id="adblock-warning" style="background:#ffaa44; padding:20px; color:#000;">⚠️ Предупреждение о блокировщике</div>
-        </div>
-    </div>
-
+<div class="card">
+    <h2>💡 Как это работает с Personal DNS Filter</h2>
+    <ul>
+        <li>✔️ Personal DNS Filter блокирует запросы на уровне DNS (домены).</li>
+        <li>✔️ Если тестовые элементы НЕ отображаются или показывают ошибку — блокировка активна.</li>
+        <li>✔️ Страница загружена на GitHub Pages — это не влияет на фильтрацию, так как запросы идут на рекламные домены.</li>
+    </ul>
 </div>
 
 <script>
-    (function() {
-        // Жёсткая проверка блокировщика через множество методов
-        let blockScore = 0;
-        let totalChecks = 0;
-        
-        function checkElement(selector, name) {
-            totalChecks++;
-            const elements = document.querySelectorAll(selector);
-            let hidden = 0;
-            elements.forEach(el => {
-                const style = window.getComputedStyle(el);
-                if (style.display === 'none' || style.visibility === 'hidden' || el.offsetHeight === 0) {
-                    hidden++;
-                }
-            });
-            if (hidden > 0) {
-                blockScore += (hidden / elements.length);
-            }
-            return { total: elements.length, hidden: hidden };
+    async function checkDomain(domain) {
+        // Проверка через fetch с режимом no-cors (видно в консоли браузера, блокируется ли запрос)
+        const url = `https://${domain}/test.png?t=${Date.now()}`;
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 3000);
+            await fetch(url, { mode: 'no-cors', signal: controller.signal });
+            clearTimeout(timeoutId);
+            return { domain, status: '⏳ Не заблокирован (запрос ушёл или заблокирован на стороне браузера)' };
+        } catch (e) {
+            return { domain, status: '❌ Скорее всего заблокирован (ошибка сети)' };
         }
+    }
+
+    async function updateStatus() {
+        const statusDiv = document.getElementById('statusMessage');
+        statusDiv.innerHTML = '🕵️ Анализ запросов...<br><small>Проверяем доступность рекламных доменов</small>';
         
-        // Массив всех селекторов для проверки
-        const selectors = [
-            '.ad-banner', '.banner-ad', '#ad', '.sponsored',
-            '.adsbygoogle', '.yandex-rtb', '[data-ad-client]', '[data-ad-slot]',
-            'iframe.ad-iframe', 'iframe[data-google-query-id]',
-            '.sponsored-post', '.sponsored-link', '.commercial-offer', '[data-advertisement]',
-            'div[style*="position: fixed"][style*="bottom: 0"]',
-            'div[style*="position: fixed"][style*="top: 0"]',
-            'a[href*="doubleclick"]', 'a[href*="googlesyndication"]', 'img[src*="fakeads"]',
-            '.adblock-test', '.anti-adblock', '#adblock-warning'
+        const domainsToCheck = [
+            'ad.doubleclick.net',
+            'googleadservices.com',
+            'pagead2.googlesyndication.com',
+            'securepubads.g.doubleclick.net'
         ];
         
-        // Первая проверка статических элементов
-        setTimeout(() => {
-            let totalElements = 0;
-            let blockedElements = 0;
-            
-            selectors.forEach(selector => {
-                const result = checkElement(selector);
-                totalElements += result.total;
-                blockedElements += result.hidden;
-            });
-            
-            // Проверка динамических элементов
-            const dynamicZone = document.getElementById('dynamic-zone');
-            if (dynamicZone) {
-                const dynamicAds = dynamicZone.querySelectorAll('div');
-                dynamicAds.forEach(ad => {
-                    totalElements++;
-                    const style = window.getComputedStyle(ad);
-                    if (style.display === 'none' || style.visibility === 'hidden') {
-                        blockedElements++;
-                    }
-                });
-            }
-            
-            const percent = totalElements > 0 ? Math.round((blockedElements / totalElements) * 100) : 0;
-            
-            // Обновление UI
-            document.getElementById('blocked-count').innerText = blockedElements;
-            document.getElementById('total-count').innerText = totalElements;
-            document.getElementById('progress-fill').style.width = percent + '%';
-            document.getElementById('progress-fill').innerText = percent + '%';
-            
-            const statusDiv = document.getElementById('blocker-status');
-            const verdictDiv = document.getElementById('verdict');
-            
-            if (percent >= 80) {
-                statusDiv.innerHTML = '🛡️ АБСОЛЮТНАЯ ЗАЩИТА 🛡️';
-                statusDiv.className = 'result-badge blocked';
-                verdictDiv.innerHTML = '💪 УРОВЕНЬ: ХАРДКОР<br>Ваш блокировщик прошёл экстремальный тест!';
-            } else if (percent >= 50) {
-                statusDiv.innerHTML = '✅ ХОРОШАЯ ЗАЩИТА ✅';
-                statusDiv.className = 'result-badge blocked';
-                verdictDiv.innerHTML = '👍 УРОВЕНЬ: СРЕДНИЙ<br>Блокировщик работает, но есть куда расти';
-            } else if (percent > 0) {
-                statusDiv.innerHTML = '⚠️ СЛАБАЯ ЗАЩИТА ⚠️';
-                statusDiv.className = 'result-badge visible';
-                verdictDiv.innerHTML = '😐 УРОВЕНЬ: БАЗОВЫЙ<br>Рекомендуется настроить блокировщик или добавить подписки';
-            } else {
-                statusDiv.innerHTML = '❌ ЗАЩИТА НЕ ОБНАРУЖЕНА ❌';
-                statusDiv.className = 'result-badge visible';
-                verdictDiv.innerHTML = '💀 УРОВЕНЬ: УЯЗВИМЫЙ<br>Блокировщик отключён или не установлен';
-            }
-            
-            // Дополнительный тест через adsbox (классический метод)
-            const testAd = document.createElement('div');
-            testAd.className = 'adsbox';
-            testAd.style.position = 'absolute';
-            testAd.style.left = '-9999px';
-            document.body.appendChild(testAd);
-            
-            setTimeout(() => {
-                const isBlocked = testAd.offsetHeight === 0 && testAd.offsetWidth === 0;
-                document.body.removeChild(testAd);
-                if (isBlocked && percent === 0) {
-                    statusDiv.innerHTML = '🔄 БЛОКИРОВЩИК ЕСТЬ, НО НЕ ПОЛНОСТЬЮ';
-                    verdictDiv.innerHTML = 'Блокировщик обнаружен, но косметические фильтры могут быть отключены для локальных файлов';
-                }
-            }, 100);
-            
-        }, 200);
+        const results = [];
+        for (const domain of domainsToCheck) {
+            const res = await checkDomain(domain);
+            results.push(res);
+        }
         
-        // Динамическая генерация рекламных элементов (для проверки фильтрации динамики)
-        setTimeout(() => {
-            const dynamicZone = document.getElementById('dynamic-zone');
-            if (dynamicZone) {
-                for(let i = 0; i < 4; i++) {
-                    const adDiv = document.createElement('div');
-                    adDiv.className = 'dynamic-ad banner-ad';
-                    adDiv.style.background = '#ff3366';
-                    adDiv.style.padding = '20px';
-                    adDiv.style.textAlign = 'center';
-                    adDiv.innerHTML = `💀 ДИНАМИЧЕСКАЯ РЕКЛАМА #${i+1}`;
-                    dynamicZone.appendChild(adDiv);
-                }
-            }
-        }, 500);
+        const blockedCount = results.filter(r => r.status.includes('заблокирован')).length;
+        const total = results.length;
         
-        // Логирование в консоль для дебага
-        console.log('%c🔥 HARDCORE ADBLOCK TEST 🔥', 'color: #00ff9d; font-size: 20px;');
-        console.log('Тест запущен. Проверьте, сколько красных блоков скрыто.');
-        console.log('Если все красные блоки исчезли — у вас отличная защита!');
+        let summary = '';
+        if (blockedCount >= total - 1) {
+            summary = '✅ <span style="color:#10b981">DNS-фильтр РАБОТАЕТ отлично!</span><br>';
+        } else if (blockedCount > 0) {
+            summary = '⚠️ <span style="color:#f59e0b">DNS-фильтр работает частично</span><br>';
+        } else {
+            summary = '❌ <span style="color:#ef4444">DNS-фильтр НЕ ОБНАРУЖЕН</span><br>';
+        }
         
-    })();
+        statusDiv.innerHTML = summary + results.map(r => `${r.domain}: ${r.status}`).join('<br>');
+        
+        // Проверка на загрузку изображения (доп. визуальный тест)
+        const img = document.getElementById('testImg');
+        if (img.complete && img.naturalHeight === 0) {
+            statusDiv.innerHTML += '<br>🖼️ Тестовое изображение: ❌ НЕ загружено (заблокировано)';
+        } else if (img.complete && img.naturalHeight > 0) {
+            statusDiv.innerHTML += '<br>🖼️ Тестовое изображение: ⚠️ ЗАГРУЗИЛОСЬ (возможно, фильтр не блокирует)';
+        } else {
+            statusDiv.innerHTML += '<br>🖼️ Тестовое изображение: 🔄 статус неизвестен';
+        }
+    }
+    
+    // Скрипт-тест для googlesyndication
+    const scriptTestDiv = document.getElementById('scriptTest');
+    const script = document.createElement('script');
+    script.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?test=1';
+    script.onload = () => {
+        scriptTestDiv.innerHTML = '⚠️ Скрипт загрузился (рекламный домен не заблокирован)';
+        scriptTestDiv.style.color = '#f97316';
+    };
+    script.onerror = () => {
+        scriptTestDiv.innerHTML = '✅ Скрипт НЕ загрузился — DNS-фильтр сработал!';
+        scriptTestDiv.style.color = '#10b981';
+    };
+    document.body.appendChild(script);
+    
+    document.getElementById('recheckBtn').addEventListener('click', () => {
+        location.reload();
+    });
+    
+    updateStatus();
 </script>
+
+<div class="footer">
+    ⚡ Страница специально использует реальные рекламные домены для проверки DNS-фильтрации.<br>
+    Если вы видите ошибки загрузки или пустые места — это признак работы Personal DNS Filter.
+</div>
 
 </body>
 </html>
