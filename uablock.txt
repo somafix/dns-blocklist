@@ -1,127 +1,75 @@
-# Ukrainian Filters - Полный DNS-список для personalDNSfilter
-# Адаптировано из combined.txt
-
-0.0.0.0 21wiz.com
-0.0.0.0 a4.censor.net
-0.0.0.0 ad.luxnet.ua
-0.0.0.0 ad.mox.tv
-0.0.0.0 adhigh.net
-0.0.0.0 admixer.net
-0.0.0.0 adpartner.pro
-0.0.0.0 adriver.ru
-0.0.0.0 adskeeper.com
-0.0.0.0 ads-twitter.com
-0.0.0.0 ads.informator.ua
-0.0.0.0 ads.ligazakon.net
-0.0.0.0 adtelligent.com
-0.0.0.0 adwadvert.com.ua
-0.0.0.0 agenteimmobiliare.info
-0.0.0.0 aixcdn.com
-0.0.0.0 aj1907.online
-0.0.0.0 api.median-ads.com
-0.0.0.0 banners.doc.ua
-0.0.0.0 bidder.smartytouch.co
-0.0.0.0 bodis.com
-0.0.0.0 c.hit.ua
-0.0.0.0 c8.net.ua
-0.0.0.0 cdn.umh.ua
-0.0.0.0 cdnkma.biz
-0.0.0.0 click.zfctrack.net
-0.0.0.0 click.znctrack.net
-0.0.0.0 clickua200.pp.ua
-0.0.0.0 content-loader.com
-0.0.0.0 crashlytics.ru
-0.0.0.0 creativecdn.com
-0.0.0.0 css-load.com
-0.0.0.0 eskimi.com
-0.0.0.0 exchange.informer.ua
-0.0.0.0 franecki.net
-0.0.0.0 fundingchoicesmessages.google.com
-0.0.0.0 getter.cfd
-0.0.0.0 givemelink.cc
-0.0.0.0 go2net.com.ua
-0.0.0.0 holder.com.ua
-0.0.0.0 hotbsukavu.today
-0.0.0.0 html-load.com
-0.0.0.0 img-load.com
-0.0.0.0 infocode.tech
-0.0.0.0 informer.link
-0.0.0.0 ipvertnet.com
-0.0.0.0 jsc.idealmedia.io
-0.0.0.0 kl89regular.com
-0.0.0.0 kma.biz
-0.0.0.0 lenmit.com
-0.0.0.0 mediabrama.com
-0.0.0.0 membrana.media
-0.0.0.0 mgid.com
-0.0.0.0 misto.travel
-0.0.0.0 mixadvert.com
-0.0.0.0 myblogshop.top
-0.0.0.0 myroledance.com
-0.0.0.0 nadavi.com.ua
-0.0.0.0 newscode.online
-0.0.0.0 notsy.io
-0.0.0.0 ogads-pa.googleapis.com
-0.0.0.0 optad360.io
-0.0.0.0 optad360.net
-0.0.0.0 partners-show.com
-0.0.0.0 phoenix-widget.com
-0.0.0.0 pixel.tvstitch.com
-0.0.0.0 protagcdn.com
-0.0.0.0 push-sdk.com
-0.0.0.0 push-sdk.net
-0.0.0.0 rcvlink.com
-0.0.0.0 rcvlinks.com
-0.0.0.0 receivedachest.com
-0.0.0.0 recreativ.com
-0.0.0.0 recreativ.ru
-0.0.0.0 redtram.com
-0.0.0.0 revive-adserver.net
-0.0.0.0 smi.pp.ua
-0.0.0.0 srv224.com
-0.0.0.0 stat.hdvbua.pro
-0.0.0.0 stpd.cloud
-0.0.0.0 stteeruptowind.com
-0.0.0.0 topadsua.xyz
-0.0.0.0 traffim.com
-0.0.0.0 trafficbass.com
-0.0.0.0 trafficdok.com
-0.0.0.0 traffsender.com
-0.0.0.0 trafmag.com
-0.0.0.0 trck.house
-0.0.0.0 viads.com
-0.0.0.0 viads.net
-0.0.0.0 vidoomy.com
-0.0.0.0 vidverto.io
-0.0.0.0 worldwidegg.com
-0.0.0.0 wpadmngr.com
-0.0.0.0 xcartpro.com
-0.0.0.0 2xclick.ru
-0.0.0.0 360playvid.com
-0.0.0.0 360playvid.info
-0.0.0.0 1plus1.ua
-0.0.0.0 1plus1.video
-0.0.0.0 5.ua
-0.0.0.0 banner.volynnews.com
-0.0.0.0 cdn.hdvbua.pro
-0.0.0.0 ek.ua
-0.0.0.0 gecid.com
-0.0.0.0 gepur.com
-0.0.0.0 helsi.me
-0.0.0.0 informator.ua
-0.0.0.0 mazepa.to
-0.0.0.0 medicina.ua
-0.0.0.0 momondo.ua
-0.0.0.0 nauka.ua
-0.0.0.0 obyava.ua
-0.0.0.0 patient-docs.com
-0.0.0.0 safeview.ukr.net
-0.0.0.0 slk.kh.ua
-0.0.0.0 tereveni.org
-0.0.0.0 tsn.ua
-0.0.0.0 ukranews.com
-0.0.0.0 widgets.coingecko.com
-0.0.0.0 bbc.com
-0.0.0.0 kinoafisha.ua
-0.0.0.0 magnolia-tv.com
-0.0.0.0 orakul.com
+uamaster.com
+roman.ua
+wedex.com.ua
+inweb.com.ua
+promodo.com
+wezom.com.ua
+netrocket.com.ua
+panem.agency
+kiwi.agency
+redchameleon.agency
+kit.digital
+braintank.agency
+adloonix.com
+epom.com
+cryptotrafficmarket.com
+google-analytics.com
+googletagmanager.com
+doubleclick.net
+googleadservices.com
+googlesyndication.com
+hotlog.ru
+metrica.yandex.ru
+yandex.ru
+liveinternet.ru
+brand24.com
+determ.com
+sendpulse.com
+esputnik.com
+mailchimp.com
+mandrillapp.com
+klaviyo.com
+getresponse.com
+hotjar.com
+crazyegg.com
+fullstory.com
+logrocket.com
+inspectlet.com
+fingerprintjs.com
+cdn.fingerprintjs.com
+maxmind.com
+sift.com
+turnstile.tech
+openx.com
+openx.net
+pubmatic.com
+criteo.com
+outbrain.com
+taboola.com
+clearbit.com
+zoominfo.com
+apollo.io
+rocketreach.co
+hunter.io
+ads.ua
+analytics.ua
+tracker.ua
+pixel.ua
+connect.facebook.net
+graph.facebook.com
+an.facebook.com
+edge-chat.facebook.com
+staticxx.facebook.com
+analytics.tiktok.com
+ct.tiktok.com
+business-api.tiktok.com
+ads.linkedin.com
+analytics.linkedin.com
+snap.licdn.com
+platform.linkedin.com
+analytics.twitter.com
+ads-api.twitter.com
+static.ads-twitter.com
+t.co
+s.youtube.com
+pagead2.googlesyndication.com
