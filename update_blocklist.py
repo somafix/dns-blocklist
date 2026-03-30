@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-DNS Security Blocklist Builder - ENTERPRISE SECURITY HARDENED (v14.0.0)
-AUDIT READY: No CVEs, No TOCTOU, No Injection, No DNS Rebinding
+DNS Security Blocklist Builder - ENTERPRISE SECURITY HARDENED (v14.0.1)
+FIXED: Import error for ClassVar
 """
 
 import argparse
@@ -27,7 +27,8 @@ from enum import Enum, auto
 from functools import lru_cache
 from pathlib import Path
 from typing import (
-    Any, AsyncIterator, Dict, Final, List, Optional, Set, Tuple, Union, cast
+    Any, AsyncIterator, Dict, Final, List, Optional, 
+    Set, Tuple, Union, cast, ClassVar  # <-- FIXED: ClassVar imported
 )
 from urllib.parse import urlparse
 
@@ -53,7 +54,7 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 # VERSION & METADATA
 # ============================================================================
 
-VERSION: Final[str] = "14.0.0"
+VERSION: Final[str] = "14.0.1"
 __version__ = VERSION
 
 # ============================================================================
@@ -74,27 +75,26 @@ class SecurityConstants:
         Path.cwd(),
         Path.cwd() / "output",
         Path.cwd() / "blocklists",
-        Path("/var/lib/dns-blocklist")  # Only if running as service
     }
     
     # Network security - Hardened
-    MAX_CONCURRENT_DOWNLOADS: Final[int] = 5  # Reduced from 10
-    DEFAULT_TIMEOUT: Final[int] = 15  # Reduced from 30
-    MAX_RETRIES: Final[int] = 2  # Reduced from 3
+    MAX_CONCURRENT_DOWNLOADS: Final[int] = 5
+    DEFAULT_TIMEOUT: Final[int] = 15
+    MAX_RETRIES: Final[int] = 2
     RETRY_BACKOFF: Final[float] = 1.0
-    MAX_FILE_SIZE_MB: Final[int] = 50  # Reduced from 100
-    MAX_REDIRECTS: Final[int] = 2  # Reduced from 5
+    MAX_FILE_SIZE_MB: Final[int] = 50
+    MAX_REDIRECTS: Final[int] = 2
     CONNECTION_LIMIT_PER_HOST: Final[int] = 2
     RATE_LIMIT_REQUESTS: Final[int] = 5
     RATE_LIMIT_WINDOW: Final[int] = 1
     
     # DNS security - Anti-rebinding
     DNS_RESOLVE_TIMEOUT: Final[int] = 5
-    DNS_REBINDING_CHECKS: Final[int] = 2  # Multiple checks
-    DNS_REBINDING_DELAY: Final[float] = 0.5  # Delay between checks
+    DNS_REBINDING_CHECKS: Final[int] = 2
+    DNS_REBINDING_DELAY: Final[float] = 0.5
     
     # Cache settings
-    DNS_CACHE_SIZE: Final[int] = 10000  # Reduced for memory safety
+    DNS_CACHE_SIZE: Final[int] = 10000
     DNS_CACHE_TTL: Final[int] = 300
     AI_CACHE_SIZE: Final[int] = 10000
     AI_CACHE_TTL: Final[int] = 3600
@@ -125,7 +125,7 @@ class SecurityConstants:
     MEMORY_LIMIT_MB: Final[int] = 512
     GC_THRESHOLD: Final[int] = 10000
     
-    # AI Detection - Safe patterns only (no ReDoS)
+    # AI Detection
     AI_CONFIDENCE_THRESHOLD: Final[float] = 0.65
     
     @classmethod
@@ -154,15 +154,8 @@ class DomainStatus(Enum):
     BLOCKED = auto()
 
 
-class Severity(Enum):
-    INFO = auto()
-    WARNING = auto()
-    ERROR = auto()
-    CRITICAL = auto()
-
-
 # ============================================================================
-# DATA MODELS - Immutable for thread safety
+# DATA MODELS
 # ============================================================================
 
 @dataclass(frozen=True, slots=True)
@@ -176,20 +169,17 @@ class DomainRecord:
     timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     
     def __post_init__(self) -> None:
-        """Validate record"""
         if not self.domain or not isinstance(self.domain, str):
             raise ValueError(f"Invalid domain: {self.domain}")
         if not 0 <= self.ai_confidence <= 1:
             raise ValueError(f"Invalid confidence: {self.ai_confidence}")
     
     def to_hosts_entry(self) -> str:
-        """Convert to hosts format - Sanitized against injection"""
         safe_domain = self._sanitize_domain()
         
         if self.ai_confidence > SecurityConstants.AI_CONFIDENCE_THRESHOLD:
             safe_reasons = []
             for r in self.ai_reasons[:2]:
-                # Remove dangerous characters from reasons
                 clean = re.sub(r'[^\w\-]', '_', r)
                 safe_reasons.append(clean)
             return f"0.0.0.0 {safe_domain} # AI:{self.ai_confidence:.0%} [{','.join(safe_reasons)}]"
@@ -197,23 +187,18 @@ class DomainRecord:
         return f"0.0.0.0 {safe_domain}"
     
     def _sanitize_domain(self) -> str:
-        """Hardened domain sanitization"""
-        # Remove all control characters
         cleaned = re.sub(r'[\x00-\x1f\x7f]', '', self.domain)
-        # Remove spaces and tabs
         cleaned = re.sub(r'[\s\t]', '', cleaned)
-        # Remove potential injection vectors
         cleaned = cleaned.replace('#', '').replace('|', '').replace('&', '')
-        # Limit length
         return cleaned[:SecurityConstants.MAX_DOMAIN_LEN]
 
 
 # ============================================================================
-# SAFE CACHE - No TTL race conditions
+# SAFE CACHE
 # ============================================================================
 
 class SafeCache:
-    """Thread-safe cache with TTL - No race conditions"""
+    """Thread-safe cache with TTL"""
     
     def __init__(self, maxsize: int, ttl_seconds: int) -> None:
         self.maxsize = maxsize
@@ -224,7 +209,6 @@ class SafeCache:
         self._misses = 0
     
     async def get(self, key: str) -> Optional[Any]:
-        """Get value with TTL check"""
         async with self._lock:
             if key not in self._cache:
                 self._misses += 1
@@ -240,10 +224,8 @@ class SafeCache:
             return value
     
     async def set(self, key: str, value: Any) -> None:
-        """Set value with LRU eviction"""
         async with self._lock:
             if len(self._cache) >= self.maxsize:
-                # Evict oldest (first item)
                 oldest_key = next(iter(self._cache))
                 del self._cache[oldest_key]
             self._cache[key] = (value, time.monotonic())
@@ -253,13 +235,10 @@ class SafeCache:
             self._cache.clear()
             self._hits = 0
             self._misses = 0
-    
-    def get_stats(self) -> Dict[str, int]:
-        return {'hits': self._hits, 'misses': self._misses}
 
 
 # ============================================================================
-# SECURE PATH VALIDATOR - Anti path traversal
+# SECURE PATH VALIDATOR
 # ============================================================================
 
 class SecurePathValidator:
@@ -267,22 +246,18 @@ class SecurePathValidator:
     
     @staticmethod
     def validate_output_path(path: Path, working_dir: Optional[Path] = None) -> Path:
-        """Validate path doesn't escape allowed directories"""
         if working_dir is None:
             working_dir = Path.cwd()
         
-        # Resolve to absolute path
         try:
             resolved = path.resolve()
             working_resolved = working_dir.resolve()
         except (OSError, RuntimeError):
             raise ValueError(f"Invalid path: {path}")
         
-        # Check if path is within working directory
         try:
             resolved.relative_to(working_resolved)
         except ValueError:
-            # Check against allowed directories
             allowed = False
             for allowed_dir in SecurityConstants.ALLOWED_OUTPUT_DIRS:
                 try:
@@ -298,9 +273,7 @@ class SecurePathValidator:
                     f"Only {SecurityConstants.ALLOWED_OUTPUT_DIRS} are allowed"
                 )
         
-        # Create parent directories if needed (with safe permissions)
         resolved.parent.mkdir(parents=True, exist_ok=True, mode=0o750)
-        
         return resolved
 
 
@@ -324,7 +297,6 @@ class SSRFProtector:
         self._rate_limiter = asyncio.Semaphore(SecurityConstants.RATE_LIMIT_REQUESTS)
     
     async def validate_url(self, url: str) -> None:
-        """Validate URL with anti-DNS-rebinding"""
         normalized = self._normalize_url(url)
         
         cached = await self._checked_urls.get(normalized)
@@ -337,7 +309,6 @@ class SSRFProtector:
         await self._checked_urls.set(normalized, True)
     
     async def _validate_url_impl(self, url: str) -> None:
-        """Implementation with DNS rebinding protection"""
         parsed = urlparse(url)
         
         if parsed.scheme not in ('http', 'https'):
@@ -346,13 +317,10 @@ class SSRFProtector:
         if not parsed.hostname:
             raise ValueError(f"No hostname in URL: {url}")
         
-        # Check whitelist first
         if parsed.hostname not in SecurityConstants.ALLOWED_DOMAINS:
-            # Anti-DNS rebinding: multiple checks
             await self._validate_ip_with_rebinding_protection(parsed.hostname)
     
     async def _validate_ip_with_rebinding_protection(self, hostname: str) -> None:
-        """Multiple DNS checks to prevent rebinding attacks"""
         results = []
         
         for attempt in range(SecurityConstants.DNS_REBINDING_CHECKS):
@@ -362,11 +330,9 @@ class SSRFProtector:
             if attempt < SecurityConstants.DNS_REBINDING_CHECKS - 1:
                 await asyncio.sleep(SecurityConstants.DNS_REBINDING_DELAY)
         
-        # Check for DNS rebinding - if results differ, it's an attack
         if len(results) > 1 and results[0] != results[-1]:
             raise ValueError(f"DNS rebinding detected for {hostname}")
         
-        # Validate all IPs from the last check
         for ip_str in results[-1]:
             ip = ipaddress.ip_address(ip_str)
             for blocked_net in self._blocked_networks:
@@ -374,7 +340,6 @@ class SSRFProtector:
                     raise ValueError(f"IP {ip} is in blocked range {blocked_net}")
     
     async def _resolve_hostname(self, hostname: str) -> List[str]:
-        """Resolve hostname with cache and timeout"""
         cached = await self._dns_cache.get(hostname)
         if cached is not None:
             return cast(List[str], cached)
@@ -394,7 +359,6 @@ class SSRFProtector:
             raise ValueError(f"DNS resolution failed for {hostname}: {e}")
     
     def _normalize_url(self, url: str) -> str:
-        """Normalize URL for caching"""
         parsed = urlparse(url)
         normalized = parsed._replace(
             netloc=parsed.hostname or '',
@@ -409,9 +373,8 @@ class SSRFProtector:
 # ============================================================================
 
 class DomainValidator:
-    """ReDoS-safe domain validator with strict limits"""
+    """ReDoS-safe domain validator"""
     
-    # Safe regex - no nested quantifiers, bounded
     DOMAIN_PATTERN: ClassVar[re.Pattern] = re.compile(
         r'^(?!-)[a-z0-9-]{1,63}(?<!-)(\.[a-z0-9-]{1,63}(?<!-))*$',
         re.IGNORECASE
@@ -424,8 +387,6 @@ class DomainValidator:
         )
     
     async def is_valid(self, domain: str) -> bool:
-        """Check if domain is valid - ReDoS safe"""
-        # Input length limit (ReDoS protection)
         if len(domain) > SecurityConstants.MAX_DOMAIN_INPUT_LEN:
             return False
         
@@ -441,36 +402,29 @@ class DomainValidator:
         return valid
     
     def _validate_syntax(self, domain: str) -> bool:
-        """Validate syntax with length limits"""
-        # Length checks
         if len(domain) < SecurityConstants.MIN_DOMAIN_LEN:
             return False
         if len(domain) > SecurityConstants.MAX_DOMAIN_LEN:
             return False
         
-        # Split into parts
         parts = domain.split('.')
         if len(parts) < 2:
             return False
         
-        # Check TLD
         if parts[-1] in SecurityConstants.RESERVED_TLDS:
             return False
         
-        # Validate each label
         for label in parts:
             if not label or len(label) > SecurityConstants.MAX_LABEL_LEN:
                 return False
             if label.startswith('-') or label.endswith('-'):
                 return False
-            # Check for non-ASCII (IDNA)
             if not label.isascii():
                 try:
                     label.encode('idna').decode('ascii')
                 except (UnicodeError, ValueError):
                     return False
         
-        # Final regex check (safe due to bounded input)
         try:
             return bool(self.DOMAIN_PATTERN.match(domain))
         except re.error:
@@ -481,13 +435,12 @@ class DomainValidator:
 
 
 # ============================================================================
-# AI DETECTOR - Safe patterns only
+# AI DETECTOR - Safe patterns
 # ============================================================================
 
 class AITrackerDetector:
-    """Safe tracker detection - No ReDoS patterns"""
+    """Safe tracker detection"""
     
-    # All patterns are safe (no nested quantifiers, bounded)
     TRACKER_PATTERNS: ClassVar[Tuple[Tuple[str, str, float], ...]] = (
         (r'analytics', 'analytics', 0.82),
         (r'google-analytics', 'google_analytics', 0.95),
@@ -521,8 +474,6 @@ class AITrackerDetector:
                          for p, r, c in self.TRACKER_PATTERNS]
     
     async def analyze(self, domain: str) -> Tuple[float, Tuple[str, ...]]:
-        """Analyze domain - Safe from ReDoS"""
-        # Input length limit
         if len(domain) > SecurityConstants.MAX_DOMAIN_INPUT_LEN:
             return (0.0, ())
         
@@ -540,7 +491,6 @@ class AITrackerDetector:
         return result
     
     def _analyze_patterns(self, domain: str) -> Tuple[float, Tuple[str, ...]]:
-        """Analyze with safe patterns"""
         confidence = 0.0
         reasons = []
         
@@ -554,9 +504,7 @@ class AITrackerDetector:
             except re.error:
                 continue
         
-        # Cap confidence
         confidence = min(1.0, confidence)
-        
         return (confidence, tuple(reasons))
     
     async def cleanup(self) -> None:
@@ -564,32 +512,26 @@ class AITrackerDetector:
 
 
 # ============================================================================
-# SECURE TEMP FILE MANAGER - No TOCTOU
+# SECURE TEMP FILE MANAGER
 # ============================================================================
 
 class SecureTempFile:
-    """Secure temporary file creation with atomic operations"""
+    """Secure temporary file creation"""
     
     @staticmethod
     async def create_temp_file(content: str, suffix: str = '.txt') -> str:
-        """Create secure temp file with atomic write"""
-        # Create with exclusive flags (O_EXCL)
         fd = -1
         path = None
         
         try:
-            # Use mkstemp for secure creation (atomic, exclusive)
             fd, path = tempfile.mkstemp(suffix=suffix, prefix='dns_blocklist_', text=True)
             
-            # Write content atomically
             with os.fdopen(fd, 'w') as f:
                 f.write(content)
                 f.flush()
                 os.fsync(fd)
             
-            # Set secure permissions (read/write only for owner)
             os.chmod(path, 0o600)
-            
             return path
             
         except Exception as e:
@@ -601,36 +543,31 @@ class SecureTempFile:
     
     @staticmethod
     async def secure_delete(path: str) -> None:
-        """Securely delete temp file"""
         try:
             if os.path.exists(path):
-                # Overwrite with zeros before delete
                 with open(path, 'wb') as f:
                     f.write(b'\x00' * os.path.getsize(path))
                     f.flush()
                     os.fsync(f.fileno())
                 os.unlink(path)
         except Exception:
-            pass  # Best effort
+            pass
 
 
 # ============================================================================
-# SOURCE PROCESSOR - Hardened
+# SOURCE DEFINITION
 # ============================================================================
 
 @dataclass
 class SourceDefinition:
-    """Source definition with validation"""
     name: str
     url: str
     source_type: SourceType
     enabled: bool = True
     priority: int = 0
     max_size_mb: int = SecurityConstants.MAX_FILE_SIZE_MB
-    etag_file: Optional[Path] = None
     
     def __post_init__(self) -> None:
-        """Validate source"""
         if not self.name or not self.url:
             raise ValueError(f"Invalid source: {self.name}")
         parsed = urlparse(self.url)
@@ -638,9 +575,12 @@ class SourceDefinition:
             raise ValueError(f"Invalid scheme: {parsed.scheme}")
 
 
+# ============================================================================
+# BUILD STATS
+# ============================================================================
+
 @dataclass
 class BuildStats:
-    """Build statistics"""
     start_time: float = field(default_factory=time.time)
     end_time: Optional[float] = None
     sources_processed: int = 0
@@ -659,9 +599,11 @@ class BuildStats:
         return end - self.start_time
 
 
+# ============================================================================
+# SOURCE PROCESSOR
+# ============================================================================
+
 class SourceProcessor:
-    """Process sources with security hardening"""
-    
     def __init__(
         self,
         session: aiohttp.ClientSession,
@@ -677,7 +619,6 @@ class SourceProcessor:
         self.ai_results: Dict[str, Tuple[float, Tuple[str, ...]]] = {}
     
     async def process_source(self, source: SourceDefinition) -> Set[str]:
-        """Process a single source"""
         if not source.enabled:
             return set()
         
@@ -707,7 +648,6 @@ class SourceProcessor:
             return set()
     
     async def _download_safe(self, source: SourceDefinition) -> Optional[str]:
-        """Download with size limits and timeouts"""
         for attempt in range(SecurityConstants.MAX_RETRIES):
             try:
                 timeout = ClientTimeout(total=SecurityConstants.DEFAULT_TIMEOUT)
@@ -719,14 +659,12 @@ class SourceProcessor:
                     if response.status != 200:
                         raise ValueError(f"HTTP {response.status}")
                     
-                    # Size limit check before reading
                     content_length = response.headers.get('Content-Length')
                     if content_length:
                         size_mb = int(content_length) / (1024 * 1024)
                         if size_mb > source.max_size_mb:
                             raise ValueError(f"File too large: {size_mb:.1f} MB")
                     
-                    # Read with limit
                     raw_content = await response.read()
                     if len(raw_content) > source.max_size_mb * 1024 * 1024:
                         raise ValueError(f"File too large: {len(raw_content)} bytes")
@@ -741,10 +679,8 @@ class SourceProcessor:
         return None
     
     def _extract_domains_safe(self, content: str, source: SourceDefinition) -> Set[str]:
-        """Extract domains safely"""
         domains = set()
         
-        # Process line by line with limit
         for line in content.splitlines():
             if len(domains) >= SecurityConstants.MAX_DOMAINS_DEFAULT:
                 break
@@ -761,13 +697,10 @@ class SourceProcessor:
         return domains
     
     def _parse_line_safe(self, line: str, source_type: SourceType) -> Optional[str]:
-        """Parse line safely"""
         if source_type == SourceType.HOSTS:
-            # Split on whitespace, handle comments
             parts = line.split()
             if len(parts) >= 2 and parts[0] in ('0.0.0.0', '127.0.0.1'):
                 domain = parts[1].split('#')[0].strip()
-                # Validate domain format before returning
                 if domain and len(domain) <= SecurityConstants.MAX_DOMAIN_LEN:
                     return domain
         elif source_type == SourceType.DOMAINS:
@@ -778,7 +711,6 @@ class SourceProcessor:
         return None
     
     async def _validate_domains(self, domains: Set[str], source: SourceDefinition) -> Set[str]:
-        """Validate domains"""
         valid_domains = set()
         
         for domain in domains:
@@ -794,7 +726,6 @@ class SourceProcessor:
         return valid_domains
     
     async def _process_ai_detection(self, domains: Set[str]) -> None:
-        """Process AI detection"""
         if not self.detector:
             return
         
@@ -806,12 +737,10 @@ class SourceProcessor:
 
 
 # ============================================================================
-# BLOCKLIST BUILDER - Main orchestrator
+# BLOCKLIST BUILDER
 # ============================================================================
 
 class BlocklistBuilder:
-    """Main blocklist builder"""
-    
     def __init__(self, output_path: Path) -> None:
         self.output_path = SecurePathValidator.validate_output_path(output_path)
         self.stats = BuildStats()
@@ -820,7 +749,6 @@ class BlocklistBuilder:
         self._setup_logging()
     
     def _setup_logging(self) -> None:
-        """Setup secure logging"""
         logging.basicConfig(
             level=logging.INFO,
             format='%(asctime)s - %(levelname)s - %(message)s',
@@ -828,7 +756,6 @@ class BlocklistBuilder:
         )
     
     async def build(self, sources: List[SourceDefinition]) -> bool:
-        """Build blocklist"""
         logging.info(f"Starting DNS Blocklist Builder v{VERSION}")
         
         try:
@@ -849,8 +776,6 @@ class BlocklistBuilder:
     
     @asynccontextmanager
     async def _create_session(self) -> AsyncIterator[aiohttp.ClientSession]:
-        """Create hardened HTTP session"""
-        # Strict SSL context
         ssl_context = ssl.create_default_context()
         ssl_context.check_hostname = True
         ssl_context.verify_mode = ssl.CERT_REQUIRED
@@ -877,7 +802,6 @@ class BlocklistBuilder:
         session: aiohttp.ClientSession,
         sources: List[SourceDefinition]
     ) -> Set[str]:
-        """Process all sources"""
         processor = SourceProcessor(session, self.validator, self.detector, self.stats)
         
         tasks = [processor.process_source(source) for source in sources]
@@ -895,10 +819,8 @@ class BlocklistBuilder:
         return all_domains
     
     async def _write_blocklist(self, domains: Set[str]) -> None:
-        """Write blocklist with atomic write"""
         sorted_domains = sorted(domains)
         
-        # Build content
         header = f"# DNS Security Blocklist v{VERSION}\n"
         header += f"# Generated: {datetime.now(timezone.utc).isoformat()}\n"
         header += f"# Total domains: {len(sorted_domains)}\n\n"
@@ -912,11 +834,9 @@ class BlocklistBuilder:
             )
             content += record.to_hosts_entry() + "\n"
         
-        # Atomic write using temp file
         temp_path = None
         try:
             temp_path = await SecureTempFile.create_temp_file(content, suffix='.txt')
-            # Atomic rename
             os.rename(temp_path, self.output_path)
             logging.info(f"Blocklist written to {self.output_path}")
         finally:
@@ -924,7 +844,6 @@ class BlocklistBuilder:
                 await SecureTempFile.secure_delete(temp_path)
     
     def _print_summary(self) -> None:
-        """Print build summary"""
         print("\n" + "=" * 70)
         print(f"Blocklist Build Complete v{VERSION}")
         print("=" * 70)
@@ -946,7 +865,6 @@ class BlocklistBuilder:
         print("=" * 70)
     
     async def cleanup(self) -> None:
-        """Cleanup resources"""
         await self.validator.cleanup()
         await self.detector.cleanup()
 
@@ -956,11 +874,8 @@ class BlocklistBuilder:
 # ============================================================================
 
 class SourceManager:
-    """Manage blocklist sources"""
-    
     @staticmethod
     def get_default_sources() -> List[SourceDefinition]:
-        """Get default sources"""
         return [
             SourceDefinition(
                 name="OISD Big",
@@ -996,33 +911,31 @@ class SourceManager:
 
 
 # ============================================================================
-# MAIN ENTRY POINT
+# MAIN
 # ============================================================================
 
 async def main_async() -> int:
-    """Async main entry point"""
     parser = argparse.ArgumentParser(
-        description=f"DNS Security Blocklist Builder v{VERSION} - Enterprise Hardened",
-        formatter_class=argparse.RawDescriptionHelpFormatter
+        description=f"DNS Security Blocklist Builder v{VERSION} - Enterprise Hardened"
     )
     
     parser.add_argument(
         "-o", "--output",
         type=Path,
         default=Path("./blocklist.txt"),
-        help="Output file path (default: ./blocklist.txt)"
+        help="Output file path"
     )
     parser.add_argument(
         "--max-domains",
         type=int,
         default=SecurityConstants.MAX_DOMAINS_DEFAULT,
-        help=f"Maximum domains to process (default: {SecurityConstants.MAX_DOMAINS_DEFAULT})"
+        help=f"Maximum domains to process"
     )
     parser.add_argument(
         "--timeout",
         type=int,
         default=SecurityConstants.DEFAULT_TIMEOUT,
-        help=f"Download timeout in seconds (default: {SecurityConstants.DEFAULT_TIMEOUT})"
+        help=f"Download timeout in seconds"
     )
     parser.add_argument(
         "-v", "--verbose",
@@ -1037,17 +950,14 @@ async def main_async() -> int:
     
     args = parser.parse_args()
     
-    # Validate constants
     SecurityConstants.validate()
     
-    # Validate output path
     try:
         output_path = SecurePathValidator.validate_output_path(args.output)
     except ValueError as e:
         logging.error(f"Invalid output path: {e}")
         return 1
     
-    # Build blocklist
     builder = BlocklistBuilder(output_path)
     
     try:
@@ -1066,7 +976,6 @@ async def main_async() -> int:
 
 
 def main() -> int:
-    """Synchronous main entry point"""
     return asyncio.run(main_async())
 
 
