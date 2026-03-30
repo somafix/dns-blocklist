@@ -1,6 +1,6 @@
 # DNS Security Blocklist v12.0.0 (Streaming Mode)
-# Generated: 2026-03-30T10:29:30.319514+00:00
-# Total domains: 144845
+# Generated: 2026-03-30T11:02:30.810132+00:00
+# Total domains: 144850
 
 0.0.0.0 0-pal-summit.ru
 0.0.0.0 0-rohyp-5-yu.ru
@@ -12884,6 +12884,7 @@
 0.0.0.0 ancestryuki.112.2o7.net
 0.0.0.0 anch0-bridge.withregw.in.net
 0.0.0.0 anch0r-switch.bluebay.in.net
+0.0.0.0 anch0r1-route.stormglade.in.net
 0.0.0.0 anch0rsugar.top
 0.0.0.0 anchor.dripanchor.ru
 0.0.0.0 anchor.foamswitch.ru
@@ -21622,6 +21623,7 @@
 0.0.0.0 c2.kdesu.ru
 0.0.0.0 c2.kzg-w-4-y.ru
 0.0.0.0 c2.l.qq.com
+0.0.0.0 c2.mc-live.online
 0.0.0.0 c2.muksecurity.fun
 0.0.0.0 c2.outster.com
 0.0.0.0 c2.popads.net
@@ -40101,6 +40103,7 @@
 0.0.0.0 fondprof.oewabox.at
 0.0.0.0 fondsdam-nl.fyi
 0.0.0.0 fondsxperte.de
+0.0.0.0 fonij.cm
 0.0.0.0 fonsdocumental.fundaciofita.cat
 0.0.0.0 font.liquidus.net
 0.0.0.0 fontactivnutricion.com
@@ -57832,6 +57835,7 @@
 0.0.0.0 liga-stroy.su
 0.0.0.0 ligatus.com
 0.0.0.0 ligatus.de
+0.0.0.0 ligh-stric.stormglade.in.net
 0.0.0.0 light-bridge-1.altovelocita.in.net
 0.0.0.0 light-bridge-4.nachtlicht.in.net
 0.0.0.0 light-bridge-7.petitfoyer.in.net
@@ -60239,7 +60243,6 @@
 0.0.0.0 m7.rwzqh.ru
 0.0.0.0 m7.shadowm1st.ru
 0.0.0.0 m7.w-78i.ru
-0.0.0.0 m7.wy-72.ru
 0.0.0.0 m727.velvetecho.ru
 0.0.0.0 m7d6.dexlotion.ru
 0.0.0.0 m7dqw.je9t.online
@@ -62020,6 +62023,7 @@
 0.0.0.0 marmalade.adthrive.com
 0.0.0.0 marmasd.qpon
 0.0.0.0 marmorariaserrana.com.br
+0.0.0.0 maroc-hotel.com
 0.0.0.0 maroness.de
 0.0.0.0 maroni823.sytes.net
 0.0.0.0 marq1n.oceanpath.ru
@@ -70450,6 +70454,7 @@
 0.0.0.0 off.kvus7.ru
 0.0.0.0 offaces-butional.com
 0.0.0.0 offdutd.cyou
+0.0.0.0 offecargo.stormglade.in.net
 0.0.0.0 offenms.cyou
 0.0.0.0 offer-relationships.gl.at.ply.gg
 0.0.0.0 offer-v5.sedyes.com
@@ -72039,6 +72044,7 @@
 0.0.0.0 ops-gate.lumitron.in.net
 0.0.0.0 ops-unit.dynastis.in.net
 0.0.0.0 ops-unit.lumitron.in.net
+0.0.0.0 opsec-cf.com
 0.0.0.0 opsecdefcloud.com
 0.0.0.0 opserver-styles-svg.click
 0.0.0.0 opsmiskop.com
@@ -78636,6 +78642,7 @@
 0.0.0.0 proto-d0ck.thornbyte.in.net
 0.0.0.0 proto-ed1t.tempiso.in.net
 0.0.0.0 proto-h4ul.withregw.in.net
+0.0.0.0 proto-p0rt.n0vabrook.in.net
 0.0.0.0 proto-p1an.getlight.in.net
 0.0.0.0 proto-p45s.overtmantram.in.net
 0.0.0.0 proto-patt3r.infosafe.in.net
@@ -81113,7 +81120,6 @@
 0.0.0.0 qz9.ls2a9.ru
 0.0.0.0 qz9.mg1u5.ru
 0.0.0.0 qz9.mw9y4.ru
-0.0.0.0 qz9.n46uu.ru
 0.0.0.0 qz9.nu-96.ru
 0.0.0.0 qz9.ou-86.ru
 0.0.0.0 qz9.pf6o2.ru
@@ -95330,7 +95336,6 @@
 0.0.0.0 t1.ls2a9.ru
 0.0.0.0 t1.mg1u5.ru
 0.0.0.0 t1.mw9y4.ru
-0.0.0.0 t1.n46uu.ru
 0.0.0.0 t1.nu-96.ru
 0.0.0.0 t1.o-y3ii.ru
 0.0.0.0 t1.ou-86.ru
@@ -98314,7 +98319,6 @@
 0.0.0.0 tq1.q-49o.ru
 0.0.0.0 tq1.rwzqh.ru
 0.0.0.0 tq1.w-78i.ru
-0.0.0.0 tq1.wy-72.ru
 0.0.0.0 tq1ze.sip-9-ta.ru
 0.0.0.0 tq8.i3-42s.ru
 0.0.0.0 tq8vna.site
@@ -107208,6 +107212,7 @@
 0.0.0.0 we.xrly-8.ru
 0.0.0.0 we1iss.test6yvarn1sh.ru
 0.0.0.0 we4g.rec1aimswal1.ru
+0.0.0.0 we5ohkh2.stormglade.in.net
 0.0.0.0 wea.zapto.org
 0.0.0.0 weacumkguscewsku.xyz
 0.0.0.0 weacwmqwaiaqouqq.xyz
