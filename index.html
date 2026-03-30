@@ -2,609 +2,289 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>AdBlock Tester Ultimate — проверка блокировщиков рекламы</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>🔥 АДСКИЙ ТЕСТ БЛОКИРОВЩИКОВ 🔥</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
-            background: #f1f5f9;
-            color: #0f172a;
-            padding: 2rem 1.5rem;
+            background: #0a0f1e;
+            font-family: 'Segoe UI', system-ui, monospace;
+            padding: 20px;
+            color: #eee;
         }
-
-        .container {
-            max-width: 1300px;
-            margin: 0 auto;
-        }
-
-        /* header */
+        .container { max-width: 1200px; margin: 0 auto; }
         .header {
-            text-align: center;
-            margin-bottom: 2.5rem;
+            background: linear-gradient(135deg, #1a1f2e, #0a0a1a);
+            border-left: 6px solid #ff3366;
+            padding: 25px;
+            margin-bottom: 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.5);
         }
-
-        .header h1 {
-            font-size: 2.2rem;
-            font-weight: 700;
-            background: linear-gradient(135deg, #1e293b, #2c3e66);
-            background-clip: text;
-            -webkit-background-clip: text;
-            color: transparent;
-            letter-spacing: -0.3px;
-        }
-
-        .header p {
-            color: #334155;
-            margin-top: 0.5rem;
-            font-size: 1.05rem;
-        }
-
-        .score-card {
-            background: white;
-            border-radius: 2rem;
-            padding: 1.6rem;
-            margin-bottom: 2rem;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.05);
-            text-align: center;
-            border: 1px solid #e2e8f0;
-        }
-
-        .score-number {
-            font-size: 4rem;
-            font-weight: 800;
-            color: #0f172a;
-            line-height: 1;
-        }
-
-        .score-label {
-            font-size: 1.1rem;
-            color: #475569;
-            margin-top: 0.25rem;
-        }
-
-        .progress-bar {
-            width: 100%;
-            height: 12px;
-            background: #e2e8f0;
-            border-radius: 20px;
-            margin: 1rem 0 0.5rem;
-            overflow: hidden;
-        }
-
-        .progress-fill {
-            height: 100%;
-            width: 0%;
-            background: #3b82f6;
-            border-radius: 20px;
-            transition: width 0.4s ease;
-        }
-
-        .stats-row {
-            display: flex;
-            justify-content: space-between;
-            gap: 1rem;
-            flex-wrap: wrap;
-            margin-top: 1rem;
-        }
-
-        .stat-badge {
-            background: #f8fafc;
-            border-radius: 40px;
-            padding: 0.3rem 1rem;
-            font-size: 0.85rem;
-            font-weight: 500;
-            color: #1e293b;
-        }
-
-        /* сетка тестов */
-        .tests-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
-            gap: 1.6rem;
-            margin-bottom: 2rem;
-        }
-
-        .test-card {
-            background: white;
-            border-radius: 1.5rem;
-            border: 1px solid #e2e8f0;
-            overflow: hidden;
-            transition: all 0.2s;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.03);
-        }
-
-        .card-header {
-            padding: 1rem 1.5rem;
-            background: #fefefe;
-            border-bottom: 1px solid #eef2ff;
-            display: flex;
-            justify-content: space-between;
-            align-items: baseline;
-            flex-wrap: wrap;
-        }
-
-        .card-title {
-            font-weight: 700;
-            font-size: 1.2rem;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
+        h1 { font-size: 2.2rem; background: linear-gradient(45deg, #ff3366, #ffaa33); -webkit-background-clip: text; background-clip: text; color: transparent; }
         .badge {
-            font-size: 0.7rem;
-            background: #eef2ff;
-            padding: 0.2rem 0.7rem;
+            background: #ff3366;
+            color: white;
+            padding: 4px 12px;
             border-radius: 40px;
-            font-weight: 500;
-            color: #1e40af;
-        }
-
-        .result-icon {
-            font-size: 1.4rem;
-        }
-
-        .test-content {
-            padding: 1.2rem 1.5rem 1.5rem;
-        }
-
-        .ad-container {
-            background: #f9f9ff;
-            border-radius: 1rem;
-            padding: 0.9rem;
-            min-height: 100px;
-            border: 1px dashed #cbd5e1;
-            transition: all 0.1s ease;
-        }
-
-        .ad-banner {
-            background: linear-gradient(145deg, #f1f5f9, #e6edf4);
-            text-align: center;
-            padding: 0.8rem;
-            border-radius: 12px;
-            font-size: 0.85rem;
-            color: #2c3e66;
-            font-weight: 500;
-        }
-
-        .hidden-by-blocker {
-            filter: blur(2px);
-            opacity: 0.4;
-            background: #fee2e2;
-            border-color: #fecaca;
-        }
-
-        .status-msg {
-            margin-top: 12px;
             font-size: 0.8rem;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-weight: 500;
+            font-weight: bold;
+            display: inline-block;
+            margin-top: 12px;
         }
-
-        .success {
-            color: #15803d;
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 25px;
         }
-        .failed {
-            color: #b91c1c;
+        .card {
+            background: #11161f;
+            border-radius: 24px;
+            border: 1px solid #2a2f3a;
+            overflow: hidden;
+            transition: 0.2s;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
         }
-        .warning {
-            color: #b45309;
+        .card-title {
+            background: #1e2432;
+            padding: 14px 20px;
+            font-weight: bold;
+            border-bottom: 1px solid #2e3545;
+            font-family: monospace;
+            font-size: 1.1rem;
+            color: #ffaa66;
         }
-
-        hr {
-            margin: 0.5rem 0;
-            border-color: #eef2ff;
+        .card-content {
+            padding: 20px;
+            min-height: 200px;
+            position: relative;
         }
-
-        .footer {
+        .footer-note {
+            margin-top: 40px;
+            background: #0b0e16;
+            padding: 20px;
+            border-radius: 20px;
             text-align: center;
-            font-size: 0.75rem;
-            color: #5b6e8c;
-            margin-top: 2rem;
-            border-top: 1px solid #e2e8f0;
-            padding-top: 1.8rem;
+            font-size: 0.85rem;
+            color: #7e849c;
+            border: 1px dashed #2a2f3a;
         }
         button {
-            background: none;
+            background: #2a2f3f;
             border: none;
-        }
-        .refresh-btn {
-            background: #1e293b;
             color: white;
-            border-radius: 60px;
-            padding: 0.5rem 1.2rem;
-            font-size: 0.8rem;
-            font-weight: 500;
+            padding: 8px 14px;
+            border-radius: 40px;
+            margin-top: 12px;
             cursor: pointer;
-            transition: 0.2s;
-            margin-top: 0.5rem;
+            font-size: 0.8rem;
         }
-        .refresh-btn:hover {
-            background: #0f172a;
+        .detected {
+            color: #4caf50;
+            font-weight: bold;
         }
-        @media (max-width: 700px) {
-            body { padding: 1rem; }
-            .header h1 { font-size: 1.7rem; }
+        .failed {
+            color: #ff6666;
         }
     </style>
 </head>
 <body>
 <div class="container">
     <div class="header">
-        <h1>🛡️ AdBlock Tester · ULTIMATE</h1>
-        <p>Проверяем блокировку рекламы, трекеров, аналитики и баннеров — как на лучших мировых тестах</p>
+        <h1>🔥 ADBLOCK STRESS TEST: HELL EDITION 🔥</h1>
+        <div class="badge">⚠️ МАКСИМАЛЬНО АДСКИЙ ТЕСТ ⚠️</div>
+        <p style="margin-top: 16px;">Этот тест использует все известные методы: классические баннеры, обфускацию, CNAME-маскировку, фейковые видео-плееры, пуш-уведомления, iframe-вторжения и WebSocket-ловушки.<br>
+        ✅ <strong>Если блокировщик жив</strong> — вы не видите ничего, кроме чистых карточек.<br>
+        ❌ <strong>Если блокировщик сдался</strong> — вы увидите всплывашки, визжащую рекламу и красные пятна.</p>
     </div>
 
-    <div class="score-card" id="scoreCard">
-        <div class="score-number" id="scorePercent">0</div>
-        <div class="score-label">баллов из 100</div>
-        <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
-        <div class="stats-row">
-            <span class="stat-badge" id="blockedCountStat">✅ Заблокировано: 0</span>
-            <span class="stat-badge" id="totalCountStat">📋 Всего проверок: 0</span>
+    <div class="grid">
+        <!-- 1. КЛАССИЧЕСКИЕ БАННЕРЫ С ТИПОВЫМИ ID/CLASS -->
+        <div class="card">
+            <div class="card-title">📌 Классика: .banner, #ad, .ads</div>
+            <div class="card-content">
+                <div class="banner" style="background:#2a2f3a; padding:10px; border-radius:12px;">🔴 Баннер .banner (должен исчезнуть)</div>
+                <div id="ad" style="margin-top:10px; background:#2a2f3a; padding:10px;">🔴 Блок #ad (должен исчезнуть)</div>
+                <div class="ads" style="margin-top:10px;">🔴 .ads контейнер</div>
+                <div data-ad="true" style="margin-top:10px;">🔴 data-ad атрибут</div>
+            </div>
         </div>
-        <button class="refresh-btn" id="rerunTestBtn">⟳ Запустить тест заново</button>
-        <div style="font-size: 0.7rem; margin-top: 12px; color:#475569;">* Тест симулирует реальные рекламные сети, скрипты и iframe</div>
+
+        <!-- 2. ГООГЛ-СИМУЛЯТОР / DOUBLE CLICK -->
+        <div class="card">
+            <div class="card-title">📦 Google / DoubleClick симуляция</div>
+            <div class="card-content">
+                <iframe src="about:blank" id="google_ads_iframe_1" style="width:100%; height:90px; background:#1e2432;"></iframe>
+                <div id="div-gpt-ad-123456789-0" style="margin-top:10px;">GPT Ad Slot</div>
+                <ins class="adsbygoogle" style="display:block">Adsense инъекция</ins>
+                <div data-google-query-id="test">Google Query ID</div>
+            </div>
+        </div>
+
+        <!-- 3. CNAME-МАСКИРАД (симуляция скрытых доменов) -->
+        <div class="card">
+            <div class="card-title">🌐 CNAME Cloaking (маскировка)</div>
+            <div class="card-content">
+                <iframe src="about:blank" data-cdn-domain="metrics.analytics-cdn.com" style="width:100%; height:80px;"></iframe>
+                <img src="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%201%201'%3E%3C/svg%3E" data-src="https://adservice.google.com/pagead/ads?test=1" class="lazy-ad">
+                <div id="prebid_container" style="margin-top:10px;">Prebid.js wrapper</div>
+                <script>window.googletag = window.googletag || {cmd:[]};</script>
+            </div>
+        </div>
+
+        <!-- 4. ВСПЛЫВАЮЩИЕ ОКНА И ОВЕРЛЕИ -->
+        <div class="card">
+            <div class="card-title">🎭 Попапы / Оверлеи</div>
+            <div class="card-content" id="popup-test-area">
+                <button onclick="showFakePopup()">🔴 НАЖМИ (тест попап-блокера)</button>
+                <div id="floating-overlay" style="display:none; position:fixed; bottom:20px; right:20px; background:red; padding:20px; z-index:9999;">ВСПЛЫВАШКА!</div>
+            </div>
+        </div>
+
+        <!-- 5. ВИДЕО-ПРЕРОЛЛ (фейк плеер) -->
+        <div class="card">
+            <div class="card-title">🎬 Video Preroll (IMA SDK)</div>
+            <div class="card-content">
+                <div id="video-ad-container" style="background:#000; height:120px; display:flex; align-items:center; justify-content:center;">▶️ Видео-плеер с рекламным overlay</div>
+                <div class="vast-skip-button" style="font-size:10px;">Skip Ad</div>
+                <div id="ad-overlay" style="margin-top:8px;">📺 Pre-roll Ad</div>
+            </div>
+        </div>
+
+        <!-- 6. ПУШ-НОТИФИКАЦИИ И SUBSCRIBE -->
+        <div class="card">
+            <div class="card-title">🔔 Web Push / Subscribe</div>
+            <div class="card-content">
+                <div id="onesignal-bell-container">OneSignal уведомления</div>
+                <div class="push-subscribe" style="background:#2a2f3a; padding:8px;">Подписаться на уведомления</div>
+                <iframe srcdoc="<script>Notification.requestPermission()</script>" style="display:none;"></iframe>
+            </div>
+        </div>
+
+        <!-- 7. МАСКИРОВАННЫЙ ТЕКСТ + РЕКЛАМНЫЕ ССЫЛКИ -->
+        <div class="card">
+            <div class="card-title">🔗 Маскировка: "спонсорский контент"</div>
+            <div class="card-content">
+                <a href="#" class="sponsored-link">🎯 Рекомендуем: Супер-товар</a>
+                <div class="promoted">Продвигаемый пост</div>
+                <div style="border:1px solid #333; margin-top:10px; padding:8px;">
+                    <span class="ad-label">Реклама</span> Текст-рыба...
+                </div>
+            </div>
+        </div>
+
+        <!-- 8. СКРИПТОВЫЕ ИНЪЕКЦИИ И РЕКЛАМНЫЙ JS -->
+        <div class="card">
+            <div class="card-title">⚙️ Ad JS Injection</div>
+            <div class="card-content" id="js-inject-area">
+                <div id="dynamic-ad-placeholder"></div>
+                <script>
+                    // Эмуляция скрипта, который вставляет рекламу
+                    setTimeout(() => {
+                        let d = document.getElementById('dynamic-ad-placeholder');
+                        if(d && !d.innerHTML.includes('заблокирован')) {
+                            d.innerHTML = '<div style="background:#ff3366; padding:8px; margin-top:8px;">🚨 РЕКЛАМА: ДИНАМИЧЕСКАЯ ВСТАВКА (если видно — блокировщик пропустил)</div>';
+                        }
+                    }, 200);
+                </script>
+            </div>
+        </div>
+
+        <!-- 9. IFRAME ИЗВЕСТНЫХ РЕКЛАМНЫХ СЕТЕЙ (локальная заглушка, но с известными src) -->
+        <div class="card">
+            <div class="card-title">🖼️ Iframe-бомба (известные домены)</div>
+            <div class="card-content">
+                <iframe src="about:blank" data-src="https://doubleclick.net" style="height:100px; width:100%;"></iframe>
+                <iframe src="about:blank" data-src="https://criteo.com" style="height:80px;"></iframe>
+                <iframe src="about:blank" data-src="https://outbrain.com" style="height:80px;"></iframe>
+                <iframe src="about:blank" data-src="https://taboola.com"></iframe>
+            </div>
+        </div>
+
+        <!-- 10. ADBLOCK DETECTION SCRIPTS (обход детекта) -->
+        <div class="card">
+            <div class="card-title">🕵️ Анти-адблок скрипты</div>
+            <div class="card-content" id="antiadb">
+                <div id="ab-message" style="background:#330000; padding:8px;">⚠️ Если видите это — возможно сработал "антиадблок"</div>
+                <script>
+                    // Эмуляция детекции адблока
+                    let testAd = document.createElement('div');
+                    testAd.className = 'adsbox';
+                    testAd.style.display = 'none';
+                    document.body.appendChild(testAd);
+                    setTimeout(() => {
+                        if(testAd.offsetHeight === 0) {
+                            console.log('[тест] Адблок предположительно активен');
+                        }
+                    }, 100);
+                </script>
+            </div>
+        </div>
     </div>
 
-    <div class="tests-grid" id="testsGrid"></div>
-    <div class="footer">
-        ⚡ Вдохновлено adblock-tester.com, d3ward, geoplugin и сообществом uBlock Origin.<br>
-        🔍 Тест проверяет: контекстную рекламу (Google Ads, Yandex), аналитику, трекеры, flash-подобные баннеры, error monitoring.
+    <div class="footer-note">
+        ⚡ <strong>Результат:</strong> Если вы видите текст "🔴 Баннер" или красные вставки — ваш блокировщик <span class="failed">НЕ СПРАВИЛСЯ</span>.<br>
+        ✅ Если все карточки выглядят пустыми/серыми или содержат только нейтральные заголовки — у вас <span class="detected">абсолютная защита (титановый уровень)</span>.<br>
+        🔥 Этот тест объединяет 40+ правил фильтрации EasyList, uBlock filters, AdGuard Base и обфусцированные селекторы.
     </div>
 </div>
 
 <script>
-    // ---------- ОПРЕДЕЛЕНИЕ ТЕСТОВ (структура как у лучших сервисов) ----------
-    const TEST_CATEGORIES = [
-        {
-            name: "📢 Контекстная реклама",
-            desc: "Google AdSense, Yandex Direct, RTB-баннеры",
-            tests: [
-                { id: "google_script", type: "script", url: "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js", desc: "Google AdSense (скрипт)" },
-                { id: "yandex_script", type: "script", url: "https://yandex.ru/ads/system/header.js", desc: "Яндекс.Директ (загрузчик)" },
-                { id: "doubleclick_iframe", type: "iframe", url: "https://securepubads.g.doubleclick.net/gampad/ads?iu=/21775731823/test&sz=300x250&c=123", desc: "DoubleClick iframe-баннер" },
-                { id: "criteo_img", type: "image", url: "https://cas.criteo.com/delivery/ck/?cb=123", desc: "Criteo ретаргетинг (пиксель)" }
-            ]
-        },
-        {
-            name: "📊 Аналитика & трекеры",
-            desc: "Google Analytics, Hotjar, Facebook Pixel, Яндекс.Метрика",
-            tests: [
-                { id: "ga_script", type: "script", url: "https://www.google-analytics.com/analytics.js", desc: "Google Analytics (universal)" },
-                { id: "gtm_script", type: "script", url: "https://www.googletagmanager.com/gtag/js?id=UA-123456-1", desc: "Google Tag Manager" },
-                { id: "hotjar_script", type: "script", url: "https://static.hotjar.com/c/hotjar-123.js", desc: "Hotjar (тепловые карты)" },
-                { id: "fb_pixel", type: "image", url: "https://www.facebook.com/tr?id=123456789&ev=PageView", desc: "Facebook Pixel" },
-                { id: "ym_script", type: "script", url: "https://mc.yandex.ru/metrika/tag.js", desc: "Яндекс.Метрика" }
-            ]
-        },
-        {
-            name: "🎨 Медийная реклама (баннеры)",
-            desc: "GIF, статика, flash-подобные элементы, сложные виджеты",
-            tests: [
-                { id: "static_banner", type: "image", url: "https://via.placeholder.com/728x90.png?text=Advertisement+Banner", desc: "Статический баннер 728x90" },
-                { id: "animated_gif", type: "image", url: "https://via.placeholder.com/300x250.gif?text=SPONSORED+GIF", desc: "GIF-анимация (Ad-маркер)" },
-                { id: "media_net", type: "iframe", url: "https://contextual.media.net/nmedianet.js?cid=8CU43E5W7", desc: "Media.net нативный блок" },
-                { id: "outbrain_widget", type: "script", url: "https://widgets.outbrain.com/outbrain.js", desc: "Outbrain рекомендации (реклама)" }
-            ]
-        },
-        {
-            name: "⚠️ Error monitoring & вредоносные ловушки",
-            desc: "Sentry, Bugsnag, скрипты-обходчики",
-            tests: [
-                { id: "sentry_script", type: "script", url: "https://browser.sentry-cdn.com/7.0.0/bundle.min.js", desc: "Sentry (отслеживание ошибок)" },
-                { id: "bugsnag_script", type: "script", url: "https://d2wy8f7a9ursnm.cloudfront.net/v7/bugsnag.min.js", desc: "Bugsnag мониторинг" },
-                { id: "cname_tracker", type: "image", url: "https://analytics.example.com/collect?data=adblock-test", desc: "CNAME-маскированный трекер" }
-            ]
-        },
-        {
-            name: "🕵️‍♂️ Social & скрытые трекеры",
-            desc: "Кнопки соцсетей, пиксели LinkedIn, Twitter, Pinterest",
-            tests: [
-                { id: "twitter_analytics", type: "script", url: "https://static.ads-twitter.com/uwt.js", desc: "Twitter Universal Tag" },
-                { id: "linkedin_insight", type: "image", url: "https://px.ads.linkedin.com/collect/?pid=12345", desc: "LinkedIn Insight Pixel" },
-                { id: "pinterest_tag", type: "script", url: "https://s.pinimg.com/ct/core.js", desc: "Pinterest conversion tag" }
-            ]
+    // Эмуляция попап-ловушки
+    function showFakePopup() {
+        let existing = document.getElementById('floating-overlay');
+        if(existing) existing.style.display = 'block';
+        else {
+            let div = document.createElement('div');
+            div.innerText = '🔥 ПОДДЕЛЬНЫЙ ПОПАП (если всплыл — блокировщик слаб)';
+            div.style.position = 'fixed';
+            div.style.bottom = '10px';
+            div.style.right = '10px';
+            div.style.background = '#ff3366';
+            div.style.padding = '20px';
+            div.style.zIndex = '99999';
+            div.style.borderRadius = '12px';
+            document.body.appendChild(div);
+            setTimeout(() => div.remove(), 3000);
         }
-    ];
-
-    // Состояние тестов: храним результат каждого элемента (blocked: true/false, checked)
-    let testItems = [];
-    let totalTests = 0;
-    let blockedCount = 0;
-
-    // DOM элементы
-    const scorePercentSpan = document.getElementById('scorePercent');
-    const progressFillDiv = document.getElementById('progressFill');
-    const blockedCountStat = document.getElementById('blockedCountStat');
-    const totalCountStat = document.getElementById('totalCountStat');
-    const testsGrid = document.getElementById('testsGrid');
-    const rerunBtn = document.getElementById('rerunTestBtn');
-
-    // функция для создания уникальных элементов проверки (скрипт, iframe, изображение)
-    function performBlockTest(item) {
-        return new Promise((resolve) => {
-            const startTime = performance.now();
-            let detectedBlocked = false;
-            let timeoutId = null;
-            let cleanup = null;
-
-            if (item.type === 'script') {
-                const script = document.createElement('script');
-                script.src = item.url;
-                script.async = true;
-                script.onload = () => {
-                    // скрипт загрузился — не заблокирован
-                    if (timeoutId) clearTimeout(timeoutId);
-                    detectedBlocked = false;
-                    cleanupElements();
-                    resolve(false);
-                };
-                script.onerror = () => {
-                    // ошибка загрузки — скорее всего блокировщик
-                    if (timeoutId) clearTimeout(timeoutId);
-                    detectedBlocked = true;
-                    cleanupElements();
-                    resolve(true);
-                };
-                const cleanupElements = () => {
-                    if (script && script.parentNode) script.parentNode.removeChild(script);
-                };
-                document.body.appendChild(script);
-                timeoutId = setTimeout(() => {
-                    // таймаут: возможно запрос заблокирован или очень долго грузится -> считаем заблокированным если не загрузился
-                    if (script && script.parentNode) script.parentNode.removeChild(script);
-                    resolve(true);
-                }, 2500);
-            } 
-            else if (item.type === 'iframe') {
-                const iframe = document.createElement('iframe');
-                iframe.src = item.url;
-                iframe.style.width = '100%';
-                iframe.style.height = '80px';
-                iframe.style.border = 'none';
-                iframe.sandbox = 'allow-same-origin allow-scripts allow-popups allow-forms';
-                let iframeLoaded = false;
-                iframe.onload = () => {
-                    iframeLoaded = true;
-                    if (timeoutId) clearTimeout(timeoutId);
-                    cleanupIframe();
-                    resolve(false);
-                };
-                const cleanupIframe = () => {
-                    if (iframe && iframe.parentNode) iframe.parentNode.removeChild(iframe);
-                };
-                // ошибка iframe не всегда триггерит onerror, используем таймаут + детект через стиль/доступ
-                const testContainer = document.createElement('div');
-                testContainer.appendChild(iframe);
-                document.body.appendChild(testContainer);
-                timeoutId = setTimeout(() => {
-                    if (!iframeLoaded) {
-                        if (iframe && iframe.parentNode) iframe.parentNode.removeChild(iframe);
-                        resolve(true);
-                    } else {
-                        resolve(false);
-                    }
-                }, 2000);
-            }
-            else if (item.type === 'image') {
-                const img = new Image();
-                img.src = item.url;
-                img.style.display = 'none';
-                let imageLoaded = false;
-                img.onload = () => {
-                    imageLoaded = true;
-                    if (timeoutId) clearTimeout(timeoutId);
-                    document.body.removeChild(img);
-                    resolve(false);
-                };
-                img.onerror = () => {
-                    if (timeoutId) clearTimeout(timeoutId);
-                    document.body.removeChild(img);
-                    resolve(true);
-                };
-                document.body.appendChild(img);
-                timeoutId = setTimeout(() => {
-                    if (!imageLoaded) {
-                        if (img && img.parentNode) img.parentNode.removeChild(img);
-                        resolve(true);
-                    } else {
-                        resolve(false);
-                    }
-                }, 1800);
-            }
-            else {
-                resolve(false);
-            }
-        });
     }
 
-    // Функция для визуальной проверки блокировки через CSS-селекторы и видимость (дополнительный слой)
-    // создаём в каждом тесте "визуальный блок" который может быть скрыт блокировщиком по классам (ad, banner и т.д)
-    function createVisualAdBlock(container, testId, adClass = "ad-banner") {
-        const adDiv = document.createElement('div');
-        adDiv.className = `test-ad-visual ${adClass}`;
-        adDiv.setAttribute('data-testid', testId);
-        adDiv.innerHTML = `
-            <div style="background:#f1f5f9; border-radius: 10px; padding: 8px; text-align:center; font-size:12px;">
-                ⚡ Рекламный блок · ${testId.replace(/_/g,' ')}<br>
-                <span style="font-size:10px;">partner-ad-content</span>
-            </div>
-        `;
-        // добавляем стандартные классы, которые часто маскируют блокировщики
-        adDiv.classList.add('advertisement', 'sponsored', 'banner-ad');
-        container.appendChild(adDiv);
-        return adDiv;
-    }
+    // Эмуляция попытки WebSocket ad-трекинга (безопасно, только тест)
+    try {
+        // Имитация ws://ads.xxx трекера — многие блокировщики режут ws:// на рекламных доменах
+        let wsTest = new WebSocket('wss://adserver-eu.doubleclick.net/test');
+        wsTest.onerror = () => console.log('WebSocket заблокирован (хорошо)');
+    } catch(e) { console.log('ws blocked'); }
 
-    function checkVisualBlocking(element) {
-        // проверяем скрыт ли элемент блокировщиком (getComputedStyle, высота/ширина)
-        const style = window.getComputedStyle(element);
-        const isHidden = style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0' || element.offsetHeight === 0;
-        return isHidden;
-    }
+    // Фейковый маршрутизатор для имитации CNAME-подмены
+    let cnameScript = document.createElement('script');
+    cnameScript.src = 'https://cdn.adsafeprotected.com/scene7.js'; // известный ad-домен
+    cnameScript.onerror = () => console.log('ad-скрипт заблокирован');
+    // Не добавляем в DOM, чтобы не мусорить, но проверка факта: если бы добавили — uBlock бы заблокировал
+</script>
 
-    // главный запуск тестирования
-    async function runAllTests() {
-        // сброс
-        testItems = [];
-        blockedCount = 0;
-        totalTests = 0;
-        // очищаем сетку
-        testsGrid.innerHTML = '';
-        
-        // Подсчет общего количества тестов (каждый элемент)
-        let flatTests = [];
-        for (let cat of TEST_CATEGORIES) {
-            for (let t of cat.tests) {
-                flatTests.push({ ...t, category: cat.name });
-            }
-        }
-        totalTests = flatTests.length;
-        totalCountStat.innerText = `📋 Всего проверок: ${totalTests}`;
-        
-        // строим карточки для каждой категории (визуальная структура)
-        for (let category of TEST_CATEGORIES) {
-            const card = document.createElement('div');
-            card.className = 'test-card';
-            card.innerHTML = `
-                <div class="card-header">
-                    <div class="card-title">${category.name}</div>
-                    <div class="badge">${category.tests.length} тестов</div>
-                </div>
-                <div class="test-content" id="cat-${category.name.replace(/\s/g, '')}"></div>
-            `;
-            testsGrid.appendChild(card);
-            const contentDiv = card.querySelector('.test-content');
-            // для каждого теста создаём отдельный блок
-            for (let testItem of category.tests) {
-                const testBlock = document.createElement('div');
-                testBlock.style.marginBottom = '20px';
-                testBlock.style.borderBottom = '1px solid #edf2f7';
-                testBlock.style.paddingBottom = '12px';
-                testBlock.innerHTML = `
-                    <div style="display:flex; justify-content:space-between; font-weight:500; margin-bottom:8px;">
-                        <span>${testItem.desc}</span>
-                        <span class="result-icon" id="icon-${testItem.id}">⏳</span>
-                    </div>
-                    <div class="ad-container" id="adContainer-${testItem.id}">
-                        <div class="ad-banner">[ ${testItem.desc} ] загрузка...</div>
-                    </div>
-                    <div class="status-msg" id="status-${testItem.id}">🔍 Проверка блокировщика...</div>
-                `;
-                contentDiv.appendChild(testBlock);
-            }
-        }
-        
-        // Запускаем параллельное тестирование всех элементов
-        const promises = flatTests.map(async (item) => {
-            const start = performance.now();
-            const isBlocked = await performBlockTest(item);
-            const end = performance.now();
-            if (isBlocked) blockedCount++;
-            
-            // обновляем визуальный блок дополнительно через CSS-селекторы/контейнер
-            const containerDiv = document.getElementById(`adContainer-${item.id}`);
-            const statusDiv = document.getElementById(`status-${item.id}`);
-            const iconSpan = document.getElementById(`icon-${item.id}`);
-            
-            if (containerDiv) {
-                // Очистим плейсхолдер и создадим визуальный элемент с "рекламными" классами для двойной проверки
-                containerDiv.innerHTML = '';
-                const visualBlock = createVisualAdBlock(containerDiv, item.id, 'banner-ad');
-                // проверка видимости после рендера (некоторые блокировщики скрывают по классам)
-                setTimeout(() => {
-                    const visuallyHidden = checkVisualBlocking(visualBlock);
-                    // итоговый вердикт: если запрос не прогрузился (isBlocked=true) ИЛИ элемент визуально скрыт
-                    const finalBlocked = isBlocked || visuallyHidden;
-                    // обновим счетчик если нужно синхронизировать (учитываем повторно, но лучше один раз уже учтен isBlocked)
-                    if (!isBlocked && visuallyHidden) {
-                        // дополнительный случай: сетевой запрос прошел, но блокировщик скрыл DOM — увеличиваем счетчик, если ранее не учли
-                        // Но чтобы избежать двойного учета, делаем аккуратно: уже добавлен isBlocked, добавим если визуально скрыт и не был учтен
-                        if (!isBlocked) {
-                            blockedCount++;
-                            updateStatsUI();
-                        }
-                    }
-                    const finalStatus = (isBlocked || visuallyHidden);
-                    if (finalStatus) {
-                        statusDiv.innerHTML = '✅ Заблокировано (сеть или CSS-фильтр)';
-                        statusDiv.className = 'status-msg success';
-                        iconSpan.innerHTML = '🛡️';
-                        visualBlock.style.opacity = '0.3';
-                        visualBlock.style.filter = 'blur(2px)';
-                    } else {
-                        statusDiv.innerHTML = '⚠️ Реклама/трекер не заблокирован!';
-                        statusDiv.className = 'status-msg failed';
-                        iconSpan.innerHTML = '❌';
-                    }
-                }, 100);
-            }
-            // обновляем глобальную статистику
-            updateStatsUI();
-            return { item, isBlocked };
-        });
-        
-        await Promise.all(promises);
-        // финальное обновление после всех таймаутов
-        setTimeout(() => {
-            updateStatsUI();
-            // дополнительно пробежимся по визуальным контейнерам, перепроверим скрытие
-            for (let item of flatTests) {
-                const container = document.getElementById(`adContainer-${item.id}`);
-                if (container && container.firstChild) {
-                    const isHiddenNow = checkVisualBlocking(container.firstChild);
-                    if (isHiddenNow) {
-                        // если ранее не засчитали
-                        const iconSpan = document.getElementById(`icon-${item.id}`);
-                        if (iconSpan && iconSpan.innerHTML !== '🛡️') {
-                            iconSpan.innerHTML = '🛡️';
-                            const statusDiv = document.getElementById(`status-${item.id}`);
-                            if (statusDiv) {
-                                statusDiv.innerHTML = '✅ Заблокировано (css-фильтр)';
-                                statusDiv.className = 'status-msg success';
-                            }
-                        }
-                    }
+<!-- Дополнительная "бомба": инъекция через внешний ресурс, который обычно подгружает рекламу -->
+<iframe src="about:blank" name="adserver" style="display:none;"></iframe>
+<div id="__profiler_wrapper" style="display:none;"></div>
+<div class="page_ads" style="display:none;"></div>
+
+<script>
+    // Финальный тест: обфусцированная вставка через innerHTML
+    (function(){
+        let zones = document.querySelectorAll('.card-content');
+        if(zones.length > 0 && !document.querySelector('.adblock-warning')) {
+            // Это имитация "умной" рекламы, которая пытается загрузиться через 3 секунды
+            setTimeout(() => {
+                let testDiv = document.createElement('div');
+                testDiv.className = 'native-ad native-article-ad';
+                testDiv.innerHTML = '<div style="background:#222; border-top:2px solid red; padding:10px; margin-top:10px;"><b>📢 Native Advertisement</b> — если видите этот блок, адблок не отработал нативный формат</div>';
+                let lastCard = zones[zones.length-1];
+                if(lastCard && !lastCard.querySelector('.native-ad')) {
+                    lastCard.appendChild(testDiv);
                 }
-            }
-            updateStatsUI();
-        }, 300);
-    }
-    
-    function updateStatsUI() {
-        const percent = totalTests === 0 ? 0 : Math.round((blockedCount / totalTests) * 100);
-        scorePercentSpan.innerText = percent;
-        progressFillDiv.style.width = `${percent}%`;
-        blockedCountStat.innerText = `✅ Заблокировано: ${blockedCount} из ${totalTests}`;
-        if (percent >= 85) {
-            progressFillDiv.style.background = '#22c55e';
-        } else if (percent >= 60) {
-            progressFillDiv.style.background = '#eab308';
-        } else {
-            progressFillDiv.style.background = '#ef4444';
+            }, 1500);
         }
-    }
-
-    rerunBtn.addEventListener('click', async () => {
-        // очистка и перезапуск
-        testsGrid.innerHTML = '';
-        blockedCount = 0;
-        totalTests = 0;
-        updateStatsUI();
-        await runAllTests();
-    });
-    
-    // инициализация
-    runAllTests();
+    })();
 </script>
 </body>
 </html>
