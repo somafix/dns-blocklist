@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-DNS Security Blocklist Builder - PRODUCTION READY (v9.2.0)
-FIXED: Removed limit_per_domain parameter (incompatible with aiohttp)
+DNS Security Blocklist Builder - PRODUCTION READY (v9.2.1)
+FIXED: ClientResponse.session compatibility
 """
 
 import sys
@@ -25,15 +25,13 @@ import aiohttp
 from aiohttp import ClientTimeout, ClientResponse
 import aiofiles
 
-VERSION: Final[str] = "9.2.0"
+VERSION: Final[str] = "9.2.1"
 
 # ============================================================================
 # CONSTANTS
 # ============================================================================
 
 class Constants:
-    """Immutable configuration constants."""
-    
     MAX_DOMAIN_LEN: int = 253
     MAX_LABEL_LEN: int = 63
     MIN_DOMAIN_LEN: int = 3
@@ -47,7 +45,6 @@ class Constants:
     MAX_RETRIES: int = 3
     RETRY_BACKOFF: float = 1.5
     MAX_FILE_SIZE_MB: int = 50
-    MAX_DECOMPRESSED_MB: int = 200
     
     DNS_CACHE_SIZE: int = 100000
     AI_CACHE_SIZE: int = 100000
@@ -70,7 +67,6 @@ class Constants:
     }
     
     USER_AGENT: str = f'Mozilla/5.0 (compatible; DNS-Blocklist-Builder/{VERSION})'
-    
     AI_CONFIDENCE_THRESHOLD: float = 0.65
     SUSPICIOUS_SUBDOMAIN_DEPTH: int = 4
 
@@ -131,10 +127,6 @@ class Config:
     verbose: bool = False
 
 
-# ============================================================================
-# LOGGING
-# ============================================================================
-
 def setup_logging(verbose: bool) -> None:
     level = logging.DEBUG if verbose else logging.INFO
     logging.basicConfig(
@@ -145,15 +137,16 @@ def setup_logging(verbose: bool) -> None:
 
 
 # ============================================================================
-# SSRF PROTECTION
+# SSRF PROTECTION (FIXED)
 # ============================================================================
 
 class SSRFProtector:
-    def __init__(self) -> None:
+    def __init__(self, session: aiohttp.ClientSession) -> None:
+        self.session = session
         self._blocked_networks = [ipaddress.ip_network(net) for net in Constants.BLOCKED_IP_RANGES]
         self._checked_urls: Set[str] = set()
     
-    async def validate_url(self, url: str, session: aiohttp.ClientSession) -> None:
+    async def validate_url(self, url: str) -> None:
         normalized = self._normalize_url(url)
         if normalized in self._checked_urls:
             return
@@ -170,9 +163,8 @@ class SSRFProtector:
         
         self._checked_urls.add(normalized)
     
-    async def validate_response(self, response: ClientResponse) -> None:
-        final_url = str(response.url)
-        await self.validate_url(final_url, response.session)
+    async def validate_response(self, response: ClientResponse, final_url: str) -> None:
+        await self.validate_url(final_url)
     
     def _normalize_url(self, url: str) -> str:
         parsed = urlparse(url)
@@ -337,7 +329,7 @@ def parse_domains(content: str) -> Set[str]:
 
 
 # ============================================================================
-# SOURCE MANAGER
+# SOURCE MANAGER (FIXED)
 # ============================================================================
 
 class SourceManager:
@@ -354,7 +346,7 @@ class SourceManager:
         self.config = config
         self.session = session
         self.logger = logging.getLogger(__name__)
-        self.ssrf = SSRFProtector()
+        self.ssrf = SSRFProtector(session)
     
     async def fetch_all(self) -> Dict[str, Set[str]]:
         tasks = [self._fetch_with_retry(s) for s in self.SOURCES if s.enabled]
@@ -373,7 +365,7 @@ class SourceManager:
     async def _fetch_with_retry(self, source: SourceDefinition) -> Optional[Tuple[str, Set[str]]]:
         for attempt in range(self.config.max_retries):
             try:
-                await self.ssrf.validate_url(source.url, self.session)
+                await self.ssrf.validate_url(source.url)
                 content = await self._download_safe(source.url)
                 
                 if source.source_type == SourceType.HOSTS:
@@ -400,7 +392,8 @@ class SourceManager:
             headers={'User-Agent': Constants.USER_AGENT},
             max_redirects=5
         ) as resp:
-            await self.ssrf.validate_response(resp)
+            final_url = str(resp.url)
+            await self.ssrf.validate_response(resp, final_url)
             
             if resp.status != 200:
                 raise Exception(f"HTTP {resp.status}")
@@ -435,7 +428,6 @@ class DomainProcessor:
             for domain in domains:
                 if not self.validator.is_valid(domain):
                     continue
-                
                 if domain in self.domains:
                     continue
                 
@@ -487,7 +479,7 @@ class DomainProcessor:
 
 
 # ============================================================================
-# OUTPUT GENERATOR (DUAL OUTPUT)
+# OUTPUT GENERATOR
 # ============================================================================
 
 class OutputGenerator:
@@ -585,7 +577,6 @@ class BlocklistBuilder:
             print(f"📁 Output: {self.config.output_dynamic} + {self.config.output_simple}")
             print("=" * 60)
             
-            # FIXED: Removed limit_per_domain parameter - it was causing the error
             connector = aiohttp.TCPConnector(
                 limit=self.config.concurrent_downloads,
                 ttl_dns_cache=300,
