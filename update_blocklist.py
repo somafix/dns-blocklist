@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
 """
 DNS Security Blocklist Builder - PRODUCTION READY (v9.2.0)
-UPDATES:
-- Dual output: blocklist.txt (simple domains) + dynamic-blocklist.txt (hosts with AI)
-- Optimized for GitHub Actions
+FIXED: Removed limit_per_domain parameter (incompatible with aiohttp)
 """
 
 import sys
@@ -498,14 +496,8 @@ class OutputGenerator:
         self.logger = logging.getLogger(__name__)
     
     async def generate(self, records: List[DomainRecord]) -> None:
-        """Generate both blocklist.txt (simple domains) and dynamic-blocklist.txt (hosts with AI)"""
-        
-        # 1. Generate dynamic-blocklist.txt (hosts format with AI comments)
         await self._generate_hosts_file(records, self.config.output_dynamic)
-        
-        # 2. Generate blocklist.txt (simple domains only)
         await self._generate_simple_domains(records, self.config.output_simple)
-        
         self.logger.info(f"✅ Generated: {self.config.output_dynamic} and {self.config.output_simple}")
     
     async def _generate_hosts_file(self, records: List[DomainRecord], output_path: Path) -> None:
@@ -523,19 +515,15 @@ class OutputGenerator:
                 
                 batch = []
                 for record in records:
-                    line = record.to_hosts_entry() + "\n"
-                    batch.append(line)
-                    
+                    batch.append(record.to_hosts_entry() + "\n")
                     if len(batch) >= 1000:
                         await f.write(''.join(batch))
                         batch = []
-                
                 if batch:
                     await f.write(''.join(batch))
             
             if output_path.exists():
                 shutil.copy2(output_path, backup_path)
-            
             shutil.move(str(tmp_path), str(output_path))
             self.logger.info(f"   📄 {output_path}: {len(records):,} domains, {ai_count:,} AI")
             
@@ -546,7 +534,6 @@ class OutputGenerator:
             raise
     
     async def _generate_simple_domains(self, records: List[DomainRecord], output_path: Path) -> None:
-        """Generate simple domain list (one per line) without any comments"""
         tmp_path = output_path.with_suffix(Constants.TEMP_SUFFIX)
         
         try:
@@ -554,11 +541,9 @@ class OutputGenerator:
                 batch = []
                 for record in records:
                     batch.append(record.domain + "\n")
-                    
                     if len(batch) >= 1000:
                         await f.write(''.join(batch))
                         batch = []
-                
                 if batch:
                     await f.write(''.join(batch))
             
@@ -600,9 +585,9 @@ class BlocklistBuilder:
             print(f"📁 Output: {self.config.output_dynamic} + {self.config.output_simple}")
             print("=" * 60)
             
+            # FIXED: Removed limit_per_domain parameter - it was causing the error
             connector = aiohttp.TCPConnector(
                 limit=self.config.concurrent_downloads,
-                limit_per_domain=2,
                 ttl_dns_cache=300,
                 ssl=True
             )
