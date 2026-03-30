@@ -32,7 +32,7 @@ jobs:
       
       - name: Build dynamic-blocklist.txt
         run: |
-          python3 dns-blocklist-builder.py --output dynamic-blocklist.txt --format hosts --verbose
+          python3 update-blocklist.py --output dynamic-blocklist.txt --format hosts --verbose
       
       - name: Commit and push
         run: |
