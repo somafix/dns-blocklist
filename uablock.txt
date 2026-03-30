@@ -1,3 +1,13 @@
+
+0.0.0.0 doubleclick.net
+0.0.0.0 googleadservices.com
+0.0.0.0 googlesyndication.com
+0.0.0.0 sentry.io
+0.0.0.0 ingest.sentry.io
+0.0.0.0 bugsnag.com
+0.0.0.0 notify.bugsnag.com
+0.0.0.0 sessions.bugsnag.com
+
 0.0.0.0 media.net
 0.0.0.0 outbrain.com
 0.0.0.0 outbrainimg.com
