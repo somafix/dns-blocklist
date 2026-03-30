@@ -23,21 +23,14 @@ jobs:
         run: |
           pip install aiohttp aiofiles
       
-      - name: Build blocklist.txt
+      - name: Build blocklists
         run: |
-          curl -s https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts | grep -E '^0\.0\.0\.0' | awk '{print $2}' | sort -u > blocklist.txt
-          curl -s https://big.oisd.nl/domains >> blocklist.txt
-          sort -u -o blocklist.txt blocklist.txt
-          echo "blocklist.txt: $(wc -l < blocklist.txt) domains"
-      
-      - name: Build dynamic-blocklist.txt
-        run: |
-          python3 update_blocklist.py --output dynamic-blocklist.txt --format hosts --verbose
+          python3 update_blocklist.py --verbose
       
       - name: Commit and push
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add blocklist.txt dynamic-blocklist.txt
-          git diff --cached --quiet || git commit -m "Update blocklists"
+          git diff --cached --quiet || git commit -m "Update blocklists ($(date +'%Y-%m-%d %H:%M'))"
           git push
