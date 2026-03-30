@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-DNS Security Blocklist Builder - PRODUCTION READY (v11.0.0)
-COMPLETE REFACTOR: Security, Performance, Reliability, Type Safety
+DNS Security Blocklist Builder - PRODUCTION READY (v12.0.0)
+ENHANCED: AI Detection, Streaming Processing, Change Tracking
 """
 
 import argparse
@@ -19,7 +19,7 @@ import time
 import warnings
 from collections import defaultdict, deque
 from contextlib import asynccontextmanager, suppress
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, asdict
 from datetime import datetime, timezone, timedelta
 from enum import Enum, auto
 from functools import lru_cache, wraps
@@ -42,7 +42,7 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 # VERSION & METADATA
 # ============================================================================
 
-VERSION: Final[str] = "11.0.0"
+VERSION: Final[str] = "12.0.0"
 __version__ = VERSION
 __author__ = "DNS Security Team"
 __license__ = "MIT"
@@ -64,6 +64,7 @@ class Constants:
     BACKUP_SUFFIX: Final[str] = '.backup'
     BATCH_WRITE_SIZE: Final[int] = 131072  # 128KB
     COMPRESSION_LEVEL: Final[int] = 6
+    STREAMING_BATCH_SIZE: Final[int] = 50000  # Для потоковой обработки
     
     # Network settings
     MAX_CONCURRENT_DOWNLOADS: Final[int] = 10
@@ -103,10 +104,11 @@ class Constants:
         'corp', 'private', 'intranet'
     }
     
-    # AI Detection
+    # AI Detection - Улучшенные паттерны
     USER_AGENT: Final[str] = f'Mozilla/5.0 (compatible; DNS-Blocklist-Builder/{VERSION})'
     AI_CONFIDENCE_THRESHOLD: Final[float] = 0.65
     SUSPICIOUS_SUBDOMAIN_DEPTH: Final[int] = 5
+    RANDOM_SUBDOMAIN_LEN: Final[int] = 30  # Поддомены длиннее этого считаем подозрительными
     
     # Performance
     MAX_DOMAINS_DEFAULT: Final[int] = 1000000
@@ -180,7 +182,7 @@ class DomainRecord:
         """Convert to hosts file format with sanitization"""
         safe_domain = self._sanitize_domain()
         
-        if self.ai_confidence > 0:
+        if self.ai_confidence > Constants.AI_CONFIDENCE_THRESHOLD:
             reasons = ','.join(r.replace(',', '\\,').replace('"', '\\"') 
                               for r in self.ai_reasons[:2])
             return f"0.0.0.0 {safe_domain} # AI:{self.ai_confidence:.0%} [{reasons}]"
@@ -211,6 +213,7 @@ class SourceDefinition:
     enabled: bool = True
     priority: int = 0
     max_size_mb: int = Constants.MAX_FILE_SIZE_MB
+    etag_file: Optional[Path] = None
     
     def __post_init__(self) -> None:
         """Validate source"""
@@ -222,12 +225,47 @@ class SourceDefinition:
 
 
 @dataclass
+class AIDetectionStats:
+    """Statistics for AI detection"""
+    total_analyzed: int = 0
+    detected_trackers: int = 0
+    avg_confidence: float = 0.0
+    pattern_hits: Dict[str, int] = field(default_factory=dict)
+    cache_hits: int = 0
+    cache_misses: int = 0
+    
+    def update(self, domain: str, confidence: float, reasons: Tuple[str, ...]) -> None:
+        """Update statistics with detection results"""
+        self.total_analyzed += 1
+        if confidence > 0:
+            self.detected_trackers += 1
+            total_conf = self.avg_confidence * (self.detected_trackers - 1) + confidence
+            self.avg_confidence = total_conf / self.detected_trackers
+            
+            for reason in reasons:
+                self.pattern_hits[reason] = self.pattern_hits.get(reason, 0) + 1
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary"""
+        return {
+            'total_analyzed': self.total_analyzed,
+            'detected_trackers': self.detected_trackers,
+            'detection_rate': self.detected_trackers / max(1, self.total_analyzed),
+            'avg_confidence': round(self.avg_confidence, 3),
+            'top_patterns': dict(sorted(self.pattern_hits.items(), key=lambda x: x[1], reverse=True)[:10]),
+            'cache_hits': self.cache_hits,
+            'cache_misses': self.cache_misses
+        }
+
+
+@dataclass
 class BuildStats:
     """Build statistics for monitoring"""
     start_time: float = field(default_factory=time.time)
     end_time: Optional[float] = None
     sources_processed: int = 0
     sources_failed: int = 0
+    sources_unchanged: int = 0
     total_raw_domains: int = 0
     valid_domains: int = 0
     ai_detected: int = 0
@@ -235,6 +273,7 @@ class BuildStats:
     invalid_domains: int = 0
     errors: List[str] = field(default_factory=list)
     warnings: List[str] = field(default_factory=list)
+    ai_stats: AIDetectionStats = field(default_factory=AIDetectionStats)
     
     @property
     def duration(self) -> float:
@@ -249,11 +288,13 @@ class BuildStats:
             'duration_seconds': round(self.duration, 2),
             'sources_processed': self.sources_processed,
             'sources_failed': self.sources_failed,
+            'sources_unchanged': self.sources_unchanged,
             'total_raw_domains': self.total_raw_domains,
             'valid_domains': self.valid_domains,
             'ai_detected': self.ai_detected,
             'duplicates_removed': self.duplicates_removed,
             'invalid_domains': self.invalid_domains,
+            'ai_stats': self.ai_stats.to_dict(),
             'errors': self.errors[:10],
             'warnings': self.warnings[:10]
         }
@@ -266,6 +307,7 @@ class Config:
     output_simple: Path = Path('./blocklist.txt')
     output_compressed: Optional[Path] = None
     output_json: Optional[Path] = None
+    output_ai_report: Optional[Path] = None
     max_domains: int = Constants.MAX_DOMAINS_DEFAULT
     timeout: int = Constants.DEFAULT_TIMEOUT
     max_retries: int = Constants.MAX_RETRIES
@@ -276,7 +318,9 @@ class Config:
     quiet: bool = False
     enable_compression: bool = True
     enable_json: bool = False
+    enable_change_tracking: bool = True
     memory_limit_mb: int = Constants.MEMORY_LIMIT_MB
+    streaming_mode: bool = False  # Для обработки очень больших списков
     
     def __post_init__(self) -> None:
         """Validate and setup configuration"""
@@ -293,6 +337,10 @@ class Config:
             raise ValueError(f"Invalid concurrent_downloads: {self.concurrent_downloads}")
         if not 0 <= self.ai_confidence_threshold <= 1:
             raise ValueError(f"Invalid threshold: {self.ai_confidence_threshold}")
+        
+        # Автоматически включаем streaming для больших списков
+        if self.max_domains > 500000:
+            self.streaming_mode = True
     
     def _create_directories(self) -> None:
         """Create output directories if they don't exist"""
@@ -302,6 +350,8 @@ class Config:
             self.output_compressed.parent.mkdir(parents=True, exist_ok=True)
         if self.output_json:
             self.output_json.parent.mkdir(parents=True, exist_ok=True)
+        if self.output_ai_report:
+            self.output_ai_report.parent.mkdir(parents=True, exist_ok=True)
 
 
 # ============================================================================
@@ -317,18 +367,23 @@ class TTLCache:
         self.ttl = ttl_seconds
         self._cache: Dict[str, Tuple[Any, float]] = {}
         self._lock = asyncio.Lock()
+        self._hits = 0
+        self._misses = 0
     
     async def get(self, key: str) -> Optional[Any]:
         """Get value from cache if not expired"""
         async with self._lock:
             if key not in self._cache:
+                self._misses += 1
                 return None
             
             value, timestamp = self._cache[key]
             if time.time() - timestamp > self.ttl:
                 del self._cache[key]
+                self._misses += 1
                 return None
             
+            self._hits += 1
             return value
     
     async def set(self, key: str, value: Any) -> None:
@@ -341,6 +396,12 @@ class TTLCache:
         """Clear all cache entries"""
         async with self._lock:
             self._cache.clear()
+            self._hits = 0
+            self._misses = 0
+    
+    def get_stats(self) -> Dict[str, int]:
+        """Get cache statistics"""
+        return {'hits': self._hits, 'misses': self._misses}
     
     def _evict_if_needed(self) -> None:
         """Evict oldest entries if cache is full"""
@@ -458,7 +519,6 @@ class DomainValidator:
             maxsize=Constants.DNS_CACHE_SIZE,
             ttl_seconds=Constants.DNS_CACHE_TTL
         )
-        self._stats = {'cache_hits': 0, 'cache_misses': 0}
     
     async def is_valid(self, domain: str) -> bool:
         """Check if domain is valid with caching"""
@@ -466,10 +526,8 @@ class DomainValidator:
         
         cached = await self._cache.get(domain_lower)
         if cached is not None:
-            self._stats['cache_hits'] += 1
             return cached
         
-        self._stats['cache_misses'] += 1
         valid = self._validate_syntax(domain_lower)
         await self._cache.set(domain_lower, valid)
         
@@ -503,41 +561,92 @@ class DomainValidator:
         
         return bool(self.DOMAIN_PATTERN.match(domain))
     
-    def get_stats(self) -> Dict[str, int]:
+    async def get_stats(self) -> Dict[str, int]:
         """Get validator statistics"""
-        return self._stats.copy()
+        return await self._cache.get_stats()
+    
+    async def cleanup(self) -> None:
+        """Cleanup resources"""
+        await self._cache.clear()
 
 
 # ============================================================================
-# AI TRACKER DETECTOR
+# AI TRACKER DETECTOR - УЛУЧШЕННАЯ ВЕРСИЯ
 # ============================================================================
 
 class AITrackerDetector:
-    """ML-inspired tracker detection with pattern matching"""
+    """Enhanced ML-inspired tracker detection with context analysis"""
     
+    # Расширенные паттерны для современных трекеров
     TRACKER_PATTERNS: ClassVar[Tuple[Tuple[str, str, float], ...]] = (
+        # Analytics platforms
         (r'analytics?', 'analytics', 0.82),
         (r'google-analytics', 'google_analytics', 0.95),
         (r'googletagmanager|gtm', 'google_tag_manager', 0.92),
+        (r'firebase.*analytics', 'firebase_analytics', 0.92),
+        (r'amplitude', 'amplitude', 0.90),
+        (r'mixpanel', 'mixpanel', 0.90),
+        (r'segment\.com', 'segment', 0.90),
+        (r'heap\.io', 'heap_analytics', 0.85),
+        
+        # Tracking pixels and beacons
         (r'track(?:ing)?', 'tracking', 0.80),
         (r'pixel', 'tracking_pixel', 0.85),
         (r'beacon', 'tracking_beacon', 0.85),
         (r'collect', 'data_collector', 0.80),
         (r'telemetry', 'telemetry', 0.85),
         (r'metrics', 'metrics', 0.78),
-        (r'stat(?:s|istic)?', 'statistics', 0.75),
+        
+        # Ad networks
         (r'doubleclick', 'doubleclick', 0.95),
         (r'adservice', 'ad_service', 0.85),
         (r'ads?\.', 'ad_domain', 0.75),
-        (r'amplitude', 'amplitude', 0.90),
-        (r'mixpanel', 'mixpanel', 0.90),
-        (r'segment\.com', 'segment', 0.90),
-        (r'appsflyer', 'appsflyer', 0.90),
-        (r'facebook\.com/tr', 'facebook_pixel', 0.95),
-        (r'twitter\.com/i', 'twitter_tracker', 0.82),
         (r'criteo', 'criteo', 0.85),
         (r'taboola', 'taboola', 0.85),
         (r'outbrain', 'outbrain', 0.85),
+        
+        # Social media trackers
+        (r'facebook\.com/tr', 'facebook_pixel', 0.95),
+        (r'twitter\.com/i', 'twitter_tracker', 0.82),
+        (r'linkedin.*track', 'linkedin_tracker', 0.85),
+        (r'pinterest.*track', 'pinterest_tracker', 0.85),
+        
+        # CDN analytics
+        (r'cdn\..*analytics', 'cdn_analytics', 0.88),
+        (r'cloudfront.*analytics', 'cloudfront_analytics', 0.80),
+        
+        # Error tracking
+        (r'sentry\.io', 'error_tracking', 0.75),
+        (r'crashlytics', 'crash_reporting', 0.80),
+        (r'bugsnag', 'error_tracking', 0.75),
+        
+        # User behavior
+        (r'hotjar', 'user_behavior', 0.85),
+        (r'clarity\.ms', 'microsoft_analytics', 0.85),
+        (r'fullstory', 'session_recording', 0.85),
+        
+        # Marketing automation
+        (r'marketing.*cloud', 'marketing_cloud', 0.78),
+        (r'hubspot', 'marketing_automation', 0.80),
+        (r'intercom', 'customer_messaging', 0.75),
+        (r'drift', 'chat_tracker', 0.70),
+        
+        # A/B testing
+        (r'optimizely', 'ab_testing', 0.75),
+        (r'vwo\.com', 'ab_testing', 0.75),
+        
+        # App analytics
+        (r'appsflyer', 'appsflyer', 0.90),
+        (r'appmetrica', 'yandex_metrics', 0.85),
+        (r'flurry', 'app_analytics', 0.80),
+        
+        # Search analytics
+        (r'algolia', 'search_analytics', 0.70),
+        (r'elastic.*analytics', 'search_analytics', 0.70),
+        
+        # Stats
+        (r'stat(?:s|istic)?', 'statistics', 0.75),
+        (r'counter', 'hit_counter', 0.70),
     )
     
     def __init__(self, threshold: float = Constants.AI_CONFIDENCE_THRESHOLD) -> None:
@@ -549,7 +658,7 @@ class AITrackerDetector:
         )
         self._patterns = [(re.compile(p, re.IGNORECASE), r, c) 
                          for p, r, c in self.TRACKER_PATTERNS]
-        self._stats = {'cache_hits': 0, 'cache_misses': 0}
+        self._stats = AIDetectionStats()
     
     async def analyze(self, domain: str) -> Tuple[float, Tuple[str, ...]]:
         """Analyze domain for tracker patterns with caching"""
@@ -557,16 +666,55 @@ class AITrackerDetector:
         
         cached = await self._cache.get(domain_lower)
         if cached is not None:
-            self._stats['cache_hits'] += 1
-            return cached
+            self._stats.cache_hits += 1
+            confidence, reasons = cached
+            self._stats.update(domain, confidence, reasons)
+            return confidence, reasons
         
-        self._stats['cache_misses'] += 1
-        confidence, reasons = self._analyze_patterns(domain_lower)
+        self._stats.cache_misses += 1
+        confidence, reasons = self._analyze_with_context(domain_lower)
         
         result = (confidence, reasons)
         await self._cache.set(domain_lower, result)
+        self._stats.update(domain, confidence, reasons)
         
         return result
+    
+    def _analyze_with_context(self, domain: str) -> Tuple[float, Tuple[str, ...]]:
+        """Analyze domain with context awareness"""
+        confidence, reasons = self._analyze_patterns(domain)
+        reasons_list = list(reasons)
+        
+        # Контекстный анализ поддоменов
+        parts = domain.split('.')
+        
+        # Проверка на очень глубокие поддомены (обычно трекеры)
+        if len(parts) > Constants.SUSPICIOUS_SUBDOMAIN_DEPTH:
+            confidence = max(confidence, 0.75)
+            if 'tracking_depth' not in reasons_list:
+                reasons_list.append('tracking_depth')
+        
+        # Проверка на случайные/длинные поддомены
+        for part in parts[:-1]:  # Исключаем TLD
+            if len(part) > Constants.RANDOM_SUBDOMAIN_LEN:
+                confidence = max(confidence, 0.80)
+                if 'random_subdomain' not in reasons_list:
+                    reasons_list.append('random_subdomain')
+                break
+        
+        # Проверка на хешированные поддомены (часто используются для трекинга)
+        if any(re.match(r'^[a-f0-9]{16,}$', part) for part in parts[:-1]):
+            confidence = max(confidence, 0.85)
+            if 'hashed_subdomain' not in reasons_list:
+                reasons_list.append('hashed_subdomain')
+        
+        # Проверка на timestamp в поддоменах
+        if any(re.search(r'\d{8,}', part) for part in parts[:-1]):
+            confidence = max(confidence, 0.75)
+            if 'timestamp_subdomain' not in reasons_list:
+                reasons_list.append('timestamp_subdomain')
+        
+        return (confidence, tuple(reasons_list))
     
     def _analyze_patterns(self, domain: str) -> Tuple[float, Tuple[str, ...]]:
         """Analyze domain against patterns"""
@@ -575,23 +723,30 @@ class AITrackerDetector:
         
         for pattern, reason, base_conf in self._patterns:
             if pattern.search(domain):
-                confidence = max(confidence, base_conf)
+                if base_conf > confidence:
+                    confidence = base_conf
                 if reason not in reasons:
                     reasons.append(reason)
         
         return (confidence, tuple(reasons))
     
-    def get_stats(self) -> Dict[str, int]:
+    async def get_stats(self) -> Dict[str, Any]:
         """Get detector statistics"""
-        return self._stats.copy()
+        stats_dict = self._stats.to_dict()
+        stats_dict['cache'] = await self._cache.get_stats()
+        return stats_dict
+    
+    async def cleanup(self) -> None:
+        """Cleanup resources"""
+        await self._cache.clear()
 
 
 # ============================================================================
-# SOURCE PROCESSOR
+# SOURCE PROCESSOR - С УЛУЧШЕННЫМ ОБНОВЛЕНИЕМ
 # ============================================================================
 
 class SourceProcessor:
-    """Process individual source files"""
+    """Process individual source files with change tracking"""
     
     def __init__(
         self,
@@ -608,7 +763,8 @@ class SourceProcessor:
         self.config = config
         self.stats = stats
         self.ssrf_protector = SSRFProtector(session, config)
-        self._processed_domains: Set[str] = set()
+        self.ai_results: Dict[str, Tuple[float, Tuple[str, ...]]] = {}
+        self._etag_cache: Dict[str, str] = {}
     
     async def process_source(self, source: SourceDefinition) -> Set[str]:
         """Process a single source and return valid domains"""
@@ -616,10 +772,24 @@ class SourceProcessor:
             return set()
         
         try:
-            content = await self._download_source(source)
+            # Загрузка с проверкой изменений
+            content, changed = await self._download_with_change_tracking(source)
+            
+            if not changed:
+                logging.info(f"{source.name} unchanged, using cached data")
+                self.stats.sources_unchanged += 1
+                return await self._load_cached_domains(source)
+            
+            content = content or ""
             domains = await self._extract_domains(content, source)
             valid_domains = await self._validate_domains(domains, source)
-            await self._process_ai_detection(valid_domains, source)
+            
+            # Сохраняем кэш для будущих запусков
+            await self._cache_domains(source, valid_domains)
+            
+            # AI детекция
+            if self.detector and self.config.ai_enabled:
+                await self._process_ai_detection(valid_domains, source)
             
             self.stats.sources_processed += 1
             return valid_domains
@@ -631,9 +801,20 @@ class SourceProcessor:
             logging.error(error_msg, exc_info=self.config.verbose)
             return set()
     
-    async def _download_source(self, source: SourceDefinition) -> str:
-        """Download source with retry logic"""
+    async def _download_with_change_tracking(self, source: SourceDefinition) -> Tuple[Optional[str], bool]:
+        """Download source with ETag/Last-Modified tracking"""
         await self.ssrf_protector.validate_url(source.url)
+        
+        headers = {'User-Agent': Constants.USER_AGENT}
+        
+        # Загружаем сохраненный ETag
+        if self.config.enable_change_tracking and source.etag_file and source.etag_file.exists():
+            try:
+                async with aiofiles.open(source.etag_file, 'r') as f:
+                    etag = await f.read()
+                    headers['If-None-Match'] = etag.strip()
+            except Exception as e:
+                logging.debug(f"Failed to read ETag for {source.name}: {e}")
         
         for attempt in range(self.config.max_retries):
             try:
@@ -641,10 +822,14 @@ class SourceProcessor:
                 async with self.session.get(
                     source.url,
                     timeout=timeout,
-                    headers={'User-Agent': Constants.USER_AGENT},
+                    headers=headers,
                     max_redirects=Constants.MAX_REDIRECTS
                 ) as response:
                     await self.ssrf_protector.validate_response(response, str(response.url))
+                    
+                    if response.status == 304:
+                        # Не изменялось
+                        return None, False
                     
                     if response.status != 200:
                         raise ValueError(f"HTTP {response.status}")
@@ -654,7 +839,12 @@ class SourceProcessor:
                     if len(content) > source.max_size_mb * 1024 * 1024:
                         raise ValueError(f"File too large: {len(content)} bytes")
                     
-                    return content
+                    # Сохраняем новый ETag
+                    if self.config.enable_change_tracking and source.etag_file and 'ETag' in response.headers:
+                        async with aiofiles.open(source.etag_file, 'w') as f:
+                            await f.write(response.headers['ETag'])
+                    
+                    return content, True
                     
             except (asyncio.TimeoutError, ClientError) as e:
                 if attempt == self.config.max_retries - 1:
@@ -684,12 +874,10 @@ class SourceProcessor:
     def _parse_line(self, line: str, source_type: SourceType) -> Optional[str]:
         """Parse a single line based on source type"""
         if source_type == SourceType.HOSTS:
-            # Format: "0.0.0.0 domain.com" or "127.0.0.1 domain.com"
             parts = line.split()
             if len(parts) >= 2 and parts[0] in ('0.0.0.0', '127.0.0.1'):
                 return parts[1].split('#')[0].strip()
         elif source_type == SourceType.DOMAINS:
-            # Simple domain per line
             return line.split('#')[0].strip()
         
         return None
@@ -711,27 +899,69 @@ class SourceProcessor:
         return valid_domains
     
     async def _process_ai_detection(self, domains: Set[str], source: SourceDefinition) -> None:
-        """Process AI detection for domains"""
+        """Process AI detection for domains and store results"""
         if not self.detector or not self.config.ai_enabled:
             return
         
-        for domain in domains:
-            confidence, reasons = await self.detector.analyze(domain)
-            if confidence >= self.config.ai_confidence_threshold:
-                self.stats.ai_detected += 1
+        # Обрабатываем домены пакетами для производительности
+        domains_list = list(domains)
+        for i in range(0, len(domains_list), Constants.AI_BATCH_SIZE):
+            batch = domains_list[i:i + Constants.AI_BATCH_SIZE]
+            tasks = [self.detector.analyze(domain) for domain in batch]
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            
+            for domain, result in zip(batch, results):
+                if isinstance(result, Exception):
+                    logging.debug(f"AI analysis failed for {domain}: {result}")
+                    continue
                 
-                record = DomainRecord(
-                    domain=domain,
-                    source=source.name,
-                    status=DomainStatus.AI_DETECTED,
-                    ai_confidence=confidence,
-                    ai_reasons=reasons
-                )
-                self._processed_domains.add(domain)
+                confidence, reasons = result
+                if confidence >= self.config.ai_confidence_threshold:
+                    self.stats.ai_detected += 1
+                    self.ai_results[domain] = (confidence, reasons)
+    
+    async def _cache_domains(self, source: SourceDefinition, domains: Set[str]) -> None:
+        """Cache processed domains for future runs"""
+        if not self.config.enable_change_tracking:
+            return
+        
+        cache_file = Path(f".cache/{source.name}.domains.gz")
+        cache_file.parent.mkdir(parents=True, exist_ok=True)
+        
+        try:
+            with gzip.open(cache_file, 'wt', compresslevel=Constants.COMPRESSION_LEVEL) as f:
+                for domain in sorted(domains):
+                    f.write(f"{domain}\n")
+        except Exception as e:
+            logging.warning(f"Failed to cache domains for {source.name}: {e}")
+    
+    async def _load_cached_domains(self, source: SourceDefinition) -> Set[str]:
+        """Load cached domains from previous run"""
+        cache_file = Path(f".cache/{source.name}.domains.gz")
+        
+        if not cache_file.exists():
+            return set()
+        
+        domains = set()
+        try:
+            with gzip.open(cache_file, 'rt') as f:
+                for line in f:
+                    domain = line.strip()
+                    if domain:
+                        domains.add(domain)
+            logging.info(f"Loaded {len(domains)} cached domains for {source.name}")
+            return domains
+        except Exception as e:
+            logging.warning(f"Failed to load cached domains for {source.name}: {e}")
+            return set()
+    
+    def get_ai_confidence(self, domain: str) -> Tuple[float, Tuple[str, ...]]:
+        """Get AI confidence for a domain"""
+        return self.ai_results.get(domain, (0.0, ()))
 
 
 # ============================================================================
-# BLOCKLIST BUILDER
+# BLOCKLIST BUILDER - С УЛУЧШЕННОЙ ЗАПИСЬЮ
 # ============================================================================
 
 class BlocklistBuilder:
@@ -756,11 +986,17 @@ class BlocklistBuilder:
             format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
             handlers=[logging.StreamHandler()]
         )
+        
+        # Устанавливаем уровень для aiohttp
+        logging.getLogger('aiohttp').setLevel(logging.WARNING)
     
     async def build(self, sources: List[SourceDefinition]) -> bool:
         """Build blocklist from sources"""
         start_time = time.time()
         logging.info(f"Starting blocklist build v{VERSION}")
+        logging.info(f"Configuration: AI={'enabled' if self.config.ai_enabled else 'disabled'}, "
+                    f"Threshold={self.config.ai_confidence_threshold}, "
+                    f"Max domains={self.config.max_domains:,}")
         
         try:
             async with self._create_session() as session:
@@ -776,6 +1012,8 @@ class BlocklistBuilder:
             logging.critical(f"Build failed: {e}", exc_info=True)
             self.stats.errors.append(str(e))
             return False
+        finally:
+            await self.cleanup()
     
     @asynccontextmanager
     async def _create_session(self) -> AsyncIterator[aiohttp.ClientSession]:
@@ -806,106 +1044,200 @@ class BlocklistBuilder:
             session, self.validator, self.detector, self.config, self.stats
         )
         
+        # Обновляем AI статистику
+        if self.detector:
+            self.stats.ai_stats = self.detector._stats
+        
         tasks = [processor.process_source(source) for source in sources]
         results = await asyncio.gather(*tasks, return_exceptions=True)
         
         all_domains = set()
-        for result in results:
+        ai_results = {}
+        
+        for i, result in enumerate(results):
             if isinstance(result, set):
                 all_domains.update(result)
+                # Собираем AI результаты от всех процессоров
+                if hasattr(processor, 'ai_results'):
+                    ai_results.update(processor.ai_results)
             elif isinstance(result, Exception):
-                logging.error(f"Source processing failed: {result}")
+                logging.error(f"Source {sources[i].name} processing failed: {result}")
+        
+        # Сохраняем AI результаты в stats для использования при записи
+        if ai_results:
+            self._ai_results = ai_results
         
         self.stats.duplicates_removed = self.stats.valid_domains - len(all_domains)
         return all_domains
     
     async def _write_outputs(self, domains: Set[str]) -> None:
         """Write blocklist to output files"""
-        # Write dynamic blocklist
-        await self._write_blocklist(domains, self.config.output_dynamic)
+        # Конвертируем в список для сортировки
+        sorted_domains = sorted(domains)
         
-        # Write simple blocklist
-        simple_domains = {d for d in domains if not self._is_ai_high_confidence(d)}
-        await self._write_blocklist(simple_domains, self.config.output_simple)
+        # Записываем динамический блоклист (с AI метками)
+        await self._write_blocklist_with_ai(sorted_domains, self.config.output_dynamic, include_ai=True)
         
-        # Write compressed if enabled
+        # Записываем простой блоклист (без AI меток)
+        await self._write_blocklist_with_ai(sorted_domains, self.config.output_simple, include_ai=False)
+        
+        # Записываем сжатый если включено
         if self.config.enable_compression and self.config.output_compressed:
-            await self._write_compressed(domains, self.config.output_compressed)
+            await self._write_compressed(sorted_domains, self.config.output_compressed)
         
-        # Write JSON if enabled
+        # Записываем JSON если включено
         if self.config.enable_json and self.config.output_json:
-            await self._write_json(domains, self.config.output_json)
+            await self._write_json(sorted_domains, self.config.output_json)
+        
+        # Записываем AI отчет если включено
+        if self.config.output_ai_report and self.detector:
+            await self._write_ai_report(self.config.output_ai_report)
     
-    async def _write_blocklist(self, domains: Set[str], path: Path) -> None:
-        """Write domains to blocklist file"""
+    async def _write_blocklist_with_ai(self, domains: List[str], path: Path, include_ai: bool = True) -> None:
+        """Write blocklist with optional AI annotations"""
         header = f"# DNS Security Blocklist v{VERSION}\n"
         header += f"# Generated: {datetime.now(timezone.utc).isoformat()}\n"
-        header += f"# Total domains: {len(domains)}\n\n"
+        header += f"# Total domains: {len(domains)}\n"
+        if include_ai and self.config.ai_enabled:
+            header += f"# AI Detection: Enabled (threshold={self.config.ai_confidence_threshold})\n"
+        header += "\n"
         
+        # Для больших списков используем потоковую запись
+        if self.config.streaming_mode and len(domains) > Constants.STREAMING_BATCH_SIZE:
+            await self._write_blocklist_streaming(domains, path, include_ai)
+            return
+        
+        # Обычная запись
         async with aiofiles.open(path, 'w') as f:
             await f.write(header)
             
-            for domain in sorted(domains):
-                record = DomainRecord(domain, "builder", DomainStatus.BLOCKED)
+            for domain in domains:
+                record = await self._create_domain_record(domain, include_ai)
                 await f.write(record.to_hosts_entry() + "\n")
     
-    async def _write_compressed(self, domains: Set[str], path: Path) -> None:
+    async def _write_blocklist_streaming(self, domains: List[str], path: Path, include_ai: bool) -> None:
+        """Write blocklist in streaming mode for large lists"""
+        async with aiofiles.open(path, 'w') as f:
+            await f.write(f"# DNS Security Blocklist v{VERSION} (Streaming Mode)\n")
+            await f.write(f"# Generated: {datetime.now(timezone.utc).isoformat()}\n")
+            await f.write(f"# Total domains: {len(domains)}\n\n")
+            
+            # Обрабатываем пакетами
+            for i in range(0, len(domains), Constants.STREAMING_BATCH_SIZE):
+                batch = domains[i:i + Constants.STREAMING_BATCH_SIZE]
+                records = []
+                
+                for domain in batch:
+                    record = await self._create_domain_record(domain, include_ai)
+                    records.append(record.to_hosts_entry())
+                
+                await f.write("\n".join(records) + "\n")
+                
+                # Освобождаем память
+                records.clear()
+    
+    async def _create_domain_record(self, domain: str, include_ai: bool) -> DomainRecord:
+        """Create domain record with AI info if available"""
+        if include_ai and self.detector and self.config.ai_enabled:
+            confidence, reasons = await self.detector.analyze(domain)
+            if confidence >= self.config.ai_confidence_threshold:
+                return DomainRecord(
+                    domain=domain,
+                    source="builder",
+                    status=DomainStatus.AI_DETECTED,
+                    ai_confidence=confidence,
+                    ai_reasons=reasons
+                )
+        
+        return DomainRecord(
+            domain=domain,
+            source="builder",
+            status=DomainStatus.BLOCKED
+        )
+    
+    async def _write_compressed(self, domains: List[str], path: Path) -> None:
         """Write compressed blocklist"""
         with gzip.open(path, 'wt', compresslevel=Constants.COMPRESSION_LEVEL) as f:
-            for domain in sorted(domains):
+            for domain in domains:
                 f.write(f"0.0.0.0 {domain}\n")
     
-    async def _write_json(self, domains: Set[str], path: Path) -> None:
+    async def _write_json(self, domains: List[str], path: Path) -> None:
         """Write JSON output"""
         data = {
             'version': VERSION,
             'generated': datetime.now(timezone.utc).isoformat(),
+            'config': {
+                'ai_enabled': self.config.ai_enabled,
+                'ai_threshold': self.config.ai_confidence_threshold,
+                'max_domains': self.config.max_domains
+            },
             'stats': self.stats.to_dict(),
-            'domains': sorted(domains)[:self.config.max_domains]
+            'domains': domains[:self.config.max_domains]
         }
         
         async with aiofiles.open(path, 'w') as f:
             await f.write(json.dumps(data, indent=2))
     
-    def _is_ai_high_confidence(self, domain: str) -> bool:
-        """Check if domain has high AI confidence"""
-        # This would require storing AI results, simplified for now
-        return False
+    async def _write_ai_report(self, path: Path) -> None:
+        """Write detailed AI detection report"""
+        if not self.detector:
+            return
+        
+        stats = await self.detector.get_stats()
+        
+        report = {
+            'version': VERSION,
+            'generated': datetime.now(timezone.utc).isoformat(),
+            'configuration': {
+                'threshold': self.config.ai_confidence_threshold,
+                'enabled': self.config.ai_enabled
+            },
+            'statistics': stats
+        }
+        
+        async with aiofiles.open(path, 'w') as f:
+            await f.write(json.dumps(report, indent=2))
     
     def _print_summary(self) -> None:
         """Print build summary"""
-        print("\n" + "=" * 60)
+        print("\n" + "=" * 70)
         print(f"Blocklist Build Complete v{VERSION}")
-        print("=" * 60)
+        print("=" * 70)
         print(f"Duration: {self.stats.duration:.2f}s")
-        print(f"Sources processed: {self.stats.sources_processed}/{self.stats.sources_failed}")
-        print(f"Total raw domains: {self.stats.total_raw_domains:,}")
-        print(f"Valid domains: {self.stats.valid_domains:,}")
-        print(f"AI detected: {self.stats.ai_detected:,}")
-        print(f"Duplicates removed: {self.stats.duplicates_removed:,}")
-        print(f"Invalid domains: {self.stats.invalid_domains:,}")
+        print(f"Sources: {self.stats.sources_processed} processed, "
+              f"{self.stats.sources_unchanged} unchanged, "
+              f"{self.stats.sources_failed} failed")
+        print(f"Domains: {self.stats.total_raw_domains:,} raw → "
+              f"{self.stats.valid_domains:,} valid → "
+              f"{self.stats.valid_domains - self.stats.duplicates_removed:,} unique")
+        print(f"Invalid: {self.stats.invalid_domains:,}")
+        
+        if self.config.ai_enabled and self.stats.ai_detected > 0:
+            print(f"\nAI Detection:")
+            print(f"  Detected: {self.stats.ai_detected:,} tracker domains")
+            if self.stats.ai_stats.total_analyzed > 0:
+                detection_rate = self.stats.ai_stats.detected_trackers / self.stats.ai_stats.total_analyzed * 100
+                print(f"  Detection rate: {detection_rate:.1f}%")
+                print(f"  Avg confidence: {self.stats.ai_stats.avg_confidence:.1%}")
+                if self.stats.ai_stats.pattern_hits:
+                    print(f"  Top patterns: {', '.join(list(self.stats.ai_stats.pattern_hits.keys())[:5])}")
         
         if self.stats.errors:
-            print(f"\nErrors ({len(self.stats.errors)}):")
+            print(f"\n⚠️  Errors ({len(self.stats.errors)}):")
             for error in self.stats.errors[:5]:
-                print(f"  - {error}")
+                print(f"  - {error[:100]}")
         
-        print("=" * 60)
-        
-        if self.config.verbose:
-            print("\nValidator stats:", self.validator.get_stats())
-            if self.detector:
-                print("Detector stats:", self.detector.get_stats())
+        print("=" * 70)
     
     async def cleanup(self) -> None:
         """Cleanup resources"""
-        await self.validator._cache.clear()
+        await self.validator.cleanup()
         if self.detector:
-            await self.detector._cache.clear()
+            await self.detector.cleanup()
 
 
 # ============================================================================
-# SOURCE MANAGER
+# SOURCE MANAGER - С УЛУЧШЕННЫМИ ИСТОЧНИКАМИ
 # ============================================================================
 
 class SourceManager:
@@ -913,37 +1245,52 @@ class SourceManager:
     
     @staticmethod
     def get_default_sources() -> List[SourceDefinition]:
-        """Get default blocklist sources"""
+        """Get default blocklist sources with ETag tracking"""
+        cache_dir = Path("./cache")
+        cache_dir.mkdir(exist_ok=True)
+        
         return [
             SourceDefinition(
                 name="OISD Big",
                 url="https://big.oisd.nl/domains",
                 source_type=SourceType.DOMAINS,
-                priority=1
+                priority=1,
+                etag_file=cache_dir / "oisd.etag"
             ),
             SourceDefinition(
                 name="AdAway",
                 url="https://adaway.org/hosts.txt",
                 source_type=SourceType.HOSTS,
-                priority=2
+                priority=2,
+                etag_file=cache_dir / "adaway.etag"
             ),
             SourceDefinition(
                 name="URLhaus",
                 url="https://urlhaus.abuse.ch/downloads/hostfile/",
                 source_type=SourceType.HOSTS,
-                priority=3
+                priority=3,
+                etag_file=cache_dir / "urlhaus.etag"
             ),
             SourceDefinition(
                 name="ThreatFox",
                 url="https://threatfox.abuse.ch/downloads/hostfile/",
                 source_type=SourceType.HOSTS,
-                priority=4
+                priority=4,
+                etag_file=cache_dir / "threatfox.etag"
             ),
             SourceDefinition(
                 name="Cert Poland",
                 url="https://hole.cert.pl/domains/domains_hosts.txt",
                 source_type=SourceType.HOSTS,
-                priority=5
+                priority=5,
+                etag_file=cache_dir / "certpoland.etag"
+            ),
+            SourceDefinition(
+                name="StevenBlack",
+                url="https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts",
+                source_type=SourceType.HOSTS,
+                priority=6,
+                etag_file=cache_dir / "stevenblack.etag"
             ),
         ]
 
@@ -955,8 +1302,22 @@ class SourceManager:
 async def main_async() -> int:
     """Async main entry point"""
     parser = argparse.ArgumentParser(
-        description="DNS Security Blocklist Builder",
-        formatter_class=argparse.RawDescriptionHelpFormatter
+        description="DNS Security Blocklist Builder v12.0.0",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Basic usage
+  %(prog)s -o blocklist.txt
+  
+  # Enable AI detection with custom threshold
+  %(prog)s --ai-threshold 0.75 --ai-report ai_report.json
+  
+  # Disable AI, enable JSON output
+  %(prog)s --no-ai --json-output stats.json
+  
+  # Process large lists with streaming mode
+  %(prog)s --max-domains 2000000 --streaming
+        """
     )
     
     parser.add_argument(
@@ -969,7 +1330,7 @@ async def main_async() -> int:
         "--dynamic-output",
         type=Path,
         default=Path("./dynamic-blocklist.txt"),
-        help="Dynamic blocklist output path"
+        help="Dynamic blocklist output path with AI annotations"
     )
     parser.add_argument(
         "--compressed-output",
@@ -979,7 +1340,12 @@ async def main_async() -> int:
     parser.add_argument(
         "--json-output",
         type=Path,
-        help="JSON output path"
+        help="JSON output path with statistics"
+    )
+    parser.add_argument(
+        "--ai-report",
+        type=Path,
+        help="AI detection report output path (JSON)"
     )
     parser.add_argument(
         "--max-domains",
@@ -1011,6 +1377,16 @@ async def main_async() -> int:
         help=f"AI confidence threshold (default: {Constants.AI_CONFIDENCE_THRESHOLD})"
     )
     parser.add_argument(
+        "--no-change-tracking",
+        action="store_true",
+        help="Disable ETag/Last-Modified change tracking"
+    )
+    parser.add_argument(
+        "--streaming",
+        action="store_true",
+        help="Enable streaming mode for large lists (reduces memory usage)"
+    )
+    parser.add_argument(
         "-v", "--verbose",
         action="store_true",
         help="Enable verbose logging"
@@ -1037,13 +1413,16 @@ async def main_async() -> int:
         output_simple=args.output,
         output_compressed=args.compressed_output,
         output_json=args.json_output,
+        output_ai_report=args.ai_report,
         max_domains=args.max_domains,
         timeout=args.timeout,
         concurrent_downloads=args.concurrent,
         ai_enabled=not args.no_ai,
         ai_confidence_threshold=args.ai_threshold,
         verbose=args.verbose,
-        quiet=args.quiet
+        quiet=args.quiet,
+        enable_change_tracking=not args.no_change_tracking,
+        streaming_mode=args.streaming
     )
     
     # Setup signal handlers
@@ -1055,8 +1434,12 @@ async def main_async() -> int:
         logging.warning("Received shutdown signal")
         shutdown_event.set()
     
-    loop.add_signal_handler(signal.SIGINT, signal_handler)
-    loop.add_signal_handler(signal.SIGTERM, signal_handler)
+    for sig in (signal.SIGINT, signal.SIGTERM):
+        try:
+            loop.add_signal_handler(sig, signal_handler)
+        except NotImplementedError:
+            # Windows doesn't support add_signal_handler
+            pass
     
     # Build blocklist
     builder = BlocklistBuilder(config)
@@ -1067,20 +1450,18 @@ async def main_async() -> int:
         
         if shutdown_event.is_set():
             logging.warning("Build interrupted by shutdown signal")
-            await builder.cleanup()
             return 130
         
-        await builder.cleanup()
         return 0 if success else 1
         
     except KeyboardInterrupt:
         logging.warning("Build interrupted by user")
-        await builder.cleanup()
         return 130
     except Exception as e:
         logging.critical(f"Fatal error: {e}", exc_info=True)
-        await builder.cleanup()
         return 1
+    finally:
+        await builder.cleanup()
 
 
 def main() -> int:
