@@ -1,4 +1,3 @@
-0.0.0.0 1rx.io
 0.0.0.0 33across.com
 0.0.0.0 ad.doubleclick.net
 0.0.0.0 adform.net
@@ -107,7 +106,6 @@
 0.0.0.0 simpli.fi
 0.0.0.0 smartadserver.com
 0.0.0.0 snap.licdn.com
-0.0.0.0 somafix.github.io
 0.0.0.0 sovrn.com
 0.0.0.0 static.ads-twitter.com
 0.0.0.0 static.doubleclick.net
