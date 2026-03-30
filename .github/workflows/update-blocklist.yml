@@ -14,17 +14,30 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Build
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          pip install aiohttp aiofiles
+      
+      - name: Build blocklist.txt
         run: |
           curl -s https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts | grep -E '^0\.0\.0\.0' | awk '{print $2}' | sort -u > blocklist.txt
           curl -s https://big.oisd.nl/domains >> blocklist.txt
           sort -u -o blocklist.txt blocklist.txt
-          echo "Total: $(wc -l < blocklist.txt) domains"
+          echo "blocklist.txt: $(wc -l < blocklist.txt) domains"
       
-      - name: Commit
+      - name: Build dynamic-blocklist.txt
+        run: |
+          python3 dns-blocklist-builder.py --output dynamic-blocklist.txt --format hosts --verbose
+      
+      - name: Commit and push
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add blocklist.txt
-          git diff --cached --quiet || git commit -m "Update blocklist"
+          git add blocklist.txt dynamic-blocklist.txt
+          git diff --cached --quiet || git commit -m "Update blocklists"
           git push
