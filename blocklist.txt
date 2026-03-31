@@ -1,5 +1,5 @@
 # DNS Security Blocklist
-# Generated: 2026-03-31T22:09:07.460574+00:00
+# Generated: 2026-03-31T22:23:25.907454+00:00
 # Version: 17.2.0
 # Total domains: 88,811
 # Sources: 4
