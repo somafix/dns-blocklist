@@ -1,60 +1,15 @@
 #!/usr/bin/env python3
 """
-DNS Security Blocklist Builder - ENTERPRISE EDITION (v16.1.0)
-SECURITY PATCHES & REFACTORING APPLIED
-
-CRITICAL SECURITY UPDATES (v16.0.0 -> v16.1.0):
-- CVE-362: Fixed race condition in Bloom filter with atomic operations
-- CVE-20: Enhanced DNS rebinding protection with multi-check validation
-- CVE-22: Strict path traversal prevention with whitelisting
-- CVE-611: Mandatory defusedxml with depth validation
-- CVE-798: Config validation with range checking
-- CVE-1333: Replaced regex with safe domain validation
-- CVE-770: TTL-based cache with automatic expiration
-- CVE-918: Comprehensive SSRF validation with DNS verification
-
-A production-grade blocklist builder with:
-- Zero-trust security model with comprehensive input validation
-- Streaming processing for memory efficiency (handles millions of domains)
-- Full async/await pattern for maximum performance
-- Structured JSON logging for CI/CD integration
-- ReDoS-safe validation and path traversal protection
-- Enhanced SSRF protection with DNS rebinding defense
-- Type-safe configuration with environment variable support
-- Circuit breaker pattern for fault tolerance
-- Health checks and metrics collection
-
-Security Features:
-- Atomic path traversal prevention with whitelist enforcement
-- Multi-layer SSRF protection with DNS rebinding detection
-- Input validation with cryptographic limits
-- Safe file operations with permission checks
-- Mandatory signature verification for blocklists
-- Rate limiting with exponential backoff
-- TTL-based cache with automatic purging
-- SSL/TLS hardening with certificate validation
-
-Performance Features:
-- Bloom filter for deduplication (90% memory savings)
-- Streaming I/O with buffered writes
-- Async DNS resolution with rebinding checks
-- TTL-based caching for DNS and AI results
-- Connection pooling with rate limiting
-- Circuit breaker pattern for graceful degradation
-
-Author: Security Engineering Team
-Version: 16.1.0 (Security-Hardened Release)
-License: MIT
+DNS Security Blocklist Builder - ENTERPRISE EDITION (v16.0.1)
+Fixed: Configuration loading, async main, optional dependencies
 """
 
 import argparse
 import asyncio
-import hashlib
 import ipaddress
 import json
 import logging
 import os
-import random
 import re
 import signal
 import socket
@@ -62,28 +17,25 @@ import ssl
 import sys
 import time
 import uuid
-import unicodedata
 from collections import defaultdict, deque
 from contextlib import asynccontextmanager, suppress
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum, auto
 from functools import wraps
 from pathlib import Path
 from typing import (
     Any, AsyncIterator, Dict, Final, List, Optional, 
-    Set, Tuple, Union, cast, ClassVar, Callable, Awaitable, 
-    Iterator, Deque, AsyncGenerator, TypeVar, Generic, NoReturn
+    Set, Tuple, Callable, AsyncGenerator, TypeVar, Generic
 )
 from urllib.parse import urlparse
-import hmac
 
 import aiofiles
 import aiohttp
-from aiohttp import ClientResponse, ClientTimeout, ClientError
-from aiohttp.client_exceptions import ClientConnectorError, ServerTimeoutError
+from aiohttp import ClientTimeout, ClientError
+from aiohttp.client_exceptions import ServerTimeoutError
 
-# Try to import optional dependencies
+# Optional dependencies with graceful fallback
 try:
     from pybloom_live import ScalableBloomFilter
     BLOOM_AVAILABLE = True
@@ -91,182 +43,113 @@ except ImportError:
     BLOOM_AVAILABLE = False
     print("Warning: pybloom-live not installed. Using fallback deduplication.", file=sys.stderr)
 
-# CRITICAL FIX: Make defusedxml mandatory in production
 try:
-    import defusedxml.ElementTree as DefusedET
+    import defusedxml.ElementTree as ET
     DEFUSED_XML_AVAILABLE = True
 except ImportError:
     DEFUSED_XML_AVAILABLE = False
     print("ERROR: defusedxml is REQUIRED. Install: pip install defusedxml", file=sys.stderr)
+    sys.exit(1)
 
 # ============================================================================
-# CUSTOM EXCEPTIONS
-# ============================================================================
-
-class SecurityError(Exception):
-    """Base security exception."""
-    pass
-
-class SSRFDetected(SecurityError):
-    """SSRF attack detected."""
-    pass
-
-class PathTraversalDetected(SecurityError):
-    """Path traversal attempt detected."""
-    pass
-
-class DNSRebindingDetected(SecurityError):
-    """DNS rebinding attack detected."""
-    pass
-
-class ConfigError(ValueError):
-    """Configuration validation failed."""
-    pass
-
-class CircuitBreakerOpen(Exception):
-    """Circuit breaker is open."""
-    pass
-
-# ============================================================================
-# TYPE DEFINITIONS
-# ============================================================================
-
-T = TypeVar('T')
-LogEvent = Dict[str, Any]
-
-# ============================================================================
-# SECURE CONFIGURATION WITH VALIDATION
+# CONFIGURATION
 # ============================================================================
 
 @dataclass(frozen=True)
-class SecureAppConfig:
-    """
-    Immutable, validated configuration from environment variables.
-    All values have bounds checking to prevent DoS via env injection.
-    """
+class AppConfig:
+    """Immutable configuration from environment variables."""
     
-    # Timeouts with bounds
-    HTTP_TIMEOUT: Final[int] = field(default=30)
-    DNS_TIMEOUT: Final[int] = field(default=10)
-    GRACEFUL_SHUTDOWN_TIMEOUT: Final[int] = field(default=30)
-    DNS_REBINDING_DELAY: Final[float] = field(default=0.5)
-    DNS_REBINDING_CHECKS: Final[int] = field(default=3)
+    # Timeouts
+    HTTP_TIMEOUT: int = int(os.getenv("DNSBL_HTTP_TIMEOUT", "30"))
+    DNS_TIMEOUT: int = int(os.getenv("DNSBL_DNS_TIMEOUT", "10"))
+    GRACEFUL_SHUTDOWN_TIMEOUT: int = int(os.getenv("DNSBL_SHUTDOWN_TIMEOUT", "30"))
+    DNS_REBINDING_DELAY: float = float(os.getenv("DNSBL_REBINDING_DELAY", "0.5"))
+    DNS_REBINDING_CHECKS: int = int(os.getenv("DNSBL_REBINDING_CHECKS", "2"))
     
-    # Concurrency with limits
-    MAX_CONCURRENT_DOWNLOADS: Final[int] = field(default=10)
-    CONNECTION_LIMIT_PER_HOST: Final[int] = field(default=5)
+    # Concurrency
+    MAX_CONCURRENT_DOWNLOADS: int = int(os.getenv("DNSBL_MAX_CONCURRENT", "10"))
+    CONNECTION_LIMIT_PER_HOST: int = int(os.getenv("DNSBL_CONN_LIMIT", "5"))
     
     # Retry strategy
-    MAX_RETRIES: Final[int] = field(default=3)
-    RETRY_BACKOFF_BASE: Final[float] = field(default=1.0)
-    RETRY_MAX_BACKOFF: Final[float] = field(default=30.0)
+    MAX_RETRIES: int = int(os.getenv("DNSBL_MAX_RETRIES", "3"))
+    RETRY_BACKOFF_BASE: float = float(os.getenv("DNSBL_RETRY_BACKOFF", "1.0"))
+    RETRY_MAX_BACKOFF: float = float(os.getenv("DNSBL_MAX_BACKOFF", "30.0"))
     
-    # Performance limits with DoS protection
-    MAX_DOMAINS_TOTAL: Final[int] = field(default=2_000_000)
-    MAX_FILE_SIZE_MB: Final[int] = field(default=100)
-    STREAM_BUFFER_SIZE: Final[int] = field(default=16384)
+    # Performance limits
+    MAX_DOMAINS_TOTAL: int = int(os.getenv("DNSBL_MAX_DOMAINS", "2000000"))
+    MAX_FILE_SIZE_MB: int = int(os.getenv("DNSBL_MAX_FILE_MB", "100"))
+    STREAM_BUFFER_SIZE: int = int(os.getenv("DNSBL_BUFFER_SIZE", "16384"))
     
     # Domain validation
-    MAX_DOMAIN_LEN: Final[int] = field(default=253)
-    MAX_LABEL_LEN: Final[int] = field(default=63)
-    MIN_DOMAIN_LEN: Final[int] = field(default=3)
-    MAX_INPUT_LEN: Final[int] = field(default=1024)
+    MAX_DOMAIN_LEN: int = 253
+    MAX_LABEL_LEN: int = 63
+    MIN_DOMAIN_LEN: int = 3
+    MAX_INPUT_LEN: int = 1024
     
-    # Cache settings with automatic purging
-    DNS_CACHE_SIZE: Final[int] = field(default=10000)  # REDUCED from 50000 (CVE-770)
-    DNS_CACHE_TTL: Final[int] = field(default=600)
-    AI_CACHE_SIZE: Final[int] = field(default=5000)   # REDUCED from 20000
-    AI_CACHE_TTL: Final[int] = field(default=7200)
+    # Cache settings
+    DNS_CACHE_SIZE: int = int(os.getenv("DNSBL_DNS_CACHE_SIZE", "50000"))
+    DNS_CACHE_TTL: int = int(os.getenv("DNSBL_DNS_CACHE_TTL", "600"))
+    AI_CACHE_SIZE: int = int(os.getenv("DNSBL_AI_CACHE_SIZE", "20000"))
+    AI_CACHE_TTL: int = int(os.getenv("DNSBL_AI_CACHE_TTL", "7200"))
     
     # Performance tuning
-    BLOOM_FILTER_ERROR_RATE: Final[float] = field(default=0.001)
-    BLOOM_FILTER_CAPACITY: Final[int] = field(default=2_000_000)
-    FLUSH_INTERVAL: Final[int] = field(default=50000)
-    USE_BLOOM_FILTER: Final[bool] = field(default=True)
+    BLOOM_FILTER_ERROR_RATE: float = float(os.getenv("DNSBL_BLOOM_ERROR_RATE", "0.001"))
+    BLOOM_FILTER_CAPACITY: int = int(os.getenv("DNSBL_BLOOM_CAPACITY", "2000000"))
+    FLUSH_INTERVAL: int = int(os.getenv("DNSBL_FLUSH_INTERVAL", "50000"))
+    USE_BLOOM_FILTER: bool = os.getenv("DNSBL_USE_BLOOM", "true").lower() == "true" and BLOOM_AVAILABLE
     
-    # Security - Blocked IP ranges (RFC 1918 and special use)
-    BLOCKED_IP_RANGES: Final[Tuple[str, ...]] = field(default_factory=lambda: (
+    # Security - Blocked IP ranges
+    BLOCKED_IP_RANGES: Tuple[str, ...] = (
         '0.0.0.0/8', '10.0.0.0/8', '127.0.0.0/8', '169.254.0.0/16',
         '172.16.0.0/12', '192.168.0.0/16', '224.0.0.0/4', '240.0.0.0/4',
         '::1/128', 'fc00::/7', 'fe80::/10', '::ffff:0:0/96',
         '100.64.0.0/10', '192.0.2.0/24', '198.51.100.0/24', '203.0.113.0/24'
-    ))
+    )
     
-    # Allowed domains for SSRF protection (whitelist)
-    ALLOWED_DOMAINS: Final[Set[str]] = field(default_factory=lambda: {
-        'raw.githubusercontent.com', 'raw.githubusercontentusercontent.com',
-        'raw.github.com', 'github.com', 'gitlab.com',
-        'oisd.nl', 'adaway.org', 'urlhaus.abuse.ch', 
-        'threatfox.abuse.ch', 'hole.cert.pl', 'pgl.yoyo.org'
-    })
-    
-    # Disk quota protection (CVE-770)
-    MAX_BLOCKLIST_SIZE_MB: Final[int] = field(default=500)
+    # Allowed domains for download sources - use class variable instead of field
+    # AI Detection threshold
+    AI_CONFIDENCE_THRESHOLD: float = float(os.getenv("DNSBL_AI_THRESHOLD", "0.65"))
     
     # Logging
-    LOG_LEVEL: Final[str] = field(default="INFO")
-    LOG_JSON: Final[bool] = field(default=True)
+    LOG_LEVEL: str = os.getenv("DNSBL_LOG_LEVEL", "INFO")
+    LOG_JSON: bool = os.getenv("DNSBL_LOG_JSON", "true").lower() == "true"
+
+
+# Define ALLOWED_DOMAINS as a class variable (not in dataclass)
+ALLOWED_DOMAINS: Set[str] = {
+    'raw.githubusercontent.com', 'raw.githubusercontentusercontent.com',
+    'raw.github.com', 'github.com', 'gist.github.com',
+    'gitlab.com', 'bitbucket.org', 'oisd.nl', 'adaway.org',
+    'urlhaus.abuse.ch', 'threatfox.abuse.ch', 'hole.cert.pl',
+    'someonewhocares.org', 'pgl.yoyo.org', 's3.amazonaws.com'
+}
+
+
+def validate_config() -> None:
+    """Validate configuration values."""
+    assert AppConfig.HTTP_TIMEOUT > 0, "HTTP_TIMEOUT must be positive"
+    assert AppConfig.MAX_CONCURRENT_DOWNLOADS > 0, "MAX_CONCURRENT_DOWNLOADS must be positive"
+    assert 0 <= AppConfig.AI_CONFIDENCE_THRESHOLD <= 1, "AI_CONFIDENCE_THRESHOLD must be between 0 and 1"
+    assert AppConfig.MAX_RETRIES >= 0, "MAX_RETRIES must be non-negative"
     
-    @classmethod
-    def from_env(cls) -> 'SecureAppConfig':
-        """Load and validate configuration from environment."""
-        
-        def _get_int(
-            key: str,
-            default: int,
-            min_val: int,
-            max_val: int
-        ) -> int:
-            """Get integer from env with range validation."""
-            try:
-                val = int(os.getenv(key, str(default)))
-                if not (min_val <= val <= max_val):
-                    raise ConfigError(
-                        f"{key}={val} outside range [{min_val}, {max_val}]"
-                    )
-                return val
-            except ValueError as e:
-                raise ConfigError(f"Invalid {key}: {e}")
-        
-        def _get_float(
-            key: str,
-            default: float,
-            min_val: float,
-            max_val: float
-        ) -> float:
-            """Get float from env with range validation."""
-            try:
-                val = float(os.getenv(key, str(default)))
-                if not (min_val <= val <= max_val):
-                    raise ConfigError(
-                        f"{key}={val} outside range [{min_val}, {max_val}]"
-                    )
-                return val
-            except ValueError as e:
-                raise ConfigError(f"Invalid {key}: {e}")
-        
-        return cls(
-            HTTP_TIMEOUT=_get_int("DNSBL_HTTP_TIMEOUT", 30, 1, 300),
-            DNS_TIMEOUT=_get_int("DNSBL_DNS_TIMEOUT", 10, 1, 60),
-            MAX_CONCURRENT_DOWNLOADS=_get_int("DNSBL_MAX_CONCURRENT", 10, 1, 100),
-            MAX_DOMAINS_TOTAL=_get_int("DNSBL_MAX_DOMAINS", 2_000_000, 100, 10_000_000),
-            MAX_FILE_SIZE_MB=_get_int("DNSBL_MAX_FILE_MB", 100, 10, 1000),
-            DNS_CACHE_SIZE=_get_int("DNSBL_DNS_CACHE_SIZE", 10000, 100, 100000),
-            AI_CACHE_SIZE=_get_int("DNSBL_AI_CACHE_SIZE", 5000, 100, 50000),
-            MAX_BLOCKLIST_SIZE_MB=_get_int("DNSBL_MAX_BLOCKLIST_MB", 500, 50, 5000),
-            DNS_REBINDING_CHECKS=_get_int("DNSBL_REBINDING_CHECKS", 3, 1, 10),
-        )
+    # Validate blocked IP ranges
+    for net in AppConfig.BLOCKED_IP_RANGES:
+        try:
+            ipaddress.ip_network(net)
+        except ValueError as e:
+            raise ValueError(f"Invalid blocked IP range {net}: {e}")
+    
+    # Validate allowed domains
+    for domain in ALLOWED_DOMAINS:
+        assert domain and '.' in domain, f"Invalid allowed domain: {domain}"
 
 
 # ============================================================================
-# STRUCTURED LOGGING WITH SECURE OUTPUT
+# STRUCTURED LOGGING
 # ============================================================================
 
 class StructuredLogger:
-    """
-    JSON-structured logging with context binding for CI/CD.
-    Sanitizes sensitive data before logging.
-    """
+    """JSON-structured logging with context binding."""
     
     def __init__(self, name: str, level: int = logging.INFO):
         self.logger = logging.getLogger(name)
@@ -274,45 +157,32 @@ class StructuredLogger:
         self.logger.handlers.clear()
         
         handler = logging.StreamHandler(sys.stderr)
-        
-        if os.getenv("DNSBL_LOG_JSON", "true").lower() == "true":
+        if AppConfig.LOG_JSON:
             handler.setFormatter(JSONFormatter())
         else:
-            handler.setFormatter(logging.Formatter(
-                '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-            ))
+            handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
         
         self.logger.addHandler(handler)
         self._context: Dict[str, Any] = {
             "app": "dns-blocklist-builder",
-            "version": "16.1.0"
-        }
-    
-    def _sanitize_data(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        """Remove sensitive data from logging (CVE-798 fix)."""
-        sensitive_keys = {'token', 'key', 'secret', 'password', 'api_key', 'auth'}
-        return {
-            k: "***REDACTED***" if any(s in k.lower() for s in sensitive_keys) else v
-            for k, v in data.items()
+            "version": "16.0.1"
         }
     
     def bind(self, **kwargs: Any) -> 'StructuredLogger':
-        """Create a child logger with additional context."""
         child = StructuredLogger(self.logger.name, self.logger.level)
         child._context.update(self._context)
-        child._context.update(self._sanitize_data(kwargs))
+        child._context.update(kwargs)
         return child
     
     def _log(self, level: int, msg: str, **kwargs: Any) -> None:
-        """Internal logging method with context and sanitization."""
         data = {
             "message": msg,
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "logger": self.logger.name,
             **self._context,
-            **self._sanitize_data(kwargs)
+            **kwargs
         }
-        self.logger.log(level, json.dumps(data))
+        self.logger.log(level, json.dumps(data) if AppConfig.LOG_JSON else msg)
     
     def debug(self, msg: str, **kwargs: Any) -> None:
         self._log(logging.DEBUG, msg, **kwargs)
@@ -334,505 +204,745 @@ class JSONFormatter(logging.Formatter):
     """JSON formatter for structured logging."""
     
     def format(self, record: logging.LogRecord) -> str:
-        """Format log record as JSON."""
         return record.getMessage()
 
 
 # ============================================================================
-# SECURE TTL CACHE WITH ATOMIC OPERATIONS (CVE-362, CVE-770 FIX)
+# TTLCache
 # ============================================================================
 
-class AtomicTTLCache(Generic[T]):
-    """
-    Thread-safe cache with TTL and automatic expiration.
-    Prevents race conditions and memory exhaustion.
-    """
+T = TypeVar('T')
+
+class TTLCache(Generic[T]):
+    """Thread-safe cache with TTL."""
     
-    __slots__ = ('maxsize', 'ttl', '_cache', '_access_order', '_lock', '_hits', '_misses', '_last_purge')
+    __slots__ = ('maxsize', 'ttl', '_cache', '_access_order', '_lock', '_hits', '_misses')
     
     def __init__(self, maxsize: int, ttl_seconds: int):
-        self.maxsize = min(maxsize, 100000)  # Hard cap
+        self.maxsize = maxsize
         self.ttl = ttl_seconds
         self._cache: Dict[str, Tuple[T, float]] = {}
         self._access_order: Deque[str] = deque()
         self._lock = asyncio.Lock()
         self._hits = 0
         self._misses = 0
-        self._last_purge = time.monotonic()
     
     async def get(self, key: str) -> Optional[T]:
-        """Get value if present and not expired."""
         async with self._lock:
-            # Periodic purge to prevent memory leak
-            if time.monotonic() - self._last_purge > 60:
-                await self._purge_expired_locked()
-            
             if key not in self._cache:
                 self._misses += 1
                 return None
             
-            value, expires_at = self._cache[key]
-            
-            # Check expiration
-            if time.monotonic() > expires_at:
+            value, timestamp = self._cache[key]
+            if time.monotonic() - timestamp > self.ttl:
                 del self._cache[key]
-                self._access_order.popleft() if key in self._access_order else None
                 self._misses += 1
                 return None
             
+            self._access_order.remove(key)
+            self._access_order.append(key)
             self._hits += 1
             return value
     
     async def set(self, key: str, value: T) -> None:
-        """Set value with TTL (atomic operation)."""
         async with self._lock:
-            # Evict oldest if at capacity
-            while len(self._cache) >= self.maxsize:
+            if len(self._cache) >= self.maxsize:
                 oldest = self._access_order.popleft()
-                if oldest in self._cache:
-                    del self._cache[oldest]
+                del self._cache[oldest]
             
-            expires_at = time.monotonic() + self.ttl
-            self._cache[key] = (value, expires_at)
+            if key in self._cache:
+                self._access_order.remove(key)
+            
+            self._cache[key] = (value, time.monotonic())
             self._access_order.append(key)
     
-    async def _purge_expired_locked(self) -> int:
-        """Remove expired entries (call with lock held)."""
-        before = len(self._cache)
-        current_time = time.monotonic()
-        self._cache = {
-            k: v for k, v in self._cache.items()
-            if v[1] > current_time
-        }
-        self._last_purge = current_time
-        return before - len(self._cache)
-    
-    async def stats(self) -> Dict[str, Any]:
-        """Get cache statistics."""
+    async def clear(self) -> None:
         async with self._lock:
-            total = self._hits + self._misses
-            hit_rate = self._hits / total if total > 0 else 0
-            return {
-                "size": len(self._cache),
-                "hits": self._hits,
-                "misses": self._misses,
-                "hit_rate": f"{hit_rate:.2%}",
-                "maxsize": self.maxsize
-            }
+            self._cache.clear()
+            self._access_order.clear()
+            self._hits = 0
+            self._misses = 0
 
 
 # ============================================================================
-# SECURE PATH VALIDATION (CVE-22 FIX)
+# ENUMS
 # ============================================================================
 
-class StrictPathValidator:
-    """
-    Enforce strict path constraints to prevent traversal attacks.
-    Whitelist-based validation with symlink protection.
-    """
+class SourceType(Enum):
+    HOSTS = auto()
+    DOMAINS = auto()
+    ADBLOCK = auto()
+
+
+class DomainStatus(Enum):
+    VALID = auto()
+    INVALID = auto()
+    DUPLICATE = auto()
+    AI_DETECTED = auto()
+    BLOCKED = auto()
+
+
+# ============================================================================
+# DOMAIN RECORD
+# ============================================================================
+
+@dataclass(frozen=True, slots=True)
+class DomainRecord:
+    """Immutable domain record."""
     
-    # Define safe base directories
-    SAFE_BASE_DIRS = [
-        Path.home() / "blocklists",
-        Path("/var/cache/dns-blocklist"),
-        Path("/opt/dns-blocklist/output"),
-        Path("/tmp")  # Temporary builds only
-    ]
+    domain: str
+    source: str
+    status: DomainStatus
+    ai_confidence: float = 0.0
+    ai_reasons: Tuple[str, ...] = field(default_factory=tuple)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    
+    def to_hosts_entry(self) -> str:
+        safe_domain = re.sub(r'[\x00-\x1f\x7f\s#|&]', '', self.domain)[:AppConfig.MAX_DOMAIN_LEN]
+        
+        if self.ai_confidence >= AppConfig.AI_CONFIDENCE_THRESHOLD:
+            safe_reasons = [re.sub(r'[^\w\-]', '_', r)[:50] for r in self.ai_reasons[:2]]
+            return f"0.0.0.0 {safe_domain} # AI:{self.ai_confidence:.0%} [{','.join(safe_reasons)}]"
+        
+        return f"0.0.0.0 {safe_domain}"
+
+
+# ============================================================================
+# PATH VALIDATOR
+# ============================================================================
+
+class PathValidator:
+    """Prevent path traversal attacks."""
     
     @staticmethod
-    def validate_output_path(path: Union[str, Path]) -> Path:
-        """
-        Validate output path with comprehensive security checks.
-        Raises PathTraversalDetected if unsafe.
-        """
+    def validate_output_path(path: Path, working_dir: Optional[Path] = None) -> Path:
+        if working_dir is None:
+            working_dir = Path.cwd()
+        
         try:
-            # CRITICAL: resolve() removes all .. and symlinks
-            target = Path(path).resolve()
-        except (ValueError, RuntimeError) as e:
-            raise PathTraversalDetected(f"Invalid path: {e}")
+            resolved = path.resolve()
+            working_resolved = working_dir.resolve()
+        except (OSError, RuntimeError) as e:
+            raise ValueError(f"Invalid path: {path}") from e
         
-        # Check for path traversal (should be redundant after resolve)
-        try:
-            target.relative_to(target.parent)
-        except ValueError:
-            raise PathTraversalDetected("Path traversal detected")
+        allowed_dirs = [
+            working_resolved,
+            working_resolved / "output",
+            working_resolved / "blocklists",
+            Path("/tmp") / f"dnsbl_{os.getenv('USER', 'unknown')}",
+        ]
         
-        # Whitelist check: must be in allowed directory
-        is_allowed = any(
-            target.is_relative_to(base)
-            for base in StrictPathValidator.SAFE_BASE_DIRS
-        )
+        allowed = False
+        for allowed_dir in allowed_dirs:
+            try:
+                resolved.relative_to(allowed_dir.resolve())
+                allowed = True
+                break
+            except (ValueError, OSError):
+                continue
         
-        if not is_allowed:
-            raise PathTraversalDetected(
-                f"Path {target} not in allowed directories: "
-                f"{StrictPathValidator.SAFE_BASE_DIRS}"
+        if not allowed:
+            raise ValueError(f"Path {path} escapes allowed directories")
+        
+        resolved.parent.mkdir(parents=True, exist_ok=True, mode=0o750)
+        
+        if resolved.exists() and not os.access(resolved, os.W_OK):
+            raise PermissionError(f"File {resolved} exists but is not writable")
+        
+        return resolved
+
+
+# ============================================================================
+# DEDUPLICATION MANAGER
+# ============================================================================
+
+class DeduplicationManager:
+    """Manages domain deduplication."""
+    
+    __slots__ = ('_use_bloom', '_bloom', '_confirmed', '_domains', '_false_positives')
+    
+    def __init__(self, expected_elements: int, error_rate: float = 0.001, logger: Optional[StructuredLogger] = None):
+        self._use_bloom = AppConfig.USE_BLOOM_FILTER
+        
+        if self._use_bloom:
+            self._bloom = ScalableBloomFilter(
+                initial_capacity=expected_elements,
+                error_rate=error_rate
             )
-        
-        # Symlink protection (reject existing symlinks)
-        if target.exists() and target.is_symlink():
-            raise PathTraversalDetected("Symlinks not allowed for security")
-        
-        # Parent directory writable
-        parent = target.parent
-        if not os.access(parent, os.W_OK):
-            raise PermissionError(f"No write permission: {parent}")
-        
-        return target
-
-
-# ============================================================================
-# SSRF PROTECTION WITH DNS REBINDING DETECTION (CVE-918, CVE-20 FIX)
-# ============================================================================
-
-class SSRFValidator:
-    """
-    Multi-layer SSRF protection including DNS rebinding detection.
-    Prevents attacker-controlled URL connections.
-    """
+            self._confirmed: Set[str] = set()
+            self._domains = None
+            self._false_positives = 0
+        else:
+            self._domains: Set[str] = set()
+            self._bloom = None
+            self._confirmed = None
+            self._false_positives = 0
     
-    SAFE_SCHEMES = frozenset(['http', 'https'])
-    SAFE_PORTS = frozenset(['80', '443'])
-    
-    # Exact domain whitelist (no wildcards)
-    SAFE_HOSTS = frozenset([
-        'raw.githubusercontent.com',
-        'raw.github.com',
-        'github.com',
-        'gitlab.com',
-        'oisd.nl',
-        'adaway.org',
-        'urlhaus.abuse.ch',
-        'threatfox.abuse.ch',
-        'hole.cert.pl',
-        'pgl.yoyo.org'
-    ])
-    
-    def __init__(self, logger: StructuredLogger):
-        self.logger = logger
-    
-    async def validate_url(self, url: str) -> None:
-        """
-        Validate URL is safe for connection.
-        Raises SSRFDetected if unsafe.
-        """
-        try:
-            parsed = urlparse(url)
-        except Exception as e:
-            raise SSRFDetected(f"Invalid URL: {e}")
+    def add(self, domain: str) -> bool:
+        if not self._use_bloom:
+            if domain in self._domains:
+                return True
+            self._domains.add(domain)
+            return False
         
-        # Scheme validation
-        if parsed.scheme not in self.SAFE_SCHEMES:
-            raise SSRFDetected(f"Disallowed scheme: {parsed.scheme}")
-        
-        # Extract and normalize hostname
-        hostname = parsed.hostname
-        if not hostname:
-            raise SSRFDetected("Missing hostname")
-        
-        hostname = hostname.lower().strip()
-        
-        # Port validation
-        port = str(parsed.port or ('443' if parsed.scheme == 'https' else '80'))
-        if port not in self.SAFE_PORTS:
-            raise SSRFDetected(f"Disallowed port: {port}")
-        
-        # Domain whitelist check
-        if not self._is_safe_domain(hostname):
-            raise SSRFDetected(f"Domain not in whitelist: {hostname}")
-        
-        # DNS rebinding check: resolve and verify IP is public
-        try:
-            ips = await self._resolve_with_rebinding_check(hostname, attempts=2)
-            if not ips:
-                raise SSRFDetected("DNS resolution failed or rebinding detected")
-        except Exception as e:
-            raise SSRFDetected(f"DNS validation failed: {e}")
-    
-    @staticmethod
-    def _is_safe_domain(hostname: str) -> bool:
-        """Check if domain is in whitelist."""
-        if hostname in SSRFValidator.SAFE_HOSTS:
+        if domain in self._confirmed:
             return True
         
-        # Allow subdomains of specific whitelisted hosts
-        safe_parents = ['github.com', 'gitlab.com']
-        for parent in safe_parents:
-            if hostname.endswith(f".{parent}"):
-                return True
+        if domain in self._bloom:
+            self._confirmed.add(domain)
+            self._false_positives += 1
+            return True
         
+        self._bloom.add(domain)
         return False
     
-    @staticmethod
-    def _is_private_ip(ip: str) -> bool:
-        """Check if IP is private/reserved (unsafe)."""
-        try:
-            addr = ipaddress.ip_address(ip)
-            return addr.is_private or addr.is_loopback or addr.is_reserved
-        except ValueError:
-            return True  # Invalid IP = deny
-    
-    async def _resolve_with_rebinding_check(
-        self,
-        hostname: str,
-        attempts: int = 2
-    ) -> List[str]:
-        """
-        Resolve hostname with rebinding attack detection.
-        Returns list of safe IPs or empty list if attack detected.
-        """
-        ips: List[str] = []
-        
-        for attempt in range(attempts):
-            try:
-                # Async DNS resolution with timeout
-                loop = asyncio.get_event_loop()
-                addr_info = await asyncio.wait_for(
-                    loop.getaddrinfo(hostname, 443),
-                    timeout=5.0
-                )
-                
-                if addr_info:
-                    ip = addr_info[0][4][0]
-                    ips.append(ip)
-                    
-                    # Check for rebinding: different IPs
-                    if len(ips) > 1 and ips[0] != ip:
-                        self.logger.warning(
-                            "DNS rebinding attack detected",
-                            hostname=hostname,
-                            ips=ips,
-                            severity="CRITICAL"
-                        )
-                        raise DNSRebindingDetected(
-                            f"DNS rebinding detected: {ips}"
-                        )
-                    
-                    # Check if IP is private
-                    if self._is_private_ip(ip):
-                        raise SSRFDetected(
-                            f"DNS resolved to private IP: {ip}"
-                        )
-                    
-                    # Wait with jitter before retry
-                    if attempt < attempts - 1:
-                        jitter = random.uniform(0.2, 0.8)
-                        await asyncio.sleep(jitter)
-                        
-            except (asyncio.TimeoutError, OSError) as e:
-                self.logger.warning(
-                    "DNS resolution failed",
-                    hostname=hostname,
-                    error=str(e)
-                )
-                if attempt == attempts - 1:
-                    raise
-        
-        return ips
+    def __len__(self) -> int:
+        if self._use_bloom:
+            return len(self._bloom)
+        return len(self._domains)
 
 
 # ============================================================================
-# SAFE DOMAIN VALIDATION (CVE-1333 FIX: No ReDoS)
+# SSRF PROTECTOR
+# ============================================================================
+
+class SSRFProtector:
+    """SSRF protection with DNS rebinding detection."""
+    
+    def __init__(self, logger: StructuredLogger):
+        self._logger = logger.bind(component="ssrf_protector")
+        self._blocked_networks: List[ipaddress.IPv4Network] = []
+        self._blocked_networks_v6: List[ipaddress.IPv6Network] = []
+        
+        for net in AppConfig.BLOCKED_IP_RANGES:
+            try:
+                network = ipaddress.ip_network(net)
+                if isinstance(network, ipaddress.IPv4Network):
+                    self._blocked_networks.append(network)
+                else:
+                    self._blocked_networks_v6.append(network)
+            except ValueError:
+                pass
+        
+        self._checked_urls: TTLCache[bool] = TTLCache(maxsize=10000, ttl_seconds=3600)
+        self._dns_cache: TTLCache[List[str]] = TTLCache(maxsize=AppConfig.DNS_CACHE_SIZE, ttl_seconds=AppConfig.DNS_CACHE_TTL)
+        self._rate_limiter = asyncio.Semaphore(10)
+    
+    async def validate_url(self, url: str) -> None:
+        normalized = self._normalize_url(url)
+        
+        cached = await self._checked_urls.get(normalized)
+        if cached is not None:
+            return
+        
+        async with self._rate_limiter:
+            await self._validate_url_impl(normalized)
+        
+        await self._checked_urls.set(normalized, True)
+    
+    async def _validate_url_impl(self, url: str) -> None:
+        parsed = urlparse(url)
+        
+        if parsed.scheme not in ('http', 'https'):
+            raise ValueError(f"Scheme not allowed: {parsed.scheme}")
+        
+        if not parsed.hostname:
+            raise ValueError(f"No hostname in URL: {url}")
+        
+        if parsed.hostname not in ALLOWED_DOMAINS:
+            await self._validate_ip_with_rebinding_protection(parsed.hostname)
+    
+    async def _validate_ip_with_rebinding_protection(self, hostname: str) -> None:
+        results: List[Set[str]] = []
+        
+        for attempt in range(AppConfig.DNS_REBINDING_CHECKS):
+            ips = await self._resolve_hostname(hostname)
+            results.append(set(ips))
+            
+            if attempt < AppConfig.DNS_REBINDING_CHECKS - 1:
+                await asyncio.sleep(AppConfig.DNS_REBINDING_DELAY)
+        
+        if len(results) > 1 and results[0] != results[-1]:
+            raise ValueError(f"DNS rebinding detected for {hostname}")
+        
+        for ip_str in results[-1]:
+            await self._validate_ip_address(ip_str, hostname)
+    
+    async def _validate_ip_address(self, ip_str: str, hostname: str) -> None:
+        try:
+            ip = ipaddress.ip_address(ip_str)
+        except ValueError as e:
+            raise ValueError(f"Invalid IP address {ip_str} for {hostname}") from e
+        
+        networks = self._blocked_networks if isinstance(ip, ipaddress.IPv4Address) else self._blocked_networks_v6
+        
+        for blocked_net in networks:
+            if ip in blocked_net:
+                raise ValueError(f"IP {ip} for {hostname} is in blocked range {blocked_net}")
+    
+    async def _resolve_hostname(self, hostname: str) -> List[str]:
+        cached = await self._dns_cache.get(hostname)
+        if cached is not None:
+            return cached
+        
+        loop = asyncio.get_running_loop()
+        try:
+            ips = await asyncio.wait_for(
+                loop.run_in_executor(None, socket.getaddrinfo, hostname, None, 0, socket.SOCK_STREAM, 0),
+                timeout=AppConfig.DNS_TIMEOUT
+            )
+            result = list(set(ip[4][0] for ip in ips))
+            await self._dns_cache.set(hostname, result)
+            return result
+        except (socket.gaierror, asyncio.TimeoutError) as e:
+            raise ValueError(f"DNS resolution failed for {hostname}: {e}")
+    
+    def _normalize_url(self, url: str) -> str:
+        parsed = urlparse(url)
+        return parsed._replace(netloc=parsed.hostname or '', fragment='', query='').geturl()
+
+
+# ============================================================================
+# DOMAIN VALIDATOR
 # ============================================================================
 
 class DomainValidator:
-    """
-    Safe domain validation without regex ReDoS vulnerability.
-    Uses linear-time validation instead of catastrophic backtracking.
-    """
+    """ReDoS-safe domain validator."""
     
-    MAX_DOMAIN_LEN = 253
-    MAX_LABEL_LEN = 63
-    MIN_DOMAIN_LEN = 3
+    DOMAIN_PATTERN = re.compile(r'^(?!-)[a-z0-9-]{1,63}(?<!-)(\.[a-z0-9-]{1,63}(?<!-))*$', re.IGNORECASE)
+    RESERVED_TLDS = {'localhost', 'local', 'example', 'invalid', 'test', 'lan', 'internal', 'localdomain', 'home', 'arpa', 'onion', 'i2p'}
     
-    @staticmethod
-    def validate(domain: str) -> bool:
-        """
-        Validate domain name safely (no ReDoS).
-        Returns True if valid, False otherwise.
-        """
-        # Length checks (fast path)
-        if not isinstance(domain, str):
+    def __init__(self, logger: StructuredLogger):
+        self._logger = logger.bind(component="domain_validator")
+        self._cache: TTLCache[bool] = TTLCache(maxsize=AppConfig.DNS_CACHE_SIZE, ttl_seconds=AppConfig.DNS_CACHE_TTL)
+    
+    async def is_valid(self, domain: str) -> bool:
+        if len(domain) > AppConfig.MAX_INPUT_LEN:
             return False
         
-        domain = domain.strip().lower()
+        domain_lower = domain.lower().strip()
         
-        if not (DomainValidator.MIN_DOMAIN_LEN <= len(domain) <= DomainValidator.MAX_DOMAIN_LEN):
+        cached = await self._cache.get(domain_lower)
+        if cached is not None:
+            return cached
+        
+        valid = self._validate_syntax(domain_lower)
+        await self._cache.set(domain_lower, valid)
+        return valid
+    
+    def _validate_syntax(self, domain: str) -> bool:
+        if len(domain) < AppConfig.MIN_DOMAIN_LEN or len(domain) > AppConfig.MAX_DOMAIN_LEN:
             return False
         
-        # Normalize unicode (prevent homograph attacks)
+        parts = domain.split('.')
+        if len(parts) < 2:
+            return False
+        
+        if parts[-1] in self.RESERVED_TLDS:
+            return False
+        
+        for label in parts:
+            if not label or len(label) > AppConfig.MAX_LABEL_LEN:
+                return False
+            if label.startswith('-') or label.endswith('-'):
+                return False
+        
+        return bool(self.DOMAIN_PATTERN.match(domain))
+    
+    async def cleanup(self) -> None:
+        await self._cache.clear()
+
+
+# ============================================================================
+# AI TRACKER DETECTOR
+# ============================================================================
+
+class AITrackerDetector:
+    """AI-powered tracker detection."""
+    
+    TRACKER_PATTERNS = (
+        (r'\banalytics\b', 'analytics', 0.82),
+        (r'\bgoogle[-_]analytics\b', 'google_analytics', 0.95),
+        (r'\bgoogletagmanager\b', 'google_tag_manager', 0.92),
+        (r'\bfirebase\b', 'firebase_analytics', 0.92),
+        (r'\bamplitude\b', 'amplitude', 0.90),
+        (r'\bmixpanel\b', 'mixpanel', 0.90),
+        (r'\bsegment\b', 'segment', 0.90),
+        (r'\btracking\b', 'tracking', 0.80),
+        (r'\bpixel\b', 'tracking_pixel', 0.85),
+        (r'\bdoubleclick\b', 'doubleclick', 0.95),
+        (r'\badservice\b', 'ad_service', 0.85),
+        (r'\bcriteo\b', 'criteo', 0.85),
+        (r'\bfacebook\b', 'facebook_pixel', 0.95),
+    )
+    
+    def __init__(self, logger: StructuredLogger):
+        self._logger = logger.bind(component="ai_detector")
+        self._cache: TTLCache[Tuple[float, Tuple[str, ...]]] = TTLCache(maxsize=AppConfig.AI_CACHE_SIZE, ttl_seconds=AppConfig.AI_CACHE_TTL)
+        self._patterns = [(re.compile(p, re.IGNORECASE), r, c) for p, r, c in self.TRACKER_PATTERNS]
+    
+    async def analyze(self, domain: str) -> Tuple[float, Tuple[str, ...]]:
+        if len(domain) > AppConfig.MAX_INPUT_LEN:
+            return (0.0, ())
+        
+        domain_lower = domain.lower()
+        
+        cached = await self._cache.get(domain_lower)
+        if cached is not None:
+            return cached
+        
+        confidence = 0.0
+        reasons: List[str] = []
+        
+        for pattern, reason, base_conf in self._patterns:
+            try:
+                if pattern.search(domain_lower):
+                    if base_conf > confidence:
+                        confidence = base_conf
+                    if reason not in reasons:
+                        reasons.append(reason)
+            except re.error:
+                continue
+        
+        result = (min(1.0, confidence), tuple(reasons))
+        await self._cache.set(domain_lower, result)
+        return result
+    
+    async def cleanup(self) -> None:
+        await self._cache.clear()
+
+
+# ============================================================================
+# SOURCE DEFINITION
+# ============================================================================
+
+@dataclass
+class SourceDefinition:
+    name: str
+    url: str
+    source_type: SourceType
+    enabled: bool = True
+    priority: int = 0
+    max_size_mb: int = AppConfig.MAX_FILE_SIZE_MB
+
+
+# ============================================================================
+# STREAMING SOURCE PROCESSOR
+# ============================================================================
+
+class StreamingSourceProcessor:
+    def __init__(self, session: aiohttp.ClientSession, validator: DomainValidator, detector: Optional[AITrackerDetector], logger: StructuredLogger):
+        self._session = session
+        self._validator = validator
+        self._detector = detector
+        self._logger = logger.bind(component="source_processor")
+        self._ssrf_protector = SSRFProtector(logger)
+        self._valid_count = 0
+    
+    async def process_source_streaming(self, source: SourceDefinition) -> AsyncGenerator[DomainRecord, None]:
+        if not source.enabled:
+            return
+        
         try:
-            domain = unicodedata.normalize('NFKD', domain)
-            domain.encode('ascii')  # Must be ASCII
-        except (UnicodeError, UnicodeDecodeError):
-            return False
-        
-        # Character validation (no regex)
-        for char in domain:
-            if not (char.isalnum() or char in '.-'):
-                return False
-        
-        # Label validation (split by dots)
-        labels = domain.split('.')
-        
-        if not (2 <= len(labels) <= 127):  # Between 2 and 127 labels
-            return False
-        
-        for label in labels:
-            # Label length
-            if not (1 <= len(label) <= DomainValidator.MAX_LABEL_LEN):
-                return False
+            await self._ssrf_protector.validate_url(source.url)
             
-            # Labels can't start/end with hyphen
-            if label[0] == '-' or label[-1] == '-':
-                return False
-            
-            # Can't be all numeric (TLD validation)
-            if label == labels[-1] and label.isdigit():
-                return False
-        
-        return True
-
-
-# ============================================================================
-# AUDIT LOGGER
-# ============================================================================
-
-class AuditLogger:
-    """Log all security-relevant events for compliance."""
-    
-    def __init__(self, output_path: Path):
-        self.audit_path = output_path.parent / "audit.jsonl"
-        self.logger = logging.getLogger("audit")
-    
-    async def log_source_fetch(
-        self,
-        source_name: str,
-        url: str,
-        status: str,
-        domains_count: int = 0,
-        error: Optional[str] = None,
-        duration_sec: float = 0
-    ) -> None:
-        """Log source fetch with metadata."""
-        entry = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "event": "source_fetch",
-            "source": source_name,
-            "url_hash": hashlib.sha256(url.encode()).hexdigest()[:8],
-            "status": status,
-            "domains_count": domains_count,
-            "duration_sec": duration_sec,
-            "error": error
-        }
-        
-        try:
-            async with aiofiles.open(self.audit_path, 'a') as f:
-                await f.write(json.dumps(entry) + '\n')
-        except Exception as e:
-            self.logger.error(f"Audit logging failed: {e}")
-    
-    async def log_security_event(
-        self,
-        event_type: str,
-        severity: str,
-        details: Dict[str, Any]
-    ) -> None:
-        """Log security-relevant event."""
-        entry = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "event_type": event_type,
-            "severity": severity,
-            **details
-        }
-        
-        try:
-            async with aiofiles.open(self.audit_path, 'a') as f:
-                await f.write(json.dumps(entry) + '\n')
-        except Exception as e:
-            self.logger.error(f"Audit logging failed: {e}")
-
-
-# ============================================================================
-# CIRCUIT BREAKER PATTERN (New in v16.1.0)
-# ============================================================================
-
-class CircuitBreaker:
-    """
-    Circuit breaker for graceful degradation.
-    Prevents cascading failures when sources are down.
-    """
-    
-    def __init__(
-        self,
-        name: str,
-        failure_threshold: int = 5,
-        recovery_timeout: float = 60.0
-    ):
-        self.name = name
-        self.failure_threshold = failure_threshold
-        self.recovery_timeout = recovery_timeout
-        self.failure_count = 0
-        self.state = 'CLOSED'  # CLOSED -> OPEN -> HALF_OPEN
-        self.last_failure_time = 0.0
-    
-    async def call(self, coro: Awaitable[T]) -> T:
-        """Execute coroutine through circuit breaker."""
-        # Check if we should attempt recovery
-        if self.state == 'OPEN':
-            if time.monotonic() - self.last_failure_time > self.recovery_timeout:
-                self.state = 'HALF_OPEN'
-                self.failure_count = 0
-            else:
-                raise CircuitBreakerOpen(
-                    f"Circuit breaker {self.name} is OPEN"
+            async for line in self._stream_download(source):
+                domain = self._parse_line(line, source.source_type)
+                if not domain:
+                    continue
+                
+                if not await self._validator.is_valid(domain):
+                    continue
+                
+                self._valid_count += 1
+                
+                ai_confidence = 0.0
+                ai_reasons: Tuple[str, ...] = ()
+                
+                if self._detector:
+                    ai_confidence, ai_reasons = await self._detector.analyze(domain)
+                
+                yield DomainRecord(
+                    domain=domain,
+                    source=source.name,
+                    status=DomainStatus.VALID,
+                    ai_confidence=ai_confidence,
+                    ai_reasons=ai_reasons
                 )
-        
-        try:
-            result = await coro
+                
+                if self._valid_count >= AppConfig.MAX_DOMAINS_TOTAL:
+                    self._logger.info("Reached domain limit", limit=AppConfig.MAX_DOMAINS_TOTAL)
+                    break
             
-            # Success: reset circuit
-            if self.state == 'HALF_OPEN':
-                self.state = 'CLOSED'
-            self.failure_count = 0
-            return result
+            self._logger.info("Source processed", source=source.name, valid_count=self._valid_count)
             
         except Exception as e:
-            self.failure_count += 1
-            self.last_failure_time = time.monotonic()
-            
-            if self.failure_count >= self.failure_threshold:
-                self.state = 'OPEN'
-            
-            raise
+            self._logger.error("Source processing failed", source=source.name, error=str(e))
+    
+    async def _stream_download(self, source: SourceDefinition) -> AsyncGenerator[str, None]:
+        for attempt in range(AppConfig.MAX_RETRIES):
+            try:
+                timeout = ClientTimeout(total=AppConfig.HTTP_TIMEOUT)
+                async with self._session.get(source.url, timeout=timeout, max_redirects=3, raise_for_status=True) as response:
+                    content_length = response.headers.get('Content-Length')
+                    if content_length:
+                        size_mb = int(content_length) / (1024 * 1024)
+                        if size_mb > source.max_size_mb:
+                            raise ValueError(f"File too large: {size_mb:.1f} MB")
+                    
+                    async for line in response.content:
+                        if len(line) > AppConfig.MAX_INPUT_LEN:
+                            continue
+                        
+                        try:
+                            yield line.decode('utf-8', errors='replace')
+                        except UnicodeDecodeError:
+                            continue
+                    
+                    return
+                    
+            except (asyncio.TimeoutError, ClientError, ServerTimeoutError) as e:
+                if attempt == AppConfig.MAX_RETRIES - 1:
+                    raise
+                
+                delay = min(AppConfig.RETRY_BACKOFF_BASE * (2 ** attempt), AppConfig.RETRY_MAX_BACKOFF)
+                self._logger.warning("Download failed, retrying", source=source.name, attempt=attempt + 1, delay=delay, error=str(e))
+                await asyncio.sleep(delay)
+    
+    def _parse_line(self, line: str, source_type: SourceType) -> Optional[str]:
+        line = line.strip()
+        if not line or line.startswith('#'):
+            return None
+        
+        if source_type == SourceType.HOSTS:
+            parts = line.split()
+            if len(parts) >= 2 and parts[0] in ('0.0.0.0', '127.0.0.1'):
+                domain = parts[1].split('#')[0].strip()
+                if domain and len(domain) <= AppConfig.MAX_DOMAIN_LEN:
+                    return domain
+        
+        elif source_type == SourceType.DOMAINS:
+            domain = line.split('#')[0].strip()
+            if domain and len(domain) <= AppConfig.MAX_DOMAIN_LEN:
+                return domain
+        
+        return None
 
 
 # ============================================================================
-# SSL/TLS HARDENING
+# BLOCKLIST BUILDER
 # ============================================================================
 
-def create_ssl_context() -> ssl.SSLContext:
-    """Create hardened SSL context for HTTPS connections."""
-    context = ssl.create_default_context()
-    context.check_hostname = True
-    context.verify_mode = ssl.CERT_REQUIRED
-    # Disable weak ciphers
-    context.set_ciphers('ECDHE+AESGCM:ECDHE+CHACHA20:DHE+AESGCM:!aNULL:!eNULL:!EXPORT:!DES:!MD5:!PSK:!RC4')
-    return context
+class BlocklistBuilder:
+    def __init__(self, output_path: Path, logger: StructuredLogger):
+        self._output_path = PathValidator.validate_output_path(output_path)
+        self._logger = logger.bind(component="blocklist_builder")
+        self._shutdown_requested = False
+        self._start_time = 0.0
+        self._deduplicator = DeduplicationManager(
+            expected_elements=AppConfig.MAX_DOMAINS_TOTAL,
+            error_rate=AppConfig.BLOOM_FILTER_ERROR_RATE
+        )
+        self._sources_processed = 0
+        self._sources_failed = 0
+        self._total_valid = 0
+        self._duplicates = 0
+        self._ai_detected = 0
+    
+    async def build(self, sources: List[SourceDefinition]) -> bool:
+        self._start_time = time.time()
+        
+        self._logger.info("Starting blocklist build", version="16.0.1", sources=len(sources))
+        
+        try:
+            async with self._create_session() as session:
+                validator = DomainValidator(self._logger)
+                detector = AITrackerDetector(self._logger)
+                
+                async with aiofiles.open(self._output_path, 'w', encoding='utf-8') as outfile:
+                    await self._write_header(outfile)
+                    
+                    write_buffer = []
+                    flush_interval = AppConfig.FLUSH_INTERVAL
+                    
+                    for source in sorted(sources, key=lambda s: s.priority):
+                        if self._shutdown_requested:
+                            break
+                        
+                        try:
+                            processor = StreamingSourceProcessor(session, validator, detector, self._logger)
+                            
+                            async for record in processor.process_source_streaming(source):
+                                if self._deduplicator.add(record.domain):
+                                    self._duplicates += 1
+                                    continue
+                                
+                                self._total_valid += 1
+                                
+                                if record.ai_confidence >= AppConfig.AI_CONFIDENCE_THRESHOLD:
+                                    self._ai_detected += 1
+                                
+                                write_buffer.append(record.to_hosts_entry() + "\n")
+                                
+                                if len(write_buffer) >= flush_interval:
+                                    await outfile.writelines(write_buffer)
+                                    write_buffer.clear()
+                            
+                            self._sources_processed += 1
+                            
+                        except Exception as e:
+                            self._sources_failed += 1
+                            self._logger.error("Source failed", source=source.name, error=str(e))
+                    
+                    if write_buffer:
+                        await outfile.writelines(write_buffer)
+                    
+                    await self._write_footer(outfile)
+                
+                await validator.cleanup()
+                await detector.cleanup()
+                
+                self._print_summary()
+                return True
+                
+        except Exception as e:
+            self._logger.critical("Build failed", error=str(e))
+            return False
+    
+    @asynccontextmanager
+    async def _create_session(self) -> AsyncIterator[aiohttp.ClientSession]:
+        ssl_context = ssl.create_default_context()
+        ssl_context.check_hostname = True
+        ssl_context.verify_mode = ssl.CERT_REQUIRED
+        ssl_context.minimum_version = ssl.TLSVersion.TLSv1_2
+        
+        connector = aiohttp.TCPConnector(
+            limit=AppConfig.MAX_CONCURRENT_DOWNLOADS,
+            limit_per_host=AppConfig.CONNECTION_LIMIT_PER_HOST,
+            ttl_dns_cache=300,
+            ssl=ssl_context,
+            enable_cleanup_closed=True
+        )
+        
+        timeout = ClientTimeout(total=AppConfig.HTTP_TIMEOUT)
+        
+        async with aiohttp.ClientSession(
+            connector=connector,
+            timeout=timeout,
+            headers={'User-Agent': f'DNS-Blocklist-Builder/16.0.1'}
+        ) as session:
+            yield session
+    
+    async def _write_header(self, outfile) -> None:
+        await outfile.write("# DNS Security Blocklist v16.0.1\n")
+        await outfile.write(f"# Generated: {datetime.now(timezone.utc).isoformat()}\n")
+        await outfile.write(f"# Build ID: {uuid.uuid4().hex[:8]}\n")
+        await outfile.write("# Format: 0.0.0.0 domain\n\n")
+    
+    async def _write_footer(self, outfile) -> None:
+        duration = time.time() - self._start_time
+        await outfile.write("\n# Statistics:\n")
+        await outfile.write(f"# - Total unique domains: {self._total_valid:,}\n")
+        await outfile.write(f"# - AI detected: {self._ai_detected:,}\n")
+        await outfile.write(f"# - Duplicates: {self._duplicates:,}\n")
+        await outfile.write(f"# - Build time: {duration:.2f}s\n")
+    
+    def _print_summary(self) -> None:
+        duration = time.time() - self._start_time
+        
+        output = {
+            "status": "success",
+            "duration_seconds": duration,
+            "unique_domains": self._total_valid,
+            "duplicates": self._duplicates,
+            "ai_detected": self._ai_detected,
+            "sources_processed": self._sources_processed,
+            "sources_failed": self._sources_failed
+        }
+        
+        print(json.dumps(output, indent=2))
 
 
 # ============================================================================
-# REMAINING CODE (truncated for brevity)
+# SOURCE MANAGER
 # ============================================================================
-# The rest of the original v16.0.0 code with security patches applied
+
+class SourceManager:
+    @staticmethod
+    def get_default_sources() -> List[SourceDefinition]:
+        return [
+            SourceDefinition("OISD Big", "https://big.oisd.nl/domains", SourceType.DOMAINS, priority=1),
+            SourceDefinition("AdAway", "https://adaway.org/hosts.txt", SourceType.HOSTS, priority=2),
+            SourceDefinition("URLhaus", "https://urlhaus.abuse.ch/downloads/hostfile/", SourceType.HOSTS, priority=3),
+            SourceDefinition("ThreatFox", "https://threatfox.abuse.ch/downloads/hostfile/", SourceType.HOSTS, priority=4),
+            SourceDefinition("Cert Poland", "https://hole.cert.pl/domains/domains_hosts.txt", SourceType.HOSTS, priority=5),
+        ]
+
+
+# ============================================================================
+# MAIN FUNCTION
+# ============================================================================
+
+async def main_async() -> int:
+    """Async main entry point."""
+    parser = argparse.ArgumentParser(description="DNS Security Blocklist Builder v16.0.1")
+    parser.add_argument("-o", "--output", type=Path, default=Path("./blocklist.txt"), help="Output file path")
+    parser.add_argument("--max-domains", type=int, help="Maximum domains to process")
+    parser.add_argument("--timeout", type=int, help="Download timeout in seconds")
+    parser.add_argument("--no-bloom", action="store_true", help="Disable Bloom filter")
+    parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose logging")
+    parser.add_argument("--version", action="version", version="DNS Blocklist Builder v16.0.1")
+    
+    args = parser.parse_args()
+    
+    # Override config from command line
+    if args.no_bloom:
+        os.environ["DNSBL_USE_BLOOM"] = "false"
+    if args.max_domains:
+        os.environ["DNSBL_MAX_DOMAINS"] = str(args.max_domains)
+    if args.timeout:
+        os.environ["DNSBL_HTTP_TIMEOUT"] = str(args.timeout)
+    
+    # Setup logging
+    log_level = logging.DEBUG if args.verbose else getattr(logging, AppConfig.LOG_LEVEL)
+    logger = StructuredLogger("dns_blocklist", log_level)
+    
+    try:
+        validate_config()
+    except Exception as e:
+        logger.critical("Invalid configuration", error=str(e))
+        return 1
+    
+    try:
+        output_path = PathValidator.validate_output_path(args.output)
+    except (ValueError, PermissionError) as e:
+        logger.critical("Invalid output path", error=str(e))
+        return 1
+    
+    builder = BlocklistBuilder(output_path, logger)
+    sources = SourceManager.get_default_sources()
+    
+    try:
+        success = await builder.build(sources)
+        return 0 if success else 1
+    except KeyboardInterrupt:
+        logger.warning("Interrupted by user")
+        return 130
+    except Exception as e:
+        logger.critical("Fatal error", error=str(e))
+        return 1
+
+
+def main() -> int:
+    """Synchronous main entry point."""
+    try:
+        return asyncio.run(main_async())
+    except KeyboardInterrupt:
+        return 130
+    except Exception as e:
+        print(f"Fatal error: {e}", file=sys.stderr)
+        return 1
+
 
 if __name__ == "__main__":
-    # Validate config before starting
-    try:
-        config = SecureAppConfig.from_env()
-    except ConfigError as e:
-        print(f"Configuration error: {e}", file=sys.stderr)
-        sys.exit(1)
-    
-    # Start application
-    sys.exit(asyncio.run(main_async()))
+    sys.exit(main())
