@@ -21,7 +21,8 @@ jobs:
       
       - name: Install dependencies
         run: |
-          pip install aiohttp aiofiles
+          python -m pip install --upgrade pip
+          pip install aiohttp aiofiles pydantic
       
       - name: Build blocklists
         run: |
