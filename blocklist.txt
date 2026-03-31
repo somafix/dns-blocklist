@@ -1,8 +1,9 @@
 # DNS Security Blocklist
-# Generated: 2026-03-31T22:23:25.907454+00:00
+# Generated: 2026-03-31T22:30:15.385564+00:00
 # Version: 17.2.0
-# Total domains: 88,811
-# Sources: 4
+# Total domains: 88,809
+# Active sources: 4
+# Format: Hosts file (0.0.0.0 domain.com)
 
 0.0.0.0 0.0.0.0
 0.0.0.0 0.0.0.0.creative.hpyrdr.com
@@ -23926,7 +23927,6 @@
 0.0.0.0 gebe.com.pl
 0.0.0.0 gecetu.com
 0.0.0.0 geconsumerfinance.112.2o7.net
-0.0.0.0 gecopakistan.com
 0.0.0.0 geek.us.intellitxt.com
 0.0.0.0 geekstogo.us.intellitxt.com
 0.0.0.0 gehili.pro
@@ -31615,7 +31615,6 @@
 0.0.0.0 lobeltrans.rest
 0.0.0.0 loboclick.com
 0.0.0.0 loc1.hitsprocessor.com
-0.0.0.0 local
 0.0.0.0 local-analytics.uberinternal.com
 0.0.0.0 local-download.com
 0.0.0.0 local-media.ambient-platform.com
