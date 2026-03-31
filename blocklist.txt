@@ -1,5 +1,5 @@
 # DNS Security Blocklist
-# Generated: 2026-03-31T19:36:54.811067+00:00
+# Generated: 2026-03-31T22:00:15.749000+00:00
 # Version: 17.1.1
 
 0.0.0.0 localhost
@@ -6578,9 +6578,7 @@
 0.0.0.0 bankgarantia.ru
 0.0.0.0 bbb.xfrwu.cn
 0.0.0.0 bbos.minet.vn
-0.0.0.0 beak.in
 0.0.0.0 bharattank.me
-0.0.0.0 biducaconfeitos.com.br
 0.0.0.0 blessdayservices.org
 0.0.0.0 blit.co.za
 0.0.0.0 blogs.sokun.jp
@@ -6607,6 +6605,7 @@
 0.0.0.0 checkinetverifk.com
 0.0.0.0 chinaapper.com
 0.0.0.0 chiptune.com
+0.0.0.0 chuguadventures.co.tz
 0.0.0.0 chungminhtaichinhsaigon.net
 0.0.0.0 cl.ssouy.com
 0.0.0.0 classroomseven.com
@@ -6614,7 +6613,6 @@
 0.0.0.0 cloudstay168.com
 0.0.0.0 clubdetiroelpicarcho.com
 0.0.0.0 cn.bossjy.cc.cd
-0.0.0.0 cn.unionlever.com
 0.0.0.0 cnc.504.su
 0.0.0.0 cnt-logiistics.com
 0.0.0.0 co-emas.com
@@ -6636,7 +6634,6 @@
 0.0.0.0 d.wanyouxi7.com
 0.0.0.0 data.yhydl.com
 0.0.0.0 dcrun.co.uk
-0.0.0.0 dcwblida.dz
 0.0.0.0 delp-heizungsbau.de
 0.0.0.0 derekludlow.com
 0.0.0.0 devilnet.xyz
@@ -6672,6 +6669,7 @@
 0.0.0.0 electri.billregulator.com
 0.0.0.0 elisans.novayonetim.com
 0.0.0.0 embedone.com
+0.0.0.0 en.taichuan.com
 0.0.0.0 energy63.ru
 0.0.0.0 epanpano.com
 0.0.0.0 epgoldsecurity.com
@@ -6680,7 +6678,6 @@
 0.0.0.0 etinsendmail.com
 0.0.0.0 etinsendmail.net
 0.0.0.0 evangroup.ru
-0.0.0.0 everycarebd.com
 0.0.0.0 explorer.vg
 0.0.0.0 fakers.co.jp
 0.0.0.0 farschid.de
@@ -6704,8 +6701,6 @@
 0.0.0.0 gerlimeri.net
 0.0.0.0 getzoomupdate.com
 0.0.0.0 globaltechbilling.com
-0.0.0.0 gobiotechpestcontrol.com
-0.0.0.0 gohelpertechnologies.in
 0.0.0.0 gutando.com
 0.0.0.0 hasalltalent.com
 0.0.0.0 hemailsendlin.com
@@ -6737,15 +6732,19 @@
 0.0.0.0 itssprout.com
 0.0.0.0 izocab.com
 0.0.0.0 izogard.com
+0.0.0.0 jawaratekno.com
 0.0.0.0 jem-mialwe.com
 0.0.0.0 jem-mialwe.net
 0.0.0.0 jieqaingdaolu.com
+0.0.0.0 jlwz.cn
 0.0.0.0 joyeriatauro.com
 0.0.0.0 jyothishmathi.in
 0.0.0.0 kamin-premium.ru
 0.0.0.0 kavacanada.ca
 0.0.0.0 khoancatbetong89.vn
 0.0.0.0 kimyen.net
+0.0.0.0 km.tradeforexcopier.com
+0.0.0.0 kokorostore.it
 0.0.0.0 konsor.ru
 0.0.0.0 kramersmarionnettes.com
 0.0.0.0 krisidev.com
@@ -6772,7 +6771,6 @@
 0.0.0.0 mitreart.com
 0.0.0.0 mlbkn.com
 0.0.0.0 mobshah.com
-0.0.0.0 mockupcorporation.com
 0.0.0.0 modulowinapp.com
 0.0.0.0 mogimall.com
 0.0.0.0 movtime76.shop
@@ -6840,7 +6838,6 @@
 0.0.0.0 scainseto.com.br
 0.0.0.0 scan.504.su
 0.0.0.0 schenckel.com.br
-0.0.0.0 sdhscndnssl.beer
 0.0.0.0 sdvgpro.ru
 0.0.0.0 sec.xiaoshabi.nl
 0.0.0.0 separadordecc.com
@@ -6857,18 +6854,17 @@
 0.0.0.0 softcatalog.ru
 0.0.0.0 solar-sanat.net
 0.0.0.0 spacemanslot88.games
-0.0.0.0 spoar.org.in
 0.0.0.0 static.ilclock.com
 0.0.0.0 static.topxgun.com
 0.0.0.0 static.youdm.cn
 0.0.0.0 stdown.dinju.com
+0.0.0.0 steam66.cn
 0.0.0.0 stonecradle.com
 0.0.0.0 studiogioeli.it
 0.0.0.0 supercleanspb.ru
 0.0.0.0 support.clz.kr
 0.0.0.0 sutterpoint.com
 0.0.0.0 svirtual.sanviatorperu.edu.pe
-0.0.0.0 swiftfusion.tech
 0.0.0.0 tajalrayhan.com
 0.0.0.0 talentrecruitments.com
 0.0.0.0 tanscarattorneys.co.tz
@@ -6886,6 +6882,7 @@
 0.0.0.0 thementordirectory.com
 0.0.0.0 theoremaoliveoil.com
 0.0.0.0 thtp2.volamngayxua.net
+0.0.0.0 todayallmatchprediction.com
 0.0.0.0 toolshare.com.tr
 0.0.0.0 top8onlinegame.com
 0.0.0.0 transfer.weepee.io
@@ -6941,7 +6938,6 @@
 0.0.0.0 www.kotojuki.com
 0.0.0.0 www.longfeng188.com
 0.0.0.0 www.medises.co.kr
-0.0.0.0 www.mevetlab.cl
 0.0.0.0 www.mixturro.com
 0.0.0.0 www.mobimpex.ro
 0.0.0.0 www.myvcart.com
@@ -6951,6 +6947,7 @@
 0.0.0.0 www.ojang.pe.kr
 0.0.0.0 www.okhan.net
 0.0.0.0 www.reifenquick.de
+0.0.0.0 www.rhythmvacations.com
 0.0.0.0 www.saf-oil.ru
 0.0.0.0 www.salonmarketing.ca
 0.0.0.0 www.sgeseducation.com
