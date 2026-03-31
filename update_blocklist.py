@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-DNS Security Blocklist Builder - v17.2.0 (Full Production Version)
-Создает: blocklist.txt, dynamic.txt, ai-detector.txt и их сжатые версии
+DNS Security Blocklist Builder - v17.2.0 (All-in-One Production Version)
+Вся мощь в одном файле: blocklist.txt
 """
 
 import asyncio
@@ -142,15 +142,13 @@ class AIConfig(BaseModel):
         r'character\.ai|perplexity',
         r'elevenlabs|voice[-_]?ai'
     ])
-    output_file: Path = Field(default=Path("./ai-detector.txt"))
-    separate_list: bool = Field(True)
 
 class OutputConfig(BaseModel):
-    main_blocklist: Path = Field(default=Path("./blocklist.txt"))
-    dynamic_list: Path = Field(default=Path("./dynamic.txt"))
+    main_blocklist: Path = Field(default=Path("./blocklist.txt"))  # ТОЛЬКО ОДИН ФАЙЛ
     compressed: bool = Field(default=True)
     format_hosts: bool = Field(default=True)
     include_metadata: bool = Field(default=True)
+    include_categories: bool = Field(default=True)  # Добавлять категории в комментариях
 
 if PYDANTIC_SETTINGS:
     class AppSettings(BaseSettings):
@@ -205,7 +203,9 @@ class DomainRecord(BaseModel):
                 raise ValueError("Domain too long")
             return v
 
-    def to_hosts_entry(self) -> str:
+    def to_hosts_entry(self, include_category: bool = False) -> str:
+        if include_category and self.category:
+            return f"0.0.0.0 {self.domain} # {self.category}"
         return f"0.0.0.0 {self.domain}"
 
 class DomainSet:
@@ -269,6 +269,9 @@ class DomainSet:
             'duplicate_domains': len(self._duplicates),
             'categories': {cat: len(domains) for cat, domains in self._categories.items()}
         }
+    
+    def get_all_with_metadata(self) -> List[DomainRecord]:
+        return list(self._metadata.values())
 
 # ============================================================================
 # CACHE SYSTEM
@@ -306,7 +309,6 @@ class SourceCache:
         self.cache_dir.mkdir(parents=True, exist_ok=True)
     
     def get_cache_path(self, source_name: str) -> Path:
-        # Clean filename
         safe_name = re.sub(r'[^\w\-_\.]', '_', source_name)
         return self.cache_dir / f"{safe_name}.json.gz"
     
@@ -345,7 +347,6 @@ class SourceProcessor:
         """Fetch source with retry logic and caching"""
         headers = {}
         
-        # Check cache for conditional requests
         if source.etag:
             headers['If-None-Match'] = source.etag
         if source.last_update:
@@ -360,7 +361,6 @@ class SourceProcessor:
             headers=headers
         ) as resp:
             if resp.status == 304:
-                # Not modified - load from cache
                 cached = await self.cache.load(source.name)
                 if cached:
                     return cached['content'], {'etag': cached.get('etag'), 'cached': True}
@@ -375,7 +375,6 @@ class SourceProcessor:
                 'cached': False
             }
             
-            # Save to cache
             await self.cache.save(source.name, {
                 'content': content,
                 'etag': metadata['etag'],
@@ -421,98 +420,54 @@ class SourceProcessor:
             parts = line.split()
             if len(parts) >= 2 and parts[0] in ('0.0.0.0', '127.0.0.1', '::1'):
                 domain = parts[1]
-                # Skip localhost entries
                 if domain in ('localhost', 'localhost.localdomain', 'local'):
                     return None
-                # Skip if domain contains spaces or is invalid
                 if ' ' in domain or not domain:
                     return None
                 return domain
             return None
             
         elif stype == 'adblock':
-            # AdBlock format: ||example.com^
             match = re.match(r'^\|\|([a-z0-9.-]+)\^', line)
             if match:
                 return match.group(1)
             return None
             
         else:  # domains
-            # Simple domain list format
             if '.' in line and not line.startswith('.'):
                 return line
             return None
 
 # ============================================================================
-# AI DETECTOR
-# ============================================================================
-
-class AIDetector:
-    def __init__(self, config: AIConfig, domain_set: DomainSet):
-        self.config = config
-        self.domain_set = domain_set
-    
-    async def save_ai_list(self):
-        """Save AI/ML specific blocklist"""
-        if not self.config.enabled or not self.config.separate_list:
-            return
-        
-        ai_domains = self.domain_set.get_by_category('ai_ml')
-        
-        if not ai_domains:
-            logging.warning("⚠️ No AI/ML domains detected")
-            return
-        
-        # Create directory if needed
-        self.config.output_file.parent.mkdir(parents=True, exist_ok=True)
-        
-        async with aiofiles.open(self.config.output_file, 'w', encoding='utf-8') as f:
-            await f.write(f"# AI/ML Services Blocklist\n")
-            await f.write(f"# Generated: {datetime.now(timezone.utc).isoformat()}\n")
-            await f.write(f"# Total AI/ML domains: {len(ai_domains):,}\n")
-            await f.write(f"# Blocks: ChatGPT, Claude, Gemini, Copilot, and other AI services\n\n")
-            
-            for domain in sorted(ai_domains):
-                await f.write(f"0.0.0.0 {domain}\n")
-        
-        # Also create compressed version
-        if self.config.output_file.exists():
-            with open(self.config.output_file, 'rb') as f_in:
-                with gzip.open(f"{self.config.output_file}.gz", 'wb') as f_out:
-                    f_out.writelines(f_in)
-        
-        logging.info(f"🤖 AI detector saved: {len(ai_domains):,} domains to {self.config.output_file}")
-
-# ============================================================================
-# MAIN BUILDER
+# MAIN BUILDER - ONE FILE ONLY
 # ============================================================================
 
 async def main_async():
-    """Main async entry point"""
+    """Main async entry point - creates ONLY blocklist.txt"""
     settings = AppSettings()
     
-    # Initialize sources (all enabled by default)
+    # Initialize sources
     sources = [
         SourceConfig(
             name="OISD Big",
             url="https://big.oisd.nl/domains",
             source_type="domains",
             priority=1,
-            update_interval=43200  # 12 hours
+            update_interval=43200
         ),
         SourceConfig(
             name="AdAway",
             url="https://adaway.org/hosts.txt",
             source_type="hosts",
             priority=2,
-            update_interval=86400  # 24 hours
+            update_interval=86400
         ),
         SourceConfig(
             name="URLhaus",
             url="https://urlhaus.abuse.ch/downloads/hostfile/",
             source_type="hosts",
             priority=3,
-            update_interval=3600  # 1 hour for malware
+            update_interval=3600
         ),
         SourceConfig(
             name="StevenBlack",
@@ -520,13 +475,6 @@ async def main_async():
             source_type="hosts",
             priority=4,
             update_interval=86400
-        ),
-        SourceConfig(
-            name="EasyList",
-            url="https://easylist.to/easylist/easylist.txt",
-            source_type="adblock",
-            priority=5,
-            enabled=False  # Disabled by default (very large)
         ),
     ]
     
@@ -540,24 +488,21 @@ async def main_async():
     unique_count = 0
     
     logging.info("=" * 70)
-    logging.info("🚀 DNS Security Blocklist Builder v17.2.0")
+    logging.info("🚀 DNS Security Blocklist Builder v17.2.0 (All-in-One)")
     logging.info("=" * 70)
     logging.info(f"📊 Max domains: {settings.performance.max_domains_total:,}")
     logging.info(f"🤖 AI detection: {'enabled' if settings.ai.enabled else 'disabled'}")
     logging.info(f"🗜️  Compression: {'enabled' if settings.output.compressed else 'disabled'}")
-    logging.info(f"📁 Output directory: {Path.cwd()}")
+    logging.info(f"📁 Output: {settings.output.main_blocklist}")
     logging.info("=" * 70)
     
-    # Create cache
     source_cache = SourceCache(settings.cache_dir)
     
     async with aiohttp.ClientSession() as session:
         processor = SourceProcessor(session, settings, source_cache)
         
-        # Create output directories
         settings.output.main_blocklist.parent.mkdir(parents=True, exist_ok=True)
         
-        # Process sources in priority order
         for src in sorted(sources, key=lambda x: x.priority):
             if not src.enabled:
                 logging.info(f"⏭️  Skipping {src.name} (disabled)")
@@ -589,65 +534,42 @@ async def main_async():
             if unique_count >= settings.performance.max_domains_total:
                 break
         
-        # Save main blocklist
-        logging.info("\n💾 Saving main blocklist...")
+        # Save ONE blocklist file with categories in comments
+        logging.info("\n💾 Saving blocklist...")
+        
+        stats = domain_set.get_stats()
+        all_records = domain_set.get_all_with_metadata()
+        
         async with aiofiles.open(settings.output.main_blocklist, 'w', encoding='utf-8') as f:
-            await f.write(f"# DNS Security Blocklist\n")
+            # Header
+            await f.write(f"# DNS Security Blocklist - All-in-One\n")
             await f.write(f"# Generated: {datetime.now(timezone.utc).isoformat()}\n")
             await f.write(f"# Version: 17.2.0\n")
             await f.write(f"# Total domains: {unique_count:,}\n")
-            await f.write(f"# Active sources: {len([s for s in sources if s.enabled])}\n")
-            await f.write(f"# Format: Hosts file (0.0.0.0 domain.com)\n\n")
+            await f.write(f"# Active sources: {len([s for s in sources if s.enabled])}\n\n")
             
-            # Write domains in sorted order
-            for domain in sorted(domain_set._set):
-                await f.write(f"0.0.0.0 {domain}\n")
+            # Category statistics in header
+            await f.write(f"# Category breakdown:\n")
+            for cat, count in stats['categories'].items():
+                if count > 0:
+                    emoji = {'ai_ml': '🤖', 'ads': '📢', 'tracking': '👁️', 'malware': '💀', 'other': '📄'}.get(cat, '📄')
+                    await f.write(f"#   {emoji} {cat.upper()}: {count:,}\n")
+            await f.write(f"#\n")
+            await f.write(f"# Format: 0.0.0.0 domain.com # category\n")
+            await f.write(f"#\n\n")
+            
+            # Write all domains with categories
+            for record in sorted(all_records, key=lambda x: x.domain):
+                category_emoji = {
+                    'ai_ml': '🤖', 'ads': '📢', 'tracking': '👁️', 'malware': '💀', 'other': '📄'
+                }.get(record.category, '📄')
+                await f.write(f"0.0.0.0 {record.domain} # {category_emoji} {record.category.upper()}\n")
         
         # Create compressed version
         if settings.output.compressed:
             with open(settings.output.main_blocklist, 'rb') as f_in:
                 with gzip.open(f"{settings.output.main_blocklist}.gz", 'wb') as f_out:
                     f_out.writelines(f_in)
-        
-        # Save dynamic list (ads + tracking)
-        logging.info("💾 Saving dynamic list (ads + tracking)...")
-        dynamic_domains = domain_set.get_by_category('ads') | domain_set.get_by_category('tracking')
-        
-        async with aiofiles.open(settings.output.dynamic_list, 'w', encoding='utf-8') as f:
-            await f.write(f"# Dynamic Blocklist (Ads & Trackers)\n")
-            await f.write(f"# Generated: {datetime.now(timezone.utc).isoformat()}\n")
-            await f.write(f"# Total: {len(dynamic_domains):,}\n")
-            await f.write(f"# Categories: Ads + Tracking\n\n")
-            for domain in sorted(dynamic_domains):
-                await f.write(f"0.0.0.0 {domain}\n")
-        
-        # Create compressed version
-        if settings.output.compressed:
-            with open(settings.output.dynamic_list, 'rb') as f_in:
-                with gzip.open(f"{settings.output.dynamic_list}.gz", 'wb') as f_out:
-                    f_out.writelines(f_in)
-        
-        # Save AI detector list
-        if settings.ai.enabled:
-            ai_detector = AIDetector(settings.ai, domain_set)
-            await ai_detector.save_ai_list()
-        
-        # Also save malware list if there are any
-        malware_domains = domain_set.get_by_category('malware')
-        if malware_domains:
-            malware_file = Path("./malware.txt")
-            logging.info(f"💾 Saving malware list ({len(malware_domains):,} domains)...")
-            async with aiofiles.open(malware_file, 'w', encoding='utf-8') as f:
-                await f.write(f"# Malware Blocklist\n")
-                await f.write(f"# Generated: {datetime.now(timezone.utc).isoformat()}\n")
-                await f.write(f"# Total: {len(malware_domains):,}\n\n")
-                for domain in sorted(malware_domains):
-                    await f.write(f"0.0.0.0 {domain}\n")
-            
-            if settings.output.compressed:
-                with open(malware_file, 'rb') as f_in:
-                    with gzip.open(f"{malware_file}.gz", 'wb') as f_out:
-                        f_out.writelines(f_in)
     
     # Print summary
     stats = domain_set.get_stats()
@@ -661,27 +583,24 @@ async def main_async():
     logging.info(f"\n📁 Category breakdown:")
     for cat, count in stats['categories'].items():
         if count > 0:
-            emoji = {
-                'ai_ml': '🤖', 'ads': '📢', 'tracking': '👁️', 
-                'malware': '💀', 'other': '📄'
-            }.get(cat, '📄')
+            emoji = {'ai_ml': '🤖', 'ads': '📢', 'tracking': '👁️', 'malware': '💀', 'other': '📄'}.get(cat, '📄')
             logging.info(f"   {emoji} {cat.upper()}: {count:,}")
     
-    # File sizes
-    logging.info(f"\n💾 Output files:")
-    for filepath in [settings.output.main_blocklist, settings.output.dynamic_list, settings.ai.output_file]:
-        if filepath.exists():
-            size = filepath.stat().st_size
-            if size < 1024:
-                size_str = f"{size} B"
-            elif size < 1024 * 1024:
-                size_str = f"{size / 1024:.2f} KB"
-            else:
-                size_str = f"{size / (1024 * 1024):.2f} MB"
-            logging.info(f"   📄 {filepath.name}: {size_str}")
-            
-            # Show compressed size
-            gz_file = Path(f"{filepath}.gz")
+    # File size
+    if settings.output.main_blocklist.exists():
+        size = settings.output.main_blocklist.stat().st_size
+        if size < 1024:
+            size_str = f"{size} B"
+        elif size < 1024 * 1024:
+            size_str = f"{size / 1024:.2f} KB"
+        else:
+            size_str = f"{size / (1024 * 1024):.2f} MB"
+        
+        logging.info(f"\n💾 Output:")
+        logging.info(f"   📄 {settings.output.main_blocklist.name}: {size_str}")
+        
+        if settings.output.compressed:
+            gz_file = Path(f"{settings.output.main_blocklist}.gz")
             if gz_file.exists():
                 gz_size = gz_file.stat().st_size
                 if gz_size < 1024:
