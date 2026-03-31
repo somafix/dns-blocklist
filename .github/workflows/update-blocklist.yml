@@ -22,7 +22,8 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install aiohttp aiofiles pydantic pydantic-settings tenacity
+          # Устанавливаем Pydantic 1.x, чтобы старый код работал без правок
+          pip install aiohttp aiofiles tenacity "pydantic<2.0"
       
       - name: Build blocklists
         run: |
