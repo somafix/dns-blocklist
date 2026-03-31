@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-DNS Security Blocklist Builder - ENTERPRISE EDITION (v16.0.1)
-Fixed: Configuration loading, async main, optional dependencies
+DNS Security Blocklist Builder - ENTERPRISE EDITION (v16.0.2)
+Fixed: Made defusedxml optional, removed hard requirement
 """
 
 import argparse
@@ -41,15 +41,19 @@ try:
     BLOOM_AVAILABLE = True
 except ImportError:
     BLOOM_AVAILABLE = False
-    print("Warning: pybloom-live not installed. Using fallback deduplication.", file=sys.stderr)
+    print("⚠️  Warning: pybloom-live not installed. Using fallback deduplication (set).", file=sys.stderr)
+    print("   To install: pip install pybloom-live", file=sys.stderr)
 
+# defusedxml is optional - only needed for XML sources
 try:
     import defusedxml.ElementTree as ET
     DEFUSED_XML_AVAILABLE = True
 except ImportError:
     DEFUSED_XML_AVAILABLE = False
-    print("ERROR: defusedxml is REQUIRED. Install: pip install defusedxml", file=sys.stderr)
-    sys.exit(1)
+    # Not a hard requirement for hosts/domains sources
+    print("ℹ️  Info: defusedxml not installed. XML sources will use standard parser.", file=sys.stderr)
+    print("   To install: pip install defusedxml (recommended for security)", file=sys.stderr)
+    import xml.etree.ElementTree as ET
 
 # ============================================================================
 # CONFIGURATION
@@ -106,7 +110,6 @@ class AppConfig:
         '100.64.0.0/10', '192.0.2.0/24', '198.51.100.0/24', '203.0.113.0/24'
     )
     
-    # Allowed domains for download sources - use class variable instead of field
     # AI Detection threshold
     AI_CONFIDENCE_THRESHOLD: float = float(os.getenv("DNSBL_AI_THRESHOLD", "0.65"))
     
@@ -115,13 +118,14 @@ class AppConfig:
     LOG_JSON: bool = os.getenv("DNSBL_LOG_JSON", "true").lower() == "true"
 
 
-# Define ALLOWED_DOMAINS as a class variable (not in dataclass)
+# Define ALLOWED_DOMAINS as a global constant
 ALLOWED_DOMAINS: Set[str] = {
     'raw.githubusercontent.com', 'raw.githubusercontentusercontent.com',
     'raw.github.com', 'github.com', 'gist.github.com',
     'gitlab.com', 'bitbucket.org', 'oisd.nl', 'adaway.org',
     'urlhaus.abuse.ch', 'threatfox.abuse.ch', 'hole.cert.pl',
-    'someonewhocares.org', 'pgl.yoyo.org', 's3.amazonaws.com'
+    'someonewhocares.org', 'pgl.yoyo.org', 's3.amazonaws.com',
+    'hosts-file.net', 'ransomwaretracker.abuse.ch', 'feodotracker.abuse.ch'
 }
 
 
@@ -138,10 +142,6 @@ def validate_config() -> None:
             ipaddress.ip_network(net)
         except ValueError as e:
             raise ValueError(f"Invalid blocked IP range {net}: {e}")
-    
-    # Validate allowed domains
-    for domain in ALLOWED_DOMAINS:
-        assert domain and '.' in domain, f"Invalid allowed domain: {domain}"
 
 
 # ============================================================================
@@ -165,7 +165,7 @@ class StructuredLogger:
         self.logger.addHandler(handler)
         self._context: Dict[str, Any] = {
             "app": "dns-blocklist-builder",
-            "version": "16.0.1"
+            "version": "16.0.2"
         }
     
     def bind(self, **kwargs: Any) -> 'StructuredLogger':
@@ -262,6 +262,11 @@ class TTLCache(Generic[T]):
             self._access_order.clear()
             self._hits = 0
             self._misses = 0
+    
+    @property
+    def hit_rate(self) -> float:
+        total = self._hits + self._misses
+        return self._hits / total if total > 0 else 0.0
 
 
 # ============================================================================
@@ -298,6 +303,7 @@ class DomainRecord:
     timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     
     def to_hosts_entry(self) -> str:
+        # Safe domain sanitization
         safe_domain = re.sub(r'[\x00-\x1f\x7f\s#|&]', '', self.domain)[:AppConfig.MAX_DOMAIN_LEN]
         
         if self.ai_confidence >= AppConfig.AI_CONFIDENCE_THRESHOLD:
@@ -330,6 +336,7 @@ class PathValidator:
             working_resolved / "output",
             working_resolved / "blocklists",
             Path("/tmp") / f"dnsbl_{os.getenv('USER', 'unknown')}",
+            Path("/home/runner/work") / "dns-blocklist" / "dns-blocklist",  # GitHub Actions
         ]
         
         allowed = False
@@ -357,12 +364,14 @@ class PathValidator:
 # ============================================================================
 
 class DeduplicationManager:
-    """Manages domain deduplication."""
+    """Manages domain deduplication with optional Bloom filter."""
     
-    __slots__ = ('_use_bloom', '_bloom', '_confirmed', '_domains', '_false_positives')
+    __slots__ = ('_use_bloom', '_bloom', '_confirmed', '_domains', '_false_positives', '_logger')
     
     def __init__(self, expected_elements: int, error_rate: float = 0.001, logger: Optional[StructuredLogger] = None):
         self._use_bloom = AppConfig.USE_BLOOM_FILTER
+        self._logger = logger
+        self._false_positives = 0
         
         if self._use_bloom:
             self._bloom = ScalableBloomFilter(
@@ -371,12 +380,10 @@ class DeduplicationManager:
             )
             self._confirmed: Set[str] = set()
             self._domains = None
-            self._false_positives = 0
         else:
             self._domains: Set[str] = set()
             self._bloom = None
             self._confirmed = None
-            self._false_positives = 0
     
     def add(self, domain: str) -> bool:
         if not self._use_bloom:
@@ -385,12 +392,15 @@ class DeduplicationManager:
             self._domains.add(domain)
             return False
         
+        # Bloom filter mode
         if domain in self._confirmed:
             return True
         
         if domain in self._bloom:
             self._confirmed.add(domain)
             self._false_positives += 1
+            if self._logger and self._false_positives % 10000 == 0:
+                self._logger.warning(f"Bloom filter false positives: {self._false_positives}")
             return True
         
         self._bloom.add(domain)
@@ -400,6 +410,16 @@ class DeduplicationManager:
         if self._use_bloom:
             return len(self._bloom)
         return len(self._domains)
+    
+    @property
+    def stats(self) -> Dict[str, Any]:
+        if self._use_bloom:
+            return {
+                "use_bloom": True,
+                "unique": len(self._bloom),
+                "false_positives": self._false_positives
+            }
+        return {"use_bloom": False, "unique": len(self._domains)}
 
 
 # ============================================================================
@@ -425,7 +445,10 @@ class SSRFProtector:
                 pass
         
         self._checked_urls: TTLCache[bool] = TTLCache(maxsize=10000, ttl_seconds=3600)
-        self._dns_cache: TTLCache[List[str]] = TTLCache(maxsize=AppConfig.DNS_CACHE_SIZE, ttl_seconds=AppConfig.DNS_CACHE_TTL)
+        self._dns_cache: TTLCache[List[str]] = TTLCache(
+            maxsize=AppConfig.DNS_CACHE_SIZE, 
+            ttl_seconds=AppConfig.DNS_CACHE_TTL
+        )
         self._rate_limiter = asyncio.Semaphore(10)
     
     async def validate_url(self, url: str) -> None:
@@ -439,6 +462,7 @@ class SSRFProtector:
             await self._validate_url_impl(normalized)
         
         await self._checked_urls.set(normalized, True)
+        self._logger.debug("URL validated", url=url)
     
     async def _validate_url_impl(self, url: str) -> None:
         parsed = urlparse(url)
@@ -514,7 +538,10 @@ class DomainValidator:
     
     def __init__(self, logger: StructuredLogger):
         self._logger = logger.bind(component="domain_validator")
-        self._cache: TTLCache[bool] = TTLCache(maxsize=AppConfig.DNS_CACHE_SIZE, ttl_seconds=AppConfig.DNS_CACHE_TTL)
+        self._cache: TTLCache[bool] = TTLCache(
+            maxsize=AppConfig.DNS_CACHE_SIZE, 
+            ttl_seconds=AppConfig.DNS_CACHE_TTL
+        )
     
     async def is_valid(self, domain: str) -> bool:
         if len(domain) > AppConfig.MAX_INPUT_LEN:
@@ -547,7 +574,10 @@ class DomainValidator:
             if label.startswith('-') or label.endswith('-'):
                 return False
         
-        return bool(self.DOMAIN_PATTERN.match(domain))
+        try:
+            return bool(self.DOMAIN_PATTERN.match(domain))
+        except re.error:
+            return False
     
     async def cleanup(self) -> None:
         await self._cache.clear()
@@ -558,27 +588,37 @@ class DomainValidator:
 # ============================================================================
 
 class AITrackerDetector:
-    """AI-powered tracker detection."""
+    """AI-powered tracker detection with pattern matching."""
     
     TRACKER_PATTERNS = (
         (r'\banalytics\b', 'analytics', 0.82),
         (r'\bgoogle[-_]analytics\b', 'google_analytics', 0.95),
         (r'\bgoogletagmanager\b', 'google_tag_manager', 0.92),
+        (r'\bgtm\b', 'google_tag_manager', 0.85),
         (r'\bfirebase\b', 'firebase_analytics', 0.92),
         (r'\bamplitude\b', 'amplitude', 0.90),
         (r'\bmixpanel\b', 'mixpanel', 0.90),
         (r'\bsegment\b', 'segment', 0.90),
         (r'\btracking\b', 'tracking', 0.80),
         (r'\bpixel\b', 'tracking_pixel', 0.85),
+        (r'\bbeacon\b', 'tracking_beacon', 0.85),
         (r'\bdoubleclick\b', 'doubleclick', 0.95),
         (r'\badservice\b', 'ad_service', 0.85),
         (r'\bcriteo\b', 'criteo', 0.85),
         (r'\bfacebook\b', 'facebook_pixel', 0.95),
+        (r'\btwitter\b', 'twitter_tracker', 0.82),
+        (r'\bsentry\b', 'error_tracking', 0.75),
+        (r'\bhotjar\b', 'user_behavior', 0.85),
+        (r'\bclarity\b', 'microsoft_analytics', 0.85),
+        (r'\bappsflyer\b', 'appsflyer', 0.90),
     )
     
     def __init__(self, logger: StructuredLogger):
         self._logger = logger.bind(component="ai_detector")
-        self._cache: TTLCache[Tuple[float, Tuple[str, ...]]] = TTLCache(maxsize=AppConfig.AI_CACHE_SIZE, ttl_seconds=AppConfig.AI_CACHE_TTL)
+        self._cache: TTLCache[Tuple[float, Tuple[str, ...]]] = TTLCache(
+            maxsize=AppConfig.AI_CACHE_SIZE, 
+            ttl_seconds=AppConfig.AI_CACHE_TTL
+        )
         self._patterns = [(re.compile(p, re.IGNORECASE), r, c) for p, r, c in self.TRACKER_PATTERNS]
     
     async def analyze(self, domain: str) -> Tuple[float, Tuple[str, ...]]:
@@ -631,7 +671,8 @@ class SourceDefinition:
 # ============================================================================
 
 class StreamingSourceProcessor:
-    def __init__(self, session: aiohttp.ClientSession, validator: DomainValidator, detector: Optional[AITrackerDetector], logger: StructuredLogger):
+    def __init__(self, session: aiohttp.ClientSession, validator: DomainValidator, 
+                 detector: Optional[AITrackerDetector], logger: StructuredLogger):
         self._session = session
         self._validator = validator
         self._detector = detector
@@ -741,7 +782,8 @@ class BlocklistBuilder:
         self._start_time = 0.0
         self._deduplicator = DeduplicationManager(
             expected_elements=AppConfig.MAX_DOMAINS_TOTAL,
-            error_rate=AppConfig.BLOOM_FILTER_ERROR_RATE
+            error_rate=AppConfig.BLOOM_FILTER_ERROR_RATE,
+            logger=self._logger
         )
         self._sources_processed = 0
         self._sources_failed = 0
@@ -752,7 +794,11 @@ class BlocklistBuilder:
     async def build(self, sources: List[SourceDefinition]) -> bool:
         self._start_time = time.time()
         
-        self._logger.info("Starting blocklist build", version="16.0.1", sources=len(sources))
+        self._logger.info("Starting blocklist build", 
+                         version="16.0.2", 
+                         sources=len(sources),
+                         use_bloom=AppConfig.USE_BLOOM_FILTER,
+                         max_domains=AppConfig.MAX_DOMAINS_TOTAL)
         
         try:
             async with self._create_session() as session:
@@ -767,6 +813,7 @@ class BlocklistBuilder:
                     
                     for source in sorted(sources, key=lambda s: s.priority):
                         if self._shutdown_requested:
+                            self._logger.warning("Shutdown requested, stopping build")
                             break
                         
                         try:
@@ -806,7 +853,7 @@ class BlocklistBuilder:
                 return True
                 
         except Exception as e:
-            self._logger.critical("Build failed", error=str(e))
+            self._logger.critical("Build failed", error=str(e), exc_info=True)
             return False
     
     @asynccontextmanager
@@ -829,23 +876,36 @@ class BlocklistBuilder:
         async with aiohttp.ClientSession(
             connector=connector,
             timeout=timeout,
-            headers={'User-Agent': f'DNS-Blocklist-Builder/16.0.1'}
+            headers={'User-Agent': f'DNS-Blocklist-Builder/16.0.2 (+https://github.com/security/dns-blocklist)'}
         ) as session:
             yield session
     
     async def _write_header(self, outfile) -> None:
-        await outfile.write("# DNS Security Blocklist v16.0.1\n")
+        await outfile.write("# DNS Security Blocklist v16.0.2\n")
         await outfile.write(f"# Generated: {datetime.now(timezone.utc).isoformat()}\n")
         await outfile.write(f"# Build ID: {uuid.uuid4().hex[:8]}\n")
-        await outfile.write("# Format: 0.0.0.0 domain\n\n")
+        await outfile.write("# Format: 0.0.0.0 domain [AI detection info]\n")
+        await outfile.write("# This blocklist protects against trackers, ads, and malicious domains\n\n")
     
     async def _write_footer(self, outfile) -> None:
         duration = time.time() - self._start_time
-        await outfile.write("\n# Statistics:\n")
+        
+        await outfile.write("\n# ============================================================================\n")
+        await outfile.write("# Statistics:\n")
         await outfile.write(f"# - Total unique domains: {self._total_valid:,}\n")
-        await outfile.write(f"# - AI detected: {self._ai_detected:,}\n")
-        await outfile.write(f"# - Duplicates: {self._duplicates:,}\n")
+        await outfile.write(f"# - AI detected trackers: {self._ai_detected:,}\n")
+        await outfile.write(f"# - Duplicates removed: {self._duplicates:,}\n")
+        await outfile.write(f"# - Sources processed: {self._sources_processed}\n")
+        await outfile.write(f"# - Sources failed: {self._sources_failed}\n")
         await outfile.write(f"# - Build time: {duration:.2f}s\n")
+        await outfile.write(f"# - Build timestamp: {datetime.now(timezone.utc).isoformat()}\n")
+        
+        if AppConfig.USE_BLOOM_FILTER:
+            stats = self._deduplicator.stats
+            await outfile.write(f"# - Deduplication: Bloom filter (error rate: {AppConfig.BLOOM_FILTER_ERROR_RATE:.3%})\n")
+            await outfile.write(f"# - False positives: {stats.get('false_positives', 0):,}\n")
+        
+        await outfile.write("# ============================================================================\n")
     
     def _print_summary(self) -> None:
         duration = time.time() - self._start_time
@@ -857,10 +917,25 @@ class BlocklistBuilder:
             "duplicates": self._duplicates,
             "ai_detected": self._ai_detected,
             "sources_processed": self._sources_processed,
-            "sources_failed": self._sources_failed
+            "sources_failed": self._sources_failed,
+            "use_bloom": AppConfig.USE_BLOOM_FILTER,
+            "output_path": str(self._output_path)
         }
         
+        # Output machine-readable result for CI/CD
         print(json.dumps(output, indent=2))
+        
+        # Human-readable summary to stderr
+        print("\n" + "=" * 70, file=sys.stderr)
+        print("DNS Blocklist Build Complete", file=sys.stderr)
+        print("=" * 70, file=sys.stderr)
+        print(f"Duration: {duration:.2f}s", file=sys.stderr)
+        print(f"Sources: {self._sources_processed} processed, {self._sources_failed} failed", file=sys.stderr)
+        print(f"Domains: {self._total_valid:,} unique", file=sys.stderr)
+        print(f"Duplicates: {self._duplicates:,}", file=sys.stderr)
+        print(f"AI Detected: {self._ai_detected:,}", file=sys.stderr)
+        print(f"Output: {self._output_path}", file=sys.stderr)
+        print("=" * 70, file=sys.stderr)
 
 
 # ============================================================================
@@ -885,13 +960,19 @@ class SourceManager:
 
 async def main_async() -> int:
     """Async main entry point."""
-    parser = argparse.ArgumentParser(description="DNS Security Blocklist Builder v16.0.1")
-    parser.add_argument("-o", "--output", type=Path, default=Path("./blocklist.txt"), help="Output file path")
-    parser.add_argument("--max-domains", type=int, help="Maximum domains to process")
-    parser.add_argument("--timeout", type=int, help="Download timeout in seconds")
+    parser = argparse.ArgumentParser(
+        description="DNS Security Blocklist Builder v16.0.2",
+        formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument("-o", "--output", type=Path, default=Path("./blocklist.txt"), 
+                       help="Output file path (default: ./blocklist.txt)")
+    parser.add_argument("--max-domains", type=int, 
+                       help=f"Maximum domains to process (default: {AppConfig.MAX_DOMAINS_TOTAL})")
+    parser.add_argument("--timeout", type=int, 
+                       help=f"Download timeout in seconds (default: {AppConfig.HTTP_TIMEOUT})")
     parser.add_argument("--no-bloom", action="store_true", help="Disable Bloom filter")
     parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose logging")
-    parser.add_argument("--version", action="version", version="DNS Blocklist Builder v16.0.1")
+    parser.add_argument("--version", action="version", version="DNS Blocklist Builder v16.0.2")
     
     args = parser.parse_args()
     
@@ -929,7 +1010,7 @@ async def main_async() -> int:
         logger.warning("Interrupted by user")
         return 130
     except Exception as e:
-        logger.critical("Fatal error", error=str(e))
+        logger.critical("Fatal error", error=str(e), exc_info=args.verbose)
         return 1
 
 
