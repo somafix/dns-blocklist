@@ -1,15 +1,15 @@
 # DNS Security Blocklist - All-in-One
-# Generated: 2026-04-01T07:25:45.433801+00:00
+# Generated: 2026-04-01T13:25:54.584025+00:00
 # Version: 17.2.0
-# Total domains: 88,820
+# Total domains: 88,833
 # Active sources: 4
 
 # Category breakdown:
-#   🤖 AI_ML: 4,307
+#   🤖 AI_ML: 4,308
 #   📢 ADS: 11,107
 #   👁️ TRACKING: 3,250
 #   💀 MALWARE: 22
-#   📄 OTHER: 70,134
+#   📄 OTHER: 70,146
 #
 # Format: 0.0.0.0 domain.com # category
 #
@@ -9619,6 +9619,7 @@
 0.0.0.0 auronixpro.com # 📄 OTHER
 0.0.0.0 aurora-fundt.net # 📄 OTHER
 0.0.0.0 aurora-nuinvest.com # 📄 OTHER
+0.0.0.0 aurorabolnica.co.rs # 📄 OTHER
 0.0.0.0 aurorabuildings.com # 📄 OTHER
 0.0.0.0 auroraharborgate.com # 📄 OTHER
 0.0.0.0 auroravalleycrest.com # 📄 OTHER
@@ -11021,7 +11022,6 @@
 0.0.0.0 bgtop100.com # 📄 OTHER
 0.0.0.0 bh.contextweb.com # 📄 OTHER
 0.0.0.0 bhallq.seattlesportbetting.com # 📄 OTHER
-0.0.0.0 bharattank.me # 📄 OTHER
 0.0.0.0 bharattdaily.com # 🤖 AI_ML
 0.0.0.0 bhcumsc.com # 📄 OTHER
 0.0.0.0 bhgdiabeticliving.112.2o7.net # 📄 OTHER
@@ -15413,7 +15413,6 @@
 0.0.0.0 cloudmobi.net # 📄 OTHER
 0.0.0.0 cloudncable.casa # 📄 OTHER
 0.0.0.0 cloudneturup.pro # 📄 OTHER
-0.0.0.0 cloudnewsfeed.com # 📄 OTHER
 0.0.0.0 cloudsecurityinsightld.info # 📄 OTHER
 0.0.0.0 cloudserver098095.home.pl # 📄 OTHER
 0.0.0.0 cloudservice14.kingsoft-office-service.com # 📄 OTHER
@@ -17945,7 +17944,6 @@
 0.0.0.0 dcstest.wtlive.com # 📄 OTHER
 0.0.0.0 dctracking.com # 👁️ TRACKING
 0.0.0.0 dctrk.datedeskads.com # 📢 ADS
-0.0.0.0 dcwblida.dz # 📄 OTHER
 0.0.0.0 dcys.ijinshan.com # 📄 OTHER
 0.0.0.0 dd.connextra.com # 📄 OTHER
 0.0.0.0 dd.nytimes.com # 📄 OTHER
@@ -19344,7 +19342,6 @@
 0.0.0.0 drophold.club # 📄 OTHER
 0.0.0.0 dropkh.com # 📄 OTHER
 0.0.0.0 dropkick.oewabox.at # 📄 OTHER
-0.0.0.0 dropmb.com # 📄 OTHER
 0.0.0.0 dropnfilldumpster.com # 📄 OTHER
 0.0.0.0 droppeddatabaserenewal.com # 📄 OTHER
 0.0.0.0 droshsilur.rest # 📄 OTHER
@@ -19579,6 +19576,7 @@
 0.0.0.0 dyviceu.pro # 📄 OTHER
 0.0.0.0 dz.mmstat.com # 👁️ TRACKING
 0.0.0.0 dz2fz0bgyq9tn.cloudfront.net # 📄 OTHER
+0.0.0.0 dz7shop.com # 📄 OTHER
 0.0.0.0 dzeqq.com # 📄 OTHER
 0.0.0.0 dzialbezpieczenstwa.com # 📄 OTHER
 0.0.0.0 dziennik-info.x9.eu # 📄 OTHER
@@ -20392,6 +20390,7 @@
 0.0.0.0 em1.yoursantander.co.uk # 📄 OTHER
 0.0.0.0 ema.hostvn.net # 📄 OTHER
 0.0.0.0 emaarpropertie-ae.org # 📄 OTHER
+0.0.0.0 emacra.com # 📄 OTHER
 0.0.0.0 emagicone.fr # 📄 OTHER
 0.0.0.0 email-link.adtidy.info # 🤖 AI_ML
 0.0.0.0 email-link.adtidy.net # 🤖 AI_ML
@@ -20916,6 +20915,7 @@
 0.0.0.0 espritensemble.com # 📄 OTHER
 0.0.0.0 espub.fr # 📄 OTHER
 0.0.0.0 esquant3.com # 📄 OTHER
+0.0.0.0 esr.ro # 📄 OTHER
 0.0.0.0 essantielontwerp.com # 📄 OTHER
 0.0.0.0 essaygiants.com # 📄 OTHER
 0.0.0.0 esse-at-commodi.autos # 📄 OTHER
@@ -24672,7 +24672,6 @@
 0.0.0.0 gogomall.shop # 📄 OTHER
 0.0.0.0 gogreeninbox.com # 📄 OTHER
 0.0.0.0 goharbor.digital # 📄 OTHER
-0.0.0.0 gohelpertechnologies.in # 📄 OTHER
 0.0.0.0 goiainter.rest # 🤖 AI_ML
 0.0.0.0 goingplatinum.com # 📄 OTHER
 0.0.0.0 gojiberry500.pl # 📄 OTHER
@@ -26209,6 +26208,7 @@
 0.0.0.0 hobbitowa.pl # 📄 OTHER
 0.0.0.0 hobbyonlyphotography.com # 📄 OTHER
 0.0.0.0 hobicmain.web.app # 🤖 AI_ML
+0.0.0.0 hobobot.net # 📄 OTHER
 0.0.0.0 hobohandbag.click # 📄 OTHER
 0.0.0.0 hocgeese.com # 📄 OTHER
 0.0.0.0 hocolats-voisin.fr # 📄 OTHER
@@ -28933,6 +28933,7 @@
 0.0.0.0 jellyy8bean.info # 📄 OTHER
 0.0.0.0 jem-mialwe.com # 📄 OTHER
 0.0.0.0 jem-mialwe.net # 📄 OTHER
+0.0.0.0 jem-mialwe.org # 📄 OTHER
 0.0.0.0 jenkins.younetmedia.com # 📄 OTHER
 0.0.0.0 jenkinssamantha.shop # 📄 OTHER
 0.0.0.0 jenniesgalley.com # 📄 OTHER
@@ -29861,6 +29862,7 @@
 0.0.0.0 keepyoungphone.bid # 📄 OTHER
 0.0.0.0 kefaloniadeals.com # 📢 ADS
 0.0.0.0 kefiku.com # 📄 OTHER
+0.0.0.0 keilo-jermailer.org # 🤖 AI_ML
 0.0.0.0 keisu02.eproof.com # 📄 OTHER
 0.0.0.0 keitaro1.cityads.com # 📢 ADS
 0.0.0.0 keithgilleardphotography.com # 📄 OTHER
@@ -30993,6 +30995,7 @@
 0.0.0.0 lehupee.com # 📄 OTHER
 0.0.0.0 leieccge.newhealthsources.com # 📄 OTHER
 0.0.0.0 leighties.fr # 📄 OTHER
+0.0.0.0 lejrmakei.com # 📄 OTHER
 0.0.0.0 lejupoi.com # 📄 OTHER
 0.0.0.0 leket.fr # 📄 OTHER
 0.0.0.0 lekimubirafob.pro # 📄 OTHER
@@ -32478,6 +32481,7 @@
 0.0.0.0 m.exactag.com # 📄 OTHER
 0.0.0.0 m.fexiaen.com # 📄 OTHER
 0.0.0.0 m.friendlyduck.com # 📄 OTHER
+0.0.0.0 m.hy-union.com # 📄 OTHER
 0.0.0.0 m.ib.sin1.geoadnxs.com # 📢 ADS
 0.0.0.0 m.irs01.com # 📄 OTHER
 0.0.0.0 m.jkoa.co.kr # 📄 OTHER
@@ -32863,6 +32867,7 @@
 0.0.0.0 marcofundevo-es.fyi # 📄 OTHER
 0.0.0.0 marcofundevo.net # 📄 OTHER
 0.0.0.0 marcopolo.uk.net # 📄 OTHER
+0.0.0.0 marcuswelbyclinic.click # 📄 OTHER
 0.0.0.0 marcwhite.shop # 📄 OTHER
 0.0.0.0 marek212.github.io # 📄 OTHER
 0.0.0.0 marekporwol.pl # 📄 OTHER
@@ -34464,6 +34469,7 @@
 0.0.0.0 monclerdown2014.com # 📄 OTHER
 0.0.0.0 mondayblog.pl # 📄 OTHER
 0.0.0.0 mondaymornings.co # 📄 OTHER
+0.0.0.0 mondesignweb.com # 📄 OTHER
 0.0.0.0 mondespersistants.fr # 📄 OTHER
 0.0.0.0 mondialrealy.fr # 📄 OTHER
 0.0.0.0 mondiarelay.fr # 📄 OTHER
@@ -34991,6 +34997,7 @@
 0.0.0.0 mybbc-analytics.files.bbci.co.uk # 👁️ TRACKING
 0.0.0.0 mybeautytea.com # 📄 OTHER
 0.0.0.0 mybgbgclojp.com # 📄 OTHER
+0.0.0.0 mybiggestjoy.bond # 📄 OTHER
 0.0.0.0 mybinaryoptionsrobot.com # 📄 OTHER
 0.0.0.0 mybloglog.com # 📄 OTHER
 0.0.0.0 mybrightidea.co # 📄 OTHER
@@ -42163,6 +42170,7 @@
 0.0.0.0 protestcopy.com # 📄 OTHER
 0.0.0.0 proteunder.rest # 📄 OTHER
 0.0.0.0 protexiagpt-app.com # 📄 OTHER
+0.0.0.0 protherapycenter.com # 📄 OTHER
 0.0.0.0 prothokkracic.info # 📄 OTHER
 0.0.0.0 protolabsy.com # 📄 OTHER
 0.0.0.0 proton-tm.com # 📄 OTHER
@@ -51714,6 +51722,7 @@
 0.0.0.0 telecharger-openoffice.fr # 📄 OTHER
 0.0.0.0 telecom-info.com # 📄 OTHER
 0.0.0.0 telecommand.telemetry.microsoft.com # 📄 OTHER
+0.0.0.0 telecomsa.xyz # 📄 OTHER
 0.0.0.0 telefloracom.112.2o7.net # 📄 OTHER
 0.0.0.0 telefoniabologna.it # 📄 OTHER
 0.0.0.0 telefonica.es.intellitxt.com # 📄 OTHER
@@ -52271,6 +52280,7 @@
 0.0.0.0 ticklesign.com # 📄 OTHER
 0.0.0.0 ticks2.bugsense.com # 📄 OTHER
 0.0.0.0 ticksel.com # 📄 OTHER
+0.0.0.0 ticpc8a.com # 📄 OTHER
 0.0.0.0 tics.techdirt.com # 📄 OTHER
 0.0.0.0 tictocautoparts.com # 📄 OTHER
 0.0.0.0 tidaltv.com # 📄 OTHER
@@ -55290,7 +55300,6 @@
 0.0.0.0 vcardsdkservice.vivo.com.cn # 📄 OTHER
 0.0.0.0 vcarrefour.fr # 📄 OTHER
 0.0.0.0 vcascc.eu # 📄 OTHER
-0.0.0.0 vcc-library.uk # 📄 OTHER
 0.0.0.0 vcdn.adnxs.com # 📢 ADS
 0.0.0.0 vcdn.anthill.vn # 📄 OTHER
 0.0.0.0 vcdn.media.innity.net # 📄 OTHER
@@ -58049,6 +58058,7 @@
 0.0.0.0 wood-trans.com # 📄 OTHER
 0.0.0.0 woodannabelle.shop # 📄 OTHER
 0.0.0.0 woodceleste.shop # 📄 OTHER
+0.0.0.0 woodenships-wholesale.com # 📄 OTHER
 0.0.0.0 woodenshuttersnearme.com # 📄 OTHER
 0.0.0.0 woodezekiel.shop # 📄 OTHER
 0.0.0.0 woodistaeg.com # 📄 OTHER
@@ -77292,6 +77302,7 @@
 0.0.0.0 www.playstar.co.pl # 📄 OTHER
 0.0.0.0 www.playstatation.com # 👁️ TRACKING
 0.0.0.0 www.playtactics-hub.com # 📄 OTHER
+0.0.0.0 www.playtown.co.za # 📄 OTHER
 0.0.0.0 www.playvod.pl # 📄 OTHER
 0.0.0.0 www.playweez.pl # 📄 OTHER
 0.0.0.0 www.plbcyt.com # 📄 OTHER
@@ -79171,6 +79182,7 @@
 0.0.0.0 www.rhinocustomammo.com # 📄 OTHER
 0.0.0.0 www.rhymecacot.rest # 📄 OTHER
 0.0.0.0 www.rhynchodaeumty.info # 📄 OTHER
+0.0.0.0 www.rhythmvacations.com # 📄 OTHER
 0.0.0.0 www.rhytonp.com # 📄 OTHER
 0.0.0.0 www.riabbsocio.rest # 📄 OTHER
 0.0.0.0 www.riaccriaff.rest # 📄 OTHER
@@ -82649,6 +82661,7 @@
 0.0.0.0 www.teknoria.cyou # 📄 OTHER
 0.0.0.0 www.tekora.pro # 📄 OTHER
 0.0.0.0 www.telarsmont.rest # 📄 OTHER
+0.0.0.0 www.telecomsa.xyz # 📄 OTHER
 0.0.0.0 www.telegffonyreverable.info # 📄 OTHER
 0.0.0.0 www.teleghwynn.club # 📄 OTHER
 0.0.0.0 www.telegxzshq.ink # 📄 OTHER
