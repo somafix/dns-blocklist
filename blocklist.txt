@@ -1,15 +1,15 @@
 # DNS Security Blocklist - All-in-One
-# Generated: 2026-03-31T22:37:06.589916+00:00
+# Generated: 2026-04-01T05:55:28.020545+00:00
 # Version: 17.2.0
-# Total domains: 88,809
+# Total domains: 88,821
 # Active sources: 4
 
 # Category breakdown:
 #   🤖 AI_ML: 4,307
-#   📢 ADS: 11,107
+#   📢 ADS: 11,108
 #   👁️ TRACKING: 3,250
 #   💀 MALWARE: 22
-#   📄 OTHER: 70,123
+#   📄 OTHER: 70,134
 #
 # Format: 0.0.0.0 domain.com # category
 #
@@ -15414,6 +15414,7 @@
 0.0.0.0 cloudmobi.net # 📄 OTHER
 0.0.0.0 cloudncable.casa # 📄 OTHER
 0.0.0.0 cloudneturup.pro # 📄 OTHER
+0.0.0.0 cloudnewsfeed.com # 📄 OTHER
 0.0.0.0 cloudsecurityinsightld.info # 📄 OTHER
 0.0.0.0 cloudserver098095.home.pl # 📄 OTHER
 0.0.0.0 cloudservice14.kingsoft-office-service.com # 📄 OTHER
@@ -17945,6 +17946,7 @@
 0.0.0.0 dcstest.wtlive.com # 📄 OTHER
 0.0.0.0 dctracking.com # 👁️ TRACKING
 0.0.0.0 dctrk.datedeskads.com # 📢 ADS
+0.0.0.0 dcwblida.dz # 📄 OTHER
 0.0.0.0 dcys.ijinshan.com # 📄 OTHER
 0.0.0.0 dd.connextra.com # 📄 OTHER
 0.0.0.0 dd.nytimes.com # 📄 OTHER
@@ -18253,6 +18255,7 @@
 0.0.0.0 deposisstions.info # 📄 OTHER
 0.0.0.0 deposit-cra2023.com # 📄 OTHER
 0.0.0.0 deposit-et-1interac.help # 📄 OTHER
+0.0.0.0 deposit-notification.com # 📄 OTHER
 0.0.0.0 depositolegno.com # 📄 OTHER
 0.0.0.0 depositphotos.fr # 📄 OTHER
 0.0.0.0 depottool.bond # 📄 OTHER
@@ -18386,6 +18389,7 @@
 0.0.0.0 dfjhjdh.com # 📄 OTHER
 0.0.0.0 dfkcnyhd.nl # 📄 OTHER
 0.0.0.0 dfnac.fr # 📄 OTHER
+0.0.0.0 dfopetroleum.com # 📄 OTHER
 0.0.0.0 dfp-gateway.s-onetag.com # 📄 OTHER
 0.0.0.0 dfp.bouncex.net # 📄 OTHER
 0.0.0.0 dfp.doubleclick.net # 📢 ADS
@@ -18496,6 +18500,7 @@
 0.0.0.0 digital.lejnpartner.com # 📄 OTHER
 0.0.0.0 digital.younetmedia.com # 📄 OTHER
 0.0.0.0 digitaladsacceleratorqn.pro # 📢 ADS
+0.0.0.0 digitalauralab.com # 📄 OTHER
 0.0.0.0 digitalcareerlabzz.info # 📄 OTHER
 0.0.0.0 digitalcleversslx.info # 📄 OTHER
 0.0.0.0 digitalclevertopeqw.pro # 📄 OTHER
@@ -19340,6 +19345,7 @@
 0.0.0.0 drophold.club # 📄 OTHER
 0.0.0.0 dropkh.com # 📄 OTHER
 0.0.0.0 dropkick.oewabox.at # 📄 OTHER
+0.0.0.0 dropmb.com # 📄 OTHER
 0.0.0.0 dropnfilldumpster.com # 📄 OTHER
 0.0.0.0 droppeddatabaserenewal.com # 📄 OTHER
 0.0.0.0 droshsilur.rest # 📄 OTHER
@@ -20911,7 +20917,6 @@
 0.0.0.0 espritensemble.com # 📄 OTHER
 0.0.0.0 espub.fr # 📄 OTHER
 0.0.0.0 esquant3.com # 📄 OTHER
-0.0.0.0 esr.ro # 📄 OTHER
 0.0.0.0 essantielontwerp.com # 📄 OTHER
 0.0.0.0 essaygiants.com # 📄 OTHER
 0.0.0.0 esse-at-commodi.autos # 📄 OTHER
@@ -24641,6 +24646,7 @@
 0.0.0.0 goawos.com # 📄 OTHER
 0.0.0.0 gobettygo.com # 📄 OTHER
 0.0.0.0 gobikes.net # 📄 OTHER
+0.0.0.0 gobiotechpestcontrol.com # 📄 OTHER
 0.0.0.0 gobusinessloan.com # 📄 OTHER
 0.0.0.0 gobuwio.com # 📄 OTHER
 0.0.0.0 gocarosel.com # 📄 OTHER
@@ -24667,6 +24673,7 @@
 0.0.0.0 gogomall.shop # 📄 OTHER
 0.0.0.0 gogreeninbox.com # 📄 OTHER
 0.0.0.0 goharbor.digital # 📄 OTHER
+0.0.0.0 gohelpertechnologies.in # 📄 OTHER
 0.0.0.0 goiainter.rest # 🤖 AI_ML
 0.0.0.0 goingplatinum.com # 📄 OTHER
 0.0.0.0 gojiberry500.pl # 📄 OTHER
@@ -26203,7 +26210,6 @@
 0.0.0.0 hobbitowa.pl # 📄 OTHER
 0.0.0.0 hobbyonlyphotography.com # 📄 OTHER
 0.0.0.0 hobicmain.web.app # 🤖 AI_ML
-0.0.0.0 hobobot.net # 📄 OTHER
 0.0.0.0 hobohandbag.click # 📄 OTHER
 0.0.0.0 hocgeese.com # 📄 OTHER
 0.0.0.0 hocolats-voisin.fr # 📄 OTHER
@@ -29801,6 +29807,7 @@
 0.0.0.0 katophlepro-nl.fyi # 📄 OTHER
 0.0.0.0 katu.adbureau.net # 📢 ADS
 0.0.0.0 katykristoffersen.com # 📄 OTHER
+0.0.0.0 katz.adv.br # 📢 ADS
 0.0.0.0 kau.li # 📄 OTHER
 0.0.0.0 kauf-freund.de # 📄 OTHER
 0.0.0.0 kauf-lotse.de # 📄 OTHER
@@ -32833,6 +32840,7 @@
 0.0.0.0 mapquestt.com # 📄 OTHER
 0.0.0.0 mapquuest.com # 📄 OTHER
 0.0.0.0 mapscom2.112.2o7.net # 📄 OTHER
+0.0.0.0 mapshdi.wildscreeen.shop # 📄 OTHER
 0.0.0.0 mapstats.blogflux.com # 👁️ TRACKING
 0.0.0.0 mapupdatezone.com # 📄 OTHER
 0.0.0.0 maqote.pro # 📄 OTHER
@@ -34883,6 +34891,7 @@
 0.0.0.0 murbil.hostei.com # 📄 OTHER
 0.0.0.0 murcia-ban.es # 📄 OTHER
 0.0.0.0 murdoog.com # 📄 OTHER
+0.0.0.0 muriaspetin.es # 📄 OTHER
 0.0.0.0 murinperfe.rest # 📄 OTHER
 0.0.0.0 murthydigitals.com # 📄 OTHER
 0.0.0.0 muscle-relaxers.1.p2l.info # 📄 OTHER
@@ -38868,6 +38877,7 @@
 0.0.0.0 pay-per-search.com # 📄 OTHER
 0.0.0.0 pay.aqiu6.com # 📄 OTHER
 0.0.0.0 pay2me.pl # 📄 OTHER
+0.0.0.0 payable-notifications.org # 📄 OTHER
 0.0.0.0 payae8moon9.com # 📄 OTHER
 0.0.0.0 paybokres-mystay012.com # 📄 OTHER
 0.0.0.0 paychat.fuse-cloud.com # 📄 OTHER
@@ -39145,6 +39155,7 @@
 0.0.0.0 persgroepadvertising.nl # 📢 ADS
 0.0.0.0 perso.menara.ma # 📄 OTHER
 0.0.0.0 persocraft.dt-program.com # 📄 OTHER
+0.0.0.0 person.dians-store-ison.top # 📄 OTHER
 0.0.0.0 personagraph.com # 📄 OTHER
 0.0.0.0 personal-app-mailverify.165-245-182-1.cpanel.site # 🤖 AI_ML
 0.0.0.0 personal-app-unlock-1.157-245-156-249.cpanel.site # 📄 OTHER
@@ -39347,6 +39358,7 @@
 0.0.0.0 pf4y2a54hx.com # 📄 OTHER
 0.0.0.0 pfa.levexis.com # 📄 OTHER
 0.0.0.0 pfaltzgraf.com # 📄 OTHER
+0.0.0.0 pfatrivandrum.org # 📄 OTHER
 0.0.0.0 pfcuay.o-f.com # 📄 OTHER
 0.0.0.0 pfepfe.cc # 📄 OTHER
 0.0.0.0 pfizer.112.2o7.net # 📄 OTHER
@@ -41976,7 +41988,6 @@
 0.0.0.0 progrsmell.best # 📄 OTHER
 0.0.0.0 progrwhat.kala-crm.com # 📄 OTHER
 0.0.0.0 proidees.fr # 📄 OTHER
-0.0.0.0 project360.hr # 📄 OTHER
 0.0.0.0 projectgilgameshtracker.com # 👁️ TRACKING
 0.0.0.0 projectgoals.net # 📄 OTHER
 0.0.0.0 projectorpeople.112.2o7.net # 📄 OTHER
@@ -55280,6 +55291,7 @@
 0.0.0.0 vcardsdkservice.vivo.com.cn # 📄 OTHER
 0.0.0.0 vcarrefour.fr # 📄 OTHER
 0.0.0.0 vcascc.eu # 📄 OTHER
+0.0.0.0 vcc-library.uk # 📄 OTHER
 0.0.0.0 vcdn.adnxs.com # 📢 ADS
 0.0.0.0 vcdn.anthill.vn # 📄 OTHER
 0.0.0.0 vcdn.media.innity.net # 📄 OTHER
@@ -73291,6 +73303,7 @@
 0.0.0.0 www.metodabyss.rest # 📄 OTHER
 0.0.0.0 www.metricsimage.com # 👁️ TRACKING
 0.0.0.0 www.metropolitanwear.shop # 📄 OTHER
+0.0.0.0 www.mevetlab.cl # 📄 OTHER
 0.0.0.0 www.mewihiypa.autos # 📄 OTHER
 0.0.0.0 www.mexarodulin.com # 📄 OTHER
 0.0.0.0 www.mexastronaut.com # 📄 OTHER
@@ -79159,7 +79172,6 @@
 0.0.0.0 www.rhinocustomammo.com # 📄 OTHER
 0.0.0.0 www.rhymecacot.rest # 📄 OTHER
 0.0.0.0 www.rhynchodaeumty.info # 📄 OTHER
-0.0.0.0 www.rhythmvacations.com # 📄 OTHER
 0.0.0.0 www.rhytonp.com # 📄 OTHER
 0.0.0.0 www.riabbsocio.rest # 📄 OTHER
 0.0.0.0 www.riaccriaff.rest # 📄 OTHER
