@@ -61,3 +61,35 @@ The generated file is fully compatible with **Pi-hole**, **AdGuard Home**, **pfS
 0.0.0.0 api.openai.com # 🤖 AI_ML
 0.0.0.0 doubleclick.net # 📢 ADS
 0.0.0.0 track.analytics-data.io # 👁️ TRACKING
+
+🚀 Quick Start Guide
+Prerequisites
+ * Python 3.8 or higher
+ * Recommended: Virtual Environment (venv)
+1. Installation
+pip install aiohttp aiofiles tenacity pydantic pydantic-settings tqdm
+
+2. Execution
+# Simply run the builder script
+python blocklist_builder.py
+
+3. Advanced Configuration
+Customize the engine via environment variables (prefixed with DNSBL_):
+ * DNSBL_PERFORMANCE_MAX_DOMAINS_TOTAL: Domain limit (default: 2M).
+ * DNSBL_AI_ENABLED: Toggle AI detection (default: True).
+ * DNSBL_OUTPUT_COMPRESSED: Create .gz archive (default: True).
+🛡️ Security Hardening
+ * Anti-SSRF Protection: Prevents requests to local/private network ranges (RFC 1918), neutralizing potential network scanning via source feeds.
+ * Domain Sanitization: Strict RFC 1035/1123 compliance. Invalid characters and malformed strings are stripped automatically.
+ * SSL/TLS Verification: Mandatory certificate validation for all upstream intelligence sources.
+ * ETag/Cache Optimization: Efficiently handles bandwidth by only downloading modified sources.
+📊 Trusted Upstream Sources
+The default configuration aggregates the industry's "Gold Standard" feeds:
+ * OISD (Big) — Highly curated, zero false-positives list.
+ * AdAway — Industry leader for mobile-focused ad blocking.
+ * URLhaus — Real-time malware and ransomware infrastructure data.
+ * StevenBlack — World's largest community-driven hosts aggregator.
+⚖️ License
+Distributed under the MIT License. Engineered for security researchers, system administrators, and privacy advocates.
+DNS Security Blocklist Builder — Because privacy is a right, not a feature.
+
