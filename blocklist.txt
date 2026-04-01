@@ -1,7 +1,7 @@
 # DNS Security Blocklist - All-in-One
-# Generated: 2026-04-01T06:52:17.978332+00:00
+# Generated: 2026-04-01T07:25:45.433801+00:00
 # Version: 17.2.0
-# Total domains: 88,821
+# Total domains: 88,820
 # Active sources: 4
 
 # Category breakdown:
@@ -9,7 +9,7 @@
 #   📢 ADS: 11,107
 #   👁️ TRACKING: 3,250
 #   💀 MALWARE: 22
-#   📄 OTHER: 70,135
+#   📄 OTHER: 70,134
 #
 # Format: 0.0.0.0 domain.com # category
 #
@@ -79171,7 +79171,6 @@
 0.0.0.0 www.rhinocustomammo.com # 📄 OTHER
 0.0.0.0 www.rhymecacot.rest # 📄 OTHER
 0.0.0.0 www.rhynchodaeumty.info # 📄 OTHER
-0.0.0.0 www.rhythmvacations.com # 📄 OTHER
 0.0.0.0 www.rhytonp.com # 📄 OTHER
 0.0.0.0 www.riabbsocio.rest # 📄 OTHER
 0.0.0.0 www.riaccriaff.rest # 📄 OTHER
