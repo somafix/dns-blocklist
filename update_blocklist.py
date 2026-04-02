@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 DNS Security Blocklist Builder - Enterprise Edition
-Version: 2.0.0
+Version: 2.0.1
 Standards: PEP 8, Type Hinting, SOLID, OWASP Secure Coding Practices
 """
 
@@ -24,7 +24,7 @@ from typing import AsyncGenerator, Dict, List, Optional, Set, Tuple
 
 import aiofiles
 import aiohttp
-from aiohttp import ClientSession, ClientTimeout, TCPConnector
+from aiohttp import ClientSession, ClientTimeout, TCPConnector, ClientRequest
 from pydantic import BaseModel, Field, HttpUrl, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -113,18 +113,20 @@ class SafeResolver:
 
 class SafeTCPConnector(TCPConnector):
     """Custom connector that enforces SSRF protection."""
-    async def connect(self, req, traces, timeout):
-        # Override resolution to use our safe resolver
+    async def connect(self, req: ClientRequest, traces, timeout):
         host = req.host
-        port = req.port
-        if not ipaddress.ip_address(host).is_global if '.' in host else True: 
-             # Simple check: if it looks like a domain, resolve it safely
-             if not re.match(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', host):
-                 safe_ip, safe_port = await SafeResolver.resolve_host(host, port)
-                 req._host = safe_ip # Hacky but effective for aiohttp internal logic override
-                 # Note: In production, better to use a custom Resolver class in aiohttp
-                 # For this script, we rely on the fact that sources are hardcoded trusted HTTPS URLs.
-                 # However, strict SSRF protection usually requires patching the resolver.
+        
+        # Check if this is an IP address or domain
+        is_ip = bool(re.match(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', host))
+        
+        if not is_ip:
+            try:
+                safe_ip, safe_port = await SafeResolver.resolve_host(host, req.port)
+                # Create new request with safe IP (clone is immutable)
+                req = req.clone(host=safe_ip)
+            except aiohttp.ClientConnectionError as e:
+                logger.error(f"SSRF protection blocked {host}: {e}")
+                raise
         
         return await super().connect(req, traces, timeout)
 
@@ -177,7 +179,7 @@ class DomainProcessor:
             "added": 0,
             "duplicates": 0,
             "invalid": 0,
-            "categories": {"ai_ml": 0, "ads": 0, "tracking": 0, "malware": 0, "other": 0}
+            "categories": {}
         }
 
     def _categorize(self, domain: str) -> str:
@@ -229,8 +231,8 @@ class DomainProcessor:
 class SourceFetcher:
     def __init__(self, timeout: int, ssl_context: bool = True):
         self.timeout = ClientTimeout(total=timeout)
-        # Disable redirects to prevent open redirect attacks
-        self.connector = TCPConnector(limit=10, enable_cleanup_closed=True, ssl=ssl_context)
+        # Use SafeTCPConnector for SSRF protection
+        self.connector = SafeTCPConnector(limit=10, enable_cleanup_closed=True, ssl=ssl_context)
 
     async def fetch_lines(self, url: str) -> AsyncGenerator[str, None]:
         """Fetches content and yields lines one by one to save memory."""
@@ -306,9 +308,32 @@ async def atomic_write(filepath: Path, content: str) -> None:
         raise
 
 
+async def write_blocklist_optimized(filepath: Path, domains: Dict[str, str], header: str) -> None:
+    """Writes blocklist line by line to save memory."""
+    dir_path = filepath.parent
+    dir_path.mkdir(parents=True, exist_ok=True)
+    
+    fd, tmp_path = tempfile.mkstemp(dir=str(dir_path), suffix='.tmp')
+    try:
+        with os.fdopen(fd, 'w', encoding='utf-8') as f:
+            f.write(header)
+            for domain, cat in sorted(domains.items()):
+                f.write(f"0.0.0.0 {domain} # {cat}\n")
+            f.flush()
+            os.fsync(f.fileno())
+        
+        os.replace(tmp_path, str(filepath))
+        logger.info(f"Successfully wrote {filepath}")
+    except Exception as e:
+        logger.error(f"Failed to write file: {e}")
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+        raise
+
+
 async def main() -> None:
     settings = AppSettings()
-    logger.info("🚀 Starting DNS Blocklist Builder v2.0")
+    logger.info("🚀 Starting DNS Blocklist Builder v2.0.1")
     
     processor = DomainProcessor(
         max_size=settings.max_domains,
@@ -319,13 +344,12 @@ async def main() -> None:
 
     # Trusted Sources (Hardcoded for security)
     sources = [
-        SourceConfig(name="OISD Big", url="https://big.oisd.nl/domains", source_type="domains", priority=1),
+        SourceConfig(name="OISD Big", url="https://big.oisd.nl/domains", source_type="hosts", priority=1),
         SourceConfig(name="AdAway", url="https://adaway.org/hosts.txt", source_type="hosts", priority=2),
         SourceConfig(name="StevenBlack", url="https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts", source_type="hosts", priority=3),
     ]
 
     # Process sources sequentially to respect memory limits and simplicity
-    # For higher performance, asyncio.gather could be used with semaphore
     for source in sorted(sources, key=lambda x: x.priority):
         await process_source(fetcher, source, processor)
 
@@ -339,27 +363,18 @@ async def main() -> None:
         f"# Categories: {json.dumps(processor.stats['categories'])}\n\n"
     )
     
-    # Sort domains for deterministic output
-    sorted_domains = sorted(processor.domains.items())
-    
-    # Build content in memory (optimized for ~2M lines, approx 100-200MB RAM)
-    # For extremely large lists, stream writing would be better, but atomic write requires content or careful handling
-    lines = [header]
-    for domain, cat in sorted_domains:
-        lines.append(f"0.0.0.0 {domain} # {cat}")
-    
-    content = "\n".join(lines) + "\n"
-    
     output_file = settings.output_dir / "blocklist.txt"
-    await atomic_write(output_file, content)
+    await write_blocklist_optimized(output_file, processor.domains, header)
     
-    # Compress
+    # Compress with streaming to save memory
     gz_path = settings.output_dir / "blocklist.txt.gz"
     with open(output_file, 'rb') as f_in:
-        with gzip.open(gz_path, 'wb') as f_out:
-            f_out.write(f_in.read())
-    logger.info(f"Compressed version saved to {gz_path}")
+        with gzip.open(gz_path, 'wb', compresslevel=6) as f_out:
+            # Copy in chunks to avoid loading entire file into memory
+            while chunk := f_in.read(8192):
+                f_out.write(chunk)
     
+    logger.info(f"Compressed version saved to {gz_path}")
     logger.info(f"✅ Build Complete. Stats: {processor.stats}")
 
 
