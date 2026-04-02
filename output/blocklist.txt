@@ -1,5 +1,4 @@
 # DNS Security Blocklist
-# Generated: 2026-04-02T20:23:16.197706+00:00
+# Generated: 2026-04-02T20:24:00.106077+00:00
 # Total Domains: 0
-# Categories: {}
 
