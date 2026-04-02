@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 DNS Security Blocklist Builder - Autonomous Edition
-Version: 4.0.2 - FIXED (Session recreation, correct URLs)
+Version: 4.0.3 - OISD REMOVED, Clean & Stable
 """
 
 from __future__ import annotations
@@ -209,7 +209,7 @@ class DomainProcessor:
 
 
 # ============================================================================
-# AUTO-RETRY FETCHER (FIXED - creates new session each attempt)
+# AUTO-RETRY FETCHER
 # ============================================================================
 
 class RobustFetcher:
@@ -423,12 +423,11 @@ class AutonomousUpdater:
                 checkpoint_interval=self.settings.checkpoint_interval
             )
             
-            # FIXED SOURCES - correct URLs and types
+            # SOURCES - OISD REMOVED
             sources = [
-                SourceConfig(name="OISD Big", url="https://big.oisd.nl/domains", source_type="domains", priority=1),
-                SourceConfig(name="AdAway", url="https://adaway.org/hosts.txt", source_type="hosts", priority=2),
-                SourceConfig(name="StevenBlack", url="https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts", source_type="hosts", priority=3),
-                SourceConfig(name="OISD Hosts", url="https://big.oisd.nl/hosts", source_type="hosts", priority=4),
+                SourceConfig(name="AdAway", url="https://adaway.org/hosts.txt", source_type="hosts", priority=1),
+                SourceConfig(name="StevenBlack", url="https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts", source_type="hosts", priority=2),
+                SourceConfig(name="Peter Lowe", url="https://pgl.yoyo.org/adservers/serverlist.php?hostformat=hosts&showintro=0&mimetype=plaintext", source_type="hosts", priority=3),
             ]
             
             for source in sorted(sources, key=lambda x: x.priority):
