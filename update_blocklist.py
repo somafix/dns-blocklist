@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python3
 """
 DNS SECURITY BLOCKLIST BUILDER - FULL AUTONOMOUS VERSION
@@ -385,7 +384,7 @@ async def main_async():
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
     
     print("=" * 70)
-    print("🚀 DNS SECURITY BLOCKLIST BUILDER v17.2.3")
+    print("🚀 DNS SECURITY BLOCKLIST BUILDER v17.2.4")
     print("=" * 70)
     print(f"📊 Max domains: {settings.performance.max_domains_total:,}")
     print(f"🤖 AI detection: {'enabled' if settings.ai.enabled else 'disabled'}")
