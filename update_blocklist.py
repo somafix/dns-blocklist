@@ -47,12 +47,14 @@ class AppSettings(BaseSettings):
 
     output_dir: Path = Field(default=Path("./output"))
     cache_dir: Path = Field(default=Path("./cache"))
-    max_domains: int = Field(default=2_000_000, ge=1000)    http_timeout: int = Field(default=30, ge=5)
+    max_domains: int = Field(default=2_000_000, ge=1000)
+    http_timeout: int = Field(default=30, ge=5)
     max_concurrent_requests: int = Field(default=5, ge=1, le=20)
     
     # Security Flags
     enable_ai_detection: bool = Field(default=True)
     strict_ssl: bool = Field(default=True)
+
 
 # ============================================================================
 # SECURITY UTILS (SSRF PROTECTION)
@@ -96,7 +98,8 @@ class SafeResolver:
     @classmethod
     async def resolve_host(cls, host: str, port: int = 80) -> Tuple[str, int]:
         """Resolve hostname and return first safe IP."""
-        try:            infos = await asyncio.get_event_loop().getaddrinfo(
+        try:
+            infos = await asyncio.get_event_loop().getaddrinfo(
                 host, port, family=socket.AF_INET, type=socket.SOCK_STREAM
             )
             for info in infos:
@@ -125,6 +128,7 @@ class SafeTCPConnector(TCPConnector):
         
         return await super().connect(req, traces, timeout)
 
+
 # ============================================================================
 # DATA MODELS
 # ============================================================================
@@ -143,9 +147,11 @@ class SourceConfig(BaseModel):
             raise ValueError(f"Source type must be one of {allowed}")
         return v
 
+
 # ============================================================================
 # DOMAIN PROCESSOR (Business Logic)
 # ============================================================================
+
 class DomainProcessor:
     """
     Handles deduplication, categorization, and validation of domains.
@@ -192,9 +198,12 @@ class DomainProcessor:
         if len(domain) < 4 or len(domain) > 253:
             self.stats["invalid"] += 1
             return False
+        
         if self.IP_RE.match(domain):
             self.stats["invalid"] += 1
-            return False        if not self.VALID_DOMAIN_RE.match(domain):
+            return False
+        
+        if not self.VALID_DOMAIN_RE.match(domain):
             self.stats["invalid"] += 1
             return False
 
@@ -202,6 +211,7 @@ class DomainProcessor:
         if domain in self.domains:
             self.stats["duplicates"] += 1
             return False
+        
         if len(self.domains) >= self.max_size:
             return False  # Limit reached
 
@@ -210,6 +220,7 @@ class DomainProcessor:
         self.stats["added"] += 1
         self.stats["categories"][category] = self.stats["categories"].get(category, 0) + 1
         return True
+
 
 # ============================================================================
 # SOURCE FETCHER & PARSER
@@ -236,6 +247,7 @@ class SourceFetcher:
         except Exception as e:
             logger.error(f"Network error fetching {url}: {e}")
 
+
 def parse_line(line: str, source_type: str) -> Optional[str]:
     """Parses a single line based on source type."""
     if not line or line.startswith(('#', '!', '[', '*')):
@@ -243,7 +255,8 @@ def parse_line(line: str, source_type: str) -> Optional[str]:
 
     domain = None
     if source_type == 'hosts':
-        parts = line.split()        if len(parts) >= 2 and parts[0] in ('0.0.0.0', '127.0.0.1'):
+        parts = line.split()
+        if len(parts) >= 2 and parts[0] in ('0.0.0.0', '127.0.0.1'):
             domain = parts[1]
     elif source_type == 'domains':
         domain = line
@@ -256,6 +269,7 @@ def parse_line(line: str, source_type: str) -> Optional[str]:
         return domain.lower().rstrip('.')
     return None
 
+
 # ============================================================================
 # MAIN ORCHESTRATOR
 # ============================================================================
@@ -267,6 +281,7 @@ async def process_source(fetcher: SourceFetcher, source: SourceConfig, processor
         if domain:
             processor.add_domain(domain)
     logger.info(f"Finished source: {source.name}")
+
 
 async def atomic_write(filepath: Path, content: str) -> None:
     """Writes content to file atomically to prevent corruption."""
@@ -290,9 +305,10 @@ async def atomic_write(filepath: Path, content: str) -> None:
             os.unlink(tmp_path)
         raise
 
+
 async def main() -> None:
     settings = AppSettings()
-        logger.info("🚀 Starting DNS Blocklist Builder v2.0")
+    logger.info("🚀 Starting DNS Blocklist Builder v2.0")
     
     processor = DomainProcessor(
         max_size=settings.max_domains,
@@ -341,9 +357,11 @@ async def main() -> None:
     gz_path = settings.output_dir / "blocklist.txt.gz"
     with open(output_file, 'rb') as f_in:
         with gzip.open(gz_path, 'wb') as f_out:
-            f_out.writelines(f_in)    logger.info(f"Compressed version saved to {gz_path}")
+            f_out.write(f_in.read())
+    logger.info(f"Compressed version saved to {gz_path}")
     
     logger.info(f"✅ Build Complete. Stats: {processor.stats}")
+
 
 if __name__ == "__main__":
     try:
