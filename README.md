@@ -1,63 +1,57 @@
 # 🛡️ DNS Security Blocklist Builder 
 
 ### **Next-Gen Threat Intelligence & AI/ML Domain Filtering**
-**Version 17.2.0** • *High-Concurrency Async Engine* • *Enterprise-Grade Security*
+**Version 17.2.1** • *High-Concurrency Async Engine* • *Production Ready*
 
 [![Python](https://img.shields.io/badge/Python-3.8%2B-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![Pydantic](https://img.shields.io/badge/Pydantic-V2-E92063?style=for-the-badge&logo=pydantic&logoColor=white)](https://docs.pydantic.dev/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
-[![Security](https://img.shields.io/badge/Security-Hardened-red?style=for-the-badge&logo=shield-check)](#-security-hardening)
-[![AI](https://img.shields.io/badge/AI_Detection-Enabled-9B51E0?style=for-the-badge&logo=openai)](#-aiml-smart-categorization)
+[![Security](https://img.shields.io/badge/Security-Hardened-red?style=for-the-badge&logo=shield-check)](#)
 
 ---
 
-## 🎯 Project Overview
+## 🎯 Обзор проекта
 
-**DNS Security Blocklist Builder** is a high-performance orchestration tool designed to aggregate, validate, and categorize threat intelligence feeds at scale. Version **v17.2.0** introduces a streamlined **All-in-One** architecture, consolidating disparate sources into a single, intelligent blocklist with automated AI/ML infrastructure detection.
+**DNS Security Blocklist Builder** — это высокопроизводительный агрегатор данных об угрозах (Threat Intelligence), который собирает, валидирует и классифицирует домены в единый манифест безопасности. 
 
-> [!TIP]
-> Unlike standard bash scripts, this engine leverages **Pydantic V2** for rigorous data validation and **AsyncIO** for parallel processing of millions of domains without blocking execution.
+Версия **v17.2.1** полностью переработана для обеспечения максимальной чистоты данных: из списков исключены IP-адреса, локальные хосты и синтаксический мусор, специфичный для AdBlock-форматов.
+
+> [!IMPORTANT]
+> **Что нового в 17.2.1:** 
+> * Добавлена интеграция **GoodbyeAds-YouTube** и **GoodbyeAds Ultimate**.
+> * Исправлен парсинг: теперь движок корректно обрабатывает префиксы `||`, `@@` и `0.0.0.0`.
+> * Строгая валидация регулярными выражениями для исключения битых доменов.
 
 ---
 
-## 🔥 Key Innovations in v17.2.0
+## 🔥 Ключевые возможности
+
+### 🛠 Умная фильтрация и очистка
+В отличие от стандартных скриптов, этот движок выполняет глубокую проверку каждой строки:
+* **Anti-IP Filter:** Автоматический пропуск IPv4/IPv6 адресов, которые не должны быть в DNS-списках.
+* **Format Normalization:** Приведение доменов к нижнему регистру, удаление мусорных символов и комментариев.
+* **Localhost Shield:** Защита от блокировки критических локальных имен (localhost, broadcasthost и др.).
 
 ### 🤖 AI/ML Smart Categorization
-Built-in heuristic analysis identifies Artificial Intelligence infrastructure. The engine automatically tags domains belonging to LLM services (OpenAI, Anthropic, Gemini, etc.), allowing granular control over AI tool access in corporate or home environments.
+Встроенный эвристический анализ идентифицирует инфраструктуру Искусственного Интеллекта. Движок автоматически помечает домены **OpenAI, Anthropic, Gemini, Midjourney** и других сервисов тегом `AI_ML`, позволяя гибко управлять доступом к AI-инструментам в корпоративной сети.
 
 ### ⚡ Async Processing Engine
-Powered by `aiohttp` and `aiofiles`, the processing pipeline is non-blocking and highly efficient. Handling over **2,000,000 domains** takes minimal time, while memory usage is optimized via Python slots and efficient hash-set deduplication.
-
-### 📂 Unified "All-in-One" Output
-No more fragmented files. Everything is consolidated into `blocklist.txt`, enriched with rich metadata:
-* **Source Attribution:** Track exactly which feed a domain originated from.
-* **Category Tagging:** Every entry is marked as `ADS`, `MALWARE`, `TRACKING`, or `AI_ML`.
-* **Visual Semantics:** Integrated emojis for human-readable logs and file audits.
+Использование `AsyncIO` и `aiohttp` позволяет обрабатывать миллионы доменов за считанные секунды. 
+* **Smart Caching:** Система кэширования с поддержкой `ETag` и `Gzip` позволяет не скачивать данные повторно, если они не изменились на сервере.
+* **Low Memory Footprint:** Оптимизация через Python slots и эффективные хэш-сеты для дедупликации.
 
 ---
 
-## 🛠 Architecture & Tech Stack
+## 📂 Структура выходного файла
 
-| Component | Technology | Role |
-| :--- | :--- | :--- |
-| **Core Logic** | `Asyncio` / `Python 3.8+` | Event-driven high-speed execution |
-| **Data Validation** | `Pydantic V2` | Strict schema and type safety |
-| **Networking** | `aiohttp` (Async) | Concurrent non-blocking I/O |
-| **Persistence** | `aiofiles` + `Gzip` | Atomic writes & native compression |
-| **Resilience** | `Tenacity` | Exponential backoff retry logic |
-
----
-
-## 📁 Output Anatomy
-
-The generated file is fully compatible with **Pi-hole**, **AdGuard Home**, **pfSense**, and **Unbound**.
+Генерируемый файл `blocklist.txt` полностью совместим с **Pi-hole**, **AdGuard Home**, **pfSense**, **Unbound** и **Mikrotik**.
 
 ```text
-# DNS Security Blocklist - All-in-One
+# DNS Security Blocklist - v17.2.1 FIXED
 # Total unique domains: 1,842,901
-# --------------------------------------------------
 # Stats: 🤖 AI_ML: 1.2k | 💀 MALWARE: 84k | 👁️ TRACKING: 210k
 
-0.0.0.0 api.openai.com # 🤖 AI_ML
-0.0.0.0 doubleclick.net # 📢 ADS
-0.0.0.0 track.analytics-data.io # 👁️ TRACKING
+0.0.0.0 api.openai.com # AI_ML
+0.0.0.0 doubleclick.net # ADS
+0.0.0.0 track.analytics-data.io # TRACKING
+0.0.0.0 malware-site.biz # MALWARE
