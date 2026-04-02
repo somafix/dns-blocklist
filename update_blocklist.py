@@ -1,7 +1,8 @@
+```python
 #!/usr/bin/env python3
 """
 DNS Security Blocklist Builder - Autonomous Edition
-Version: 4.0.1 - FIXED (Global Logger)
+Version: 4.0.2 - FIXED (Session recreation, correct URLs)
 """
 
 from __future__ import annotations
@@ -15,13 +16,11 @@ import signal
 import tempfile
 import gzip
 import json
-import hashlib
 import pickle
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
-from typing import AsyncGenerator, Dict, Optional, Set, Tuple
-from dataclasses import dataclass, field
-from functools import wraps
+from typing import AsyncGenerator, Dict, Optional, Tuple
+from dataclasses import dataclass
 
 import aiohttp
 from aiohttp import ClientSession, ClientTimeout, TCPConnector
@@ -29,7 +28,7 @@ from pydantic import BaseModel, Field, HttpUrl, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # ============================================================================
-# LOGGING (ГЛОБАЛЬНЫЙ - ДОЛЖЕН БЫТЬ ДО ВСЕХ КЛАССОВ)
+# LOGGING (ГЛОБАЛЬНЫЙ)
 # ============================================================================
 
 logging.basicConfig(
@@ -211,26 +210,28 @@ class DomainProcessor:
 
 
 # ============================================================================
-# AUTO-RETRY FETCHER
+# AUTO-RETRY FETCHER (FIXED - creates new session each attempt)
 # ============================================================================
 
 class RobustFetcher:
-    """Fetches with automatic retry and backoff"""
+    """Fetches with automatic retry and backoff - creates new session each time"""
     
     def __init__(self, timeout: int, max_retries: int, retry_delay: int):
         self.timeout = ClientTimeout(total=timeout)
-        self.connector = TCPConnector(limit=10, enable_cleanup_closed=True)
         self.max_retries = max_retries
         self.retry_delay = retry_delay
     
     async def fetch_with_retry(self, url: str, source_name: str) -> AsyncGenerator[str, None]:
         """Fetch with exponential backoff retry"""
+        last_error = None
+        
         for attempt in range(self.max_retries):
             try:
                 async for line in self._fetch(url):
                     yield line
                 return
             except Exception as e:
+                last_error = e
                 wait_time = self.retry_delay * (2 ** attempt)
                 logger.warning(f"Attempt {attempt + 1}/{self.max_retries} failed for {source_name}: {e}")
                 
@@ -239,11 +240,13 @@ class RobustFetcher:
                     await asyncio.sleep(wait_time)
                 else:
                     logger.error(f"Failed to fetch {source_name} after {self.max_retries} attempts")
-                    raise
+                    raise last_error
     
     async def _fetch(self, url: str) -> AsyncGenerator[str, None]:
-        """Internal fetch method"""
-        async with ClientSession(connector=self.connector, timeout=self.timeout) as session:
+        """Internal fetch method - creates NEW session each time"""
+        connector = TCPConnector(limit=10, enable_cleanup_closed=True)
+        
+        async with ClientSession(connector=connector, timeout=self.timeout) as session:
             async with session.get(url, allow_redirects=False) as resp:
                 if resp.status != 200:
                     raise Exception(f"HTTP {resp.status}")
@@ -421,10 +424,12 @@ class AutonomousUpdater:
                 checkpoint_interval=self.settings.checkpoint_interval
             )
             
+            # FIXED SOURCES - correct URLs and types
             sources = [
-                SourceConfig(name="OISD Big", url="https://big.oisd.nl/domains", source_type="hosts", priority=1),
+                SourceConfig(name="OISD Big", url="https://big.oisd.nl/domains", source_type="domains", priority=1),
                 SourceConfig(name="AdAway", url="https://adaway.org/hosts.txt", source_type="hosts", priority=2),
                 SourceConfig(name="StevenBlack", url="https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts", source_type="hosts", priority=3),
+                SourceConfig(name="OISD Hosts", url="https://big.oisd.nl/hosts", source_type="hosts", priority=4),
             ]
             
             for source in sorted(sources, key=lambda x: x.priority):
@@ -432,10 +437,17 @@ class AutonomousUpdater:
                     continue
                 
                 logger.info(f"📥 Processing: {source.name}")
-                async for line in self.fetcher.fetch_with_retry(str(source.url), source.name):
-                    domain = parse_line(line, source.source_type)
-                    if domain:
-                        processor.add_domain(domain)
+                try:
+                    async for line in self.fetcher.fetch_with_retry(str(source.url), source.name):
+                        domain = parse_line(line, source.source_type)
+                        if domain:
+                            processor.add_domain(domain)
+                except Exception as e:
+                    logger.error(f"Source {source.name} failed, continuing with next source: {e}")
+                    continue
+            
+            if len(processor.domains) == 0:
+                raise Exception("No domains were collected from any source")
             
             await self._generate_output(processor)
             
