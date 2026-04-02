@@ -1,15 +1,15 @@
 # DNS Security Blocklist - All-in-One
-# Generated: 2026-04-01T19:05:20.875732+00:00
+# Generated: 2026-04-02T02:29:39.796629+00:00
 # Version: 17.2.0
-# Total domains: 92,020
+# Total domains: 92,022
 # Active sources: 4
 
 # Category breakdown:
 #   🤖 AI_ML: 4,440
-#   📢 ADS: 11,202
+#   📢 ADS: 11,201
 #   👁️ TRACKING: 3,260
 #   💀 MALWARE: 22
-#   📄 OTHER: 73,096
+#   📄 OTHER: 73,099
 #
 # Format: 0.0.0.0 domain.com # category
 #
@@ -441,6 +441,7 @@
 0.0.0.0 1in.cqcounter.com # 📄 OTHER
 0.0.0.0 1it.cqcounter.com # 📄 OTHER
 0.0.0.0 1jo.cqcounter.com # 📄 OTHER
+0.0.0.0 1k8v3k3.online # 📄 OTHER
 0.0.0.0 1kinobig.ru # 📄 OTHER
 0.0.0.0 1kruidvat.com # 📄 OTHER
 0.0.0.0 1l-view.mail.ru # 🤖 AI_ML
@@ -2605,7 +2606,6 @@
 0.0.0.0 acaiberryextreme.pl # 🤖 AI_ML
 0.0.0.0 acalvet.com # 📄 OTHER
 0.0.0.0 acaudalorio-es.fyi # 📄 OTHER
-0.0.0.0 acaviationsupplies.com # 📄 OTHER
 0.0.0.0 acbras.com # 📄 OTHER
 0.0.0.0 acc.freeupdatesfanpages-checkbluetick.click # 📄 OTHER
 0.0.0.0 acc.jiangsujiaxue.com # 📄 OTHER
@@ -2769,6 +2769,7 @@
 0.0.0.0 activeaxis.shop # 📄 OTHER
 0.0.0.0 activebeat.fr # 📄 OTHER
 0.0.0.0 activecampaignsubsdev.112.2o7.net # 🤖 AI_ML
+0.0.0.0 activegroup-bd.com # 📄 OTHER
 0.0.0.0 activeideas.net # 📄 OTHER
 0.0.0.0 activemetering.com # 📄 OTHER
 0.0.0.0 activepr.ru # 📄 OTHER
@@ -7526,6 +7527,7 @@
 0.0.0.0 amp.rd.linksynergy.com # 📄 OTHER
 0.0.0.0 ampacr6prod.112.2o7.net # 📄 OTHER
 0.0.0.0 ampalter.xyz # 📄 OTHER
+0.0.0.0 ampgg.bossjy.cc.cd # 📄 OTHER
 0.0.0.0 amplify-com-mktg.imgix.net # 📄 OTHER
 0.0.0.0 amplify-imp.outbrain.com # 🤖 AI_ML
 0.0.0.0 amplify.outbrain.com # 🤖 AI_ML
@@ -8180,7 +8182,6 @@
 0.0.0.0 anycast.adnxs.com # 📢 ADS
 0.0.0.0 anycast.dt.adsafeprotected.com # 📢 ADS
 0.0.0.0 anycracks.com # 📄 OTHER
-0.0.0.0 anyhoo.testeaza.eu # 📄 OTHER
 0.0.0.0 anylist.c.appier.net # 📄 OTHER
 0.0.0.0 anymind360-com.cdn.ampproject.org # 📄 OTHER
 0.0.0.0 anymind360.com # 📄 OTHER
@@ -13751,7 +13752,6 @@
 0.0.0.0 caudorio-sv.fyi # 📄 OTHER
 0.0.0.0 caue971.org # 📄 OTHER
 0.0.0.0 caury.info # 📄 OTHER
-0.0.0.0 cause-impact.com # 📄 OTHER
 0.0.0.0 causecherry.com # 📄 OTHER
 0.0.0.0 cautiouscredit.com # 📄 OTHER
 0.0.0.0 cavamenuprices.com # 📄 OTHER
@@ -15026,7 +15026,6 @@
 0.0.0.0 chubbycreature.com # 📄 OTHER
 0.0.0.0 chubscoellvolving.info # 📄 OTHER
 0.0.0.0 chuckfaganco.com # 📄 OTHER
-0.0.0.0 chuguadventures.co.tz # 📢 ADS
 0.0.0.0 chuknu.sokrati.com # 📄 OTHER
 0.0.0.0 chumtv.122.2o7.net # 📄 OTHER
 0.0.0.0 chungminhtaichinhsaigon.net # 🤖 AI_ML
@@ -15801,6 +15800,7 @@
 0.0.0.0 cms.quantserve.com # 📄 OTHER
 0.0.0.0 cms.springboard.gorillanation.com # 📄 OTHER
 0.0.0.0 cms.surfcountor.com # 📄 OTHER
+0.0.0.0 cms.surplusudyog.com # 📄 OTHER
 0.0.0.0 cmsanalytics.admicro.vn # 📢 ADS
 0.0.0.0 cmtd1.com # 📄 OTHER
 0.0.0.0 cmtvia.112.2o7.net # 📄 OTHER
@@ -18778,7 +18778,6 @@
 0.0.0.0 diagramsbumpy.sbs # 📄 OTHER
 0.0.0.0 diaita.ch # 🤖 AI_ML
 0.0.0.0 dialereset.rest # 📄 OTHER
-0.0.0.0 dialkwik.in # 📄 OTHER
 0.0.0.0 dialogueminus.casa # 📄 OTHER
 0.0.0.0 dialsjo.com # 📄 OTHER
 0.0.0.0 diamentowamozaika.com # 🤖 AI_ML
@@ -19726,6 +19725,7 @@
 0.0.0.0 drophold.club # 📄 OTHER
 0.0.0.0 dropkh.com # 📄 OTHER
 0.0.0.0 dropkick.oewabox.at # 📄 OTHER
+0.0.0.0 dropmb.com # 📄 OTHER
 0.0.0.0 dropnfilldumpster.com # 📄 OTHER
 0.0.0.0 droppeddatabaserenewal.com # 📄 OTHER
 0.0.0.0 droshsilur.rest # 📄 OTHER
@@ -24481,6 +24481,7 @@
 0.0.0.0 gebzecampist.com # 📄 OTHER
 0.0.0.0 gecetu.com # 📄 OTHER
 0.0.0.0 geconsumerfinance.112.2o7.net # 📄 OTHER
+0.0.0.0 gecopakistan.com # 📄 OTHER
 0.0.0.0 geek.us.intellitxt.com # 📄 OTHER
 0.0.0.0 geekstogo.us.intellitxt.com # 📄 OTHER
 0.0.0.0 gehili.pro # 📄 OTHER
@@ -25365,7 +25366,6 @@
 0.0.0.0 goska.siol.net # 📄 OTHER
 0.0.0.0 gospelcircle.site # 📄 OTHER
 0.0.0.0 gospelfestinthepark.net # 📄 OTHER
-0.0.0.0 gossipband.ie # 📄 OTHER
 0.0.0.0 gossipcenter.us.intellitxt.com # 📄 OTHER
 0.0.0.0 gossiponthis.us.intellitxt.com # 📄 OTHER
 0.0.0.0 gossipsbollywoods.com # 📄 OTHER
@@ -35773,6 +35773,7 @@
 0.0.0.0 my-subskrypcja.net # 📄 OTHER
 0.0.0.0 my-tracknl.com # 👁️ TRACKING
 0.0.0.0 my-traffic7.com # 📄 OTHER
+0.0.0.0 my-xarid.com # 📄 OTHER
 0.0.0.0 my.blueadvertise.com # 📢 ADS
 0.0.0.0 my.effectivemeasure.net # 📄 OTHER
 0.0.0.0 my.iheartradio.com # 📢 ADS
@@ -37295,6 +37296,7 @@
 0.0.0.0 nutrigolabburner.pl # 📄 OTHER
 0.0.0.0 nutrigolabstrength.pl # 📄 OTHER
 0.0.0.0 nutrired.org # 📄 OTHER
+0.0.0.0 nutrisc.com.br # 📄 OTHER
 0.0.0.0 nutritionandsupplementspl.info # 📄 OTHER
 0.0.0.0 nutritionforkids.site # 📄 OTHER
 0.0.0.0 nutritiousbean.com # 📄 OTHER
@@ -42974,7 +42976,6 @@
 0.0.0.0 prodcdn.playstream.media # 📄 OTHER
 0.0.0.0 prodealscenter.com # 📄 OTHER
 0.0.0.0 prodentim101.com # 📄 OTHER
-0.0.0.0 prodimetal.com # 📄 OTHER
 0.0.0.0 product-cdn.liftoff-creatives.io # 📄 OTHER
 0.0.0.0 product-reviews.uk.intellitxt.com # 📄 OTHER
 0.0.0.0 product.adingo.jp.eimg.jp # 📢 ADS
@@ -43553,7 +43554,6 @@
 0.0.0.0 purebeingless.pro # 📄 OTHER
 0.0.0.0 pureclarity.net # 📄 OTHER
 0.0.0.0 pureharmonys.online # 📄 OTHER
-0.0.0.0 puremartbd.shop # 📄 OTHER
 0.0.0.0 puremonetivo-it.fyi # 📄 OTHER
 0.0.0.0 purepods.fr # 📄 OTHER
 0.0.0.0 purepresenceup.pro # 📄 OTHER
@@ -43720,6 +43720,7 @@
 0.0.0.0 q4r3a9b86m2n7d6e5f4g3h2i1j07o9p1ck5.vercel.app # 📄 OTHER
 0.0.0.0 q4rttk.site # 📄 OTHER
 0.0.0.0 q4ylkt.site # 📄 OTHER
+0.0.0.0 q55at0cm.apexharvestor.digital # 📄 OTHER
 0.0.0.0 q5dxwo.beer # 📄 OTHER
 0.0.0.0 q5nxsr.yoga # 📄 OTHER
 0.0.0.0 q5w52f.lat # 📄 OTHER
@@ -55686,6 +55687,7 @@
 0.0.0.0 ui.chelepi.contractors # 📄 OTHER
 0.0.0.0 ui.clevernt.com # 📄 OTHER
 0.0.0.0 ui.ppjol.com # 📄 OTHER
+0.0.0.0 ui2rn7ei.apexharvestor.digital # 📄 OTHER
 0.0.0.0 uib.ff.avast.com # 📄 OTHER
 0.0.0.0 uidbox.uimserv.net # 📄 OTHER
 0.0.0.0 uim.tifbs.net # 📄 OTHER
