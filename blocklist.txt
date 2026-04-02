@@ -1,7 +1,7 @@
 # DNS Security Blocklist - All-in-One
-# Generated: 2026-04-02T02:29:39.796629+00:00
+# Generated: 2026-04-02T07:15:46.988704+00:00
 # Version: 17.2.0
-# Total domains: 92,022
+# Total domains: 92,026
 # Active sources: 4
 
 # Category breakdown:
@@ -9,7 +9,7 @@
 #   📢 ADS: 11,201
 #   👁️ TRACKING: 3,260
 #   💀 MALWARE: 22
-#   📄 OTHER: 73,099
+#   📄 OTHER: 73,103
 #
 # Format: 0.0.0.0 domain.com # category
 #
@@ -13752,6 +13752,7 @@
 0.0.0.0 caudorio-sv.fyi # 📄 OTHER
 0.0.0.0 caue971.org # 📄 OTHER
 0.0.0.0 caury.info # 📄 OTHER
+0.0.0.0 cause-impact.com # 📄 OTHER
 0.0.0.0 causecherry.com # 📄 OTHER
 0.0.0.0 cautiouscredit.com # 📄 OTHER
 0.0.0.0 cavamenuprices.com # 📄 OTHER
@@ -18275,6 +18276,7 @@
 0.0.0.0 dcstest.wtlive.com # 📄 OTHER
 0.0.0.0 dctracking.com # 👁️ TRACKING
 0.0.0.0 dctrk.datedeskads.com # 📢 ADS
+0.0.0.0 dcwblida.dz # 📄 OTHER
 0.0.0.0 dcys.ijinshan.com # 📄 OTHER
 0.0.0.0 dd.connextra.com # 📄 OTHER
 0.0.0.0 dd.nytimes.com # 📄 OTHER
@@ -24481,7 +24483,6 @@
 0.0.0.0 gebzecampist.com # 📄 OTHER
 0.0.0.0 gecetu.com # 📄 OTHER
 0.0.0.0 geconsumerfinance.112.2o7.net # 📄 OTHER
-0.0.0.0 gecopakistan.com # 📄 OTHER
 0.0.0.0 geek.us.intellitxt.com # 📄 OTHER
 0.0.0.0 geekstogo.us.intellitxt.com # 📄 OTHER
 0.0.0.0 gehili.pro # 📄 OTHER
@@ -37296,7 +37297,6 @@
 0.0.0.0 nutrigolabburner.pl # 📄 OTHER
 0.0.0.0 nutrigolabstrength.pl # 📄 OTHER
 0.0.0.0 nutrired.org # 📄 OTHER
-0.0.0.0 nutrisc.com.br # 📄 OTHER
 0.0.0.0 nutritionandsupplementspl.info # 📄 OTHER
 0.0.0.0 nutritionforkids.site # 📄 OTHER
 0.0.0.0 nutritiousbean.com # 📄 OTHER
@@ -44448,6 +44448,7 @@
 0.0.0.0 ravirexemapp.com # 📄 OTHER
 0.0.0.0 ravm.tv # 📄 OTHER
 0.0.0.0 ravynix.cyou # 📄 OTHER
+0.0.0.0 raw.flameblox.com # 📄 OTHER
 0.0.0.0 rawivvnsondekhalat.info # 📄 OTHER
 0.0.0.0 rayanvista.com # 📄 OTHER
 0.0.0.0 rayjump.com # 📄 OTHER
@@ -46539,6 +46540,7 @@
 0.0.0.0 sakitu.pro # 📄 OTHER
 0.0.0.0 saksfifthavenue.122.2o7.net # 📄 OTHER
 0.0.0.0 sakura-clubb.online # 📄 OTHER
+0.0.0.0 sakuraloyalty.com # 📄 OTHER
 0.0.0.0 sakuraset.top # 📄 OTHER
 0.0.0.0 sala-samobojcow-hejter-pobierz.eeu.pl # 📄 OTHER
 0.0.0.0 sala5.it # 📄 OTHER
@@ -48522,6 +48524,7 @@
 0.0.0.0 sindelfingen-haarentfernung.de # 📄 OTHER
 0.0.0.0 sindloersme.ink # 📄 OTHER
 0.0.0.0 sinera.org # 📄 OTHER
+0.0.0.0 sinergiaconstruccion.com.mx # 📄 OTHER
 0.0.0.0 sinettrk.com # 📄 OTHER
 0.0.0.0 singa-formulus.com # 📄 OTHER
 0.0.0.0 singaformulus-app.com # 📄 OTHER
@@ -63430,6 +63433,7 @@
 0.0.0.0 www.bennettecremation.site # 📄 OTHER
 0.0.0.0 www.bennettjonah.shop # 📄 OTHER
 0.0.0.0 www.bennettjude.shop # 📄 OTHER
+0.0.0.0 www.benshamcentre.co.uk # 📄 OTHER
 0.0.0.0 www.bentocard.site # 📄 OTHER
 0.0.0.0 www.benziavvol.rest # 📄 OTHER
 0.0.0.0 www.benzkartel.duckdns.org # 📄 OTHER
