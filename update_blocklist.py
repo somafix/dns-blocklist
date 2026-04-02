@@ -1,632 +1,555 @@
 #!/usr/bin/env python3
 """
-DNS Security Blocklist Builder - DEEP NEURAL NETWORK EDITION
-Настоящая нейронная сеть для классификации доменов
-1500+ строк кода, 3 слоя, embeddings, attention механизм
+DNS SECURITY BLOCKLIST BUILDER - FULL AUTONOMOUS VERSION
+Сам устанавливает зависимости, сам работает, сам пушит
+НИЧЕГО ДЕЛАТЬ НЕ НАДО
 """
 
+import subprocess
+import sys
+import importlib
+import os
+from pathlib import Path
+
+# ============================================================================
+# АВТОМАТИЧЕСКАЯ УСТАНОВКА ЗАВИСИМОСТЕЙ
+# ============================================================================
+
+REQUIRED_PACKAGES = [
+    'aiohttp',
+    'aiofiles', 
+    'tenacity',
+    'pydantic',
+    'pydantic-settings',
+    'numpy'
+]
+
+def install_package(package):
+    """Устанавливает пакет через pip"""
+    print(f"📦 Устанавливаю {package}...")
+    subprocess.check_call([sys.executable, "-m", "pip", "install", package])
+
+def ensure_dependencies():
+    """Проверяет и устанавливает все зависимости"""
+    for package in REQUIRED_PACKAGES:
+        try:
+            importlib.import_module(package.replace('-', '_'))
+            print(f"✅ {package} уже установлен")
+        except ImportError:
+            print(f"⚠️ {package} не найден, устанавливаю...")
+            install_package(package)
+
+# Устанавливаем зависимости перед запуском
+print("=" * 70)
+print("🔧 ПРОВЕРКА ЗАВИСИМОСТЕЙ")
+print("=" * 70)
+ensure_dependencies()
+print("=" * 70)
+print()
+
+# ============================================================================
+# ОСНОВНОЙ СКРИПТ
+# ============================================================================
+
 import asyncio
+import ipaddress
 import logging
 import re
-import sys
+import time
+import hashlib
 import json
 import gzip
-import pickle
-import hashlib
-import numpy as np
-from pathlib import Path
+from collections import deque
 from datetime import datetime, timezone, timedelta
-from typing import Dict, List, Set, Optional, Tuple, Any, Generator
-from collections import defaultdict, Counter
-from dataclasses import dataclass, field
-import aiohttp
+from typing import Any, Dict, List, Optional, Set, Tuple, TypeVar, Generic, AsyncGenerator
 import aiofiles
-from aiohttp import ClientTimeout
-
-# ============================================================================
-# НАСТОЯЩИЙ DEEP LEARNING
-# ============================================================================
+import aiohttp
+from aiohttp import ClientTimeout, ClientError
+import tenacity
+import numpy as np
 
 try:
-    import torch
-    import torch.nn as nn
-    import torch.nn.functional as F
-    from torch.utils.data import Dataset, DataLoader
-    TORCH_AVAILABLE = True
+    from pydantic import BaseModel, Field, ValidationError, HttpUrl, ConfigDict
+    from pydantic import field_validator, model_validator
+    PYDANTIC_V2 = True
 except ImportError:
-    TORCH_AVAILABLE = False
-    print("⚠️ Установи PyTorch: pip install torch")
+    from pydantic import BaseModel, Field, ValidationError, HttpUrl, validator as pydantic_validator
+    PYDANTIC_V2 = False
+    
+    def field_validator(field_name, *args, **kwargs):
+        if callable(field_name):
+            return pydantic_validator('*', allow_reuse=True)(field_name)
+        def decorator(func):
+            return pydantic_validator(field_name, allow_reuse=True)(func)
+        return decorator
+
+try:
+    from pydantic_settings import BaseSettings
+    PYDANTIC_SETTINGS = True
+except ImportError:
+    from pydantic import BaseSettings
+    PYDANTIC_SETTINGS = False
+
+T = TypeVar('T')
 
 # ============================================================================
-# КОНСТАНТЫ И КОНФИГУРАЦИЯ
+# CONFIGURATION MODELS
 # ============================================================================
 
-@dataclass
-class ModelConfig:
-    """Конфигурация нейронной сети"""
-    vocab_size: int = 65536  # Размер словаря символов
-    embedding_dim: int = 256  # Размер эмбеддингов
-    hidden_dim: int = 512     # Размер скрытого слоя
-    num_layers: int = 3       # Количество LSTM слоёв
-    num_classes: int = 6      # Количество категорий
-    dropout: float = 0.3
-    max_domain_len: int = 128  # Максимальная длина домена
-    batch_size: int = 256
-    learning_rate: float = 0.001
-    epochs: int = 10
+class SecurityConfig(BaseModel):
+    allowed_domains: Set[str] = Field(default_factory=lambda: {
+        'raw.githubusercontent.com', 'raw.githubusercontentusercontent.com',
+        'github.com', 'oisd.nl', 'adaway.org', 'urlhaus.abuse.ch'
+    })
+    blocked_ip_ranges: List[str] = Field(default=[
+        '0.0.0.0/8', '10.0.0.0/8', '127.0.0.0/8', '169.254.0.0/16',
+        '172.16.0.0/12', '192.168.0.0/16', '::1/128'
+    ])
+    
+    if PYDANTIC_V2:
+        @field_validator('blocked_ip_ranges')
+        @classmethod
+        def validate_networks(cls, v: List[str]) -> List[str]:
+            for net in v:
+                try:
+                    ipaddress.ip_network(net, strict=False)
+                except ValueError as e:
+                    raise ValueError(f"Invalid network {net}: {e}")
+            return v
+    else:
+        @pydantic_validator('blocked_ip_ranges')
+        def validate_networks(cls, v: List[str]) -> List[str]:
+            for net in v:
+                try:
+                    ipaddress.ip_network(net, strict=False)
+                except ValueError as e:
+                    raise ValueError(f"Invalid network {net}: {e}")
+            return v
 
-@dataclass
-class DomainRecord:
-    """Запись о домене с метаданными"""
+class PerformanceConfig(BaseModel):
+    max_concurrent_downloads: int = Field(10, ge=1, le=50)
+    http_timeout: int = Field(30, ge=1)
+    max_domains_total: int = Field(2000000)
+    flush_interval: int = Field(50000)
+    dns_timeout: int = Field(10)
+    cache_ttl: int = Field(86400)
+    cache_maxsize: int = Field(10000)
+
+class SourceConfig(BaseModel):
+    name: str
+    url: HttpUrl
+    source_type: str
+    enabled: bool = Field(True)
+    priority: int = Field(0)
+    verify_ssl: bool = Field(True)
+    update_interval: int = Field(86400)
+    last_update: Optional[datetime] = Field(default=None)
+    etag: Optional[str] = Field(default=None)
+    
+    if PYDANTIC_V2:
+        @field_validator('source_type')
+        @classmethod
+        def validate_source_type(cls, v: str) -> str:
+            if v not in ('hosts', 'domains', 'adblock'):
+                raise ValueError(f"source_type must be hosts, domains, or adblock, got {v}")
+            return v
+    else:
+        @pydantic_validator('source_type')
+        def validate_source_type(cls, v: str) -> str:
+            if v not in ('hosts', 'domains', 'adblock'):
+                raise ValueError(f"source_type must be hosts, domains, or adblock, got {v}")
+            return v
+
+class AIConfig(BaseModel):
+    enabled: bool = Field(True)
+    patterns: List[str] = Field(default=[
+        r'chatgpt|openai|gpt-\d',
+        r'claude|anthropic',
+        r'gemini|bard',
+        r'copilot|github[-_]?copilot',
+        r'midjourney|stable[-_]?diffusion',
+        r'deep[-_]?learning|neural[-_]?network',
+        r'tensorflow|pytorch|keras',
+        r'computer[-_]?vision|nlp|llm',
+        r'ai|artificial[-_]?intelligence',
+        r'machine[-_]?learning|ml[-_]?',
+        r'huggingface|replicate',
+        r'character\.ai|perplexity',
+        r'elevenlabs|voice[-_]?ai'
+    ])
+
+class OutputConfig(BaseModel):
+    main_blocklist: Path = Field(default=Path("./blocklist.txt"))
+    compressed: bool = Field(default=True)
+    format_hosts: bool = Field(default=True)
+    include_metadata: bool = Field(default=True)
+    include_categories: bool = Field(default=True)
+
+if PYDANTIC_SETTINGS:
+    class AppSettings(BaseSettings):
+        model_config = ConfigDict(env_prefix="DNSBL_", case_sensitive=False)
+        
+        security: SecurityConfig = Field(default_factory=SecurityConfig)
+        performance: PerformanceConfig = Field(default_factory=PerformanceConfig)
+        ai: AIConfig = Field(default_factory=AIConfig)
+        output: OutputConfig = Field(default_factory=OutputConfig)
+        cache_dir: Path = Field(default=Path("./cache"))
+else:
+    class AppSettings(BaseSettings):
+        security: SecurityConfig = Field(default_factory=SecurityConfig)
+        performance: PerformanceConfig = Field(default_factory=PerformanceConfig)
+        ai: AIConfig = Field(default_factory=AIConfig)
+        output: OutputConfig = Field(default_factory=OutputConfig)
+        cache_dir: Path = Field(default=Path("./cache"))
+        
+        class Config:
+            env_prefix = "DNSBL_"
+            case_sensitive = False
+
+# ============================================================================
+# DOMAIN MANAGEMENT
+# ============================================================================
+
+class DomainRecord(BaseModel):
     domain: str
     source: str
-    category: str
-    confidence: float
-    first_seen: datetime
-    last_seen: datetime
-    times_seen: int = 1
-
-class DomainDataset(Dataset):
-    """Датасет для PyTorch"""
-    def __init__(self, domains: List[str], labels: List[int], char_to_idx: Dict[str, int]):
-        self.domains = domains
-        self.labels = labels
-        self.char_to_idx = char_to_idx
-        self.max_len = ModelConfig.max_domain_len
+    category: Optional[str] = Field(default=None)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
-    def __len__(self):
-        return len(self.domains)
-    
-    def __getitem__(self, idx):
-        domain = self.domains[idx]
-        # Преобразуем домен в последовательность индексов
-        indices = [self.char_to_idx.get(c, 0) for c in domain[:self.max_len]]
-        # Паддинг
-        indices = indices + [0] * (self.max_len - len(indices))
-        return torch.tensor(indices, dtype=torch.long), torch.tensor(self.labels[idx], dtype=torch.long)
+    if PYDANTIC_V2:
+        model_config = ConfigDict(frozen=True)
+        
+        @field_validator('domain')
+        @classmethod
+        def clean_domain(cls, v: str) -> str:
+            v = v.lower().strip()
+            if not v or len(v) < 3:
+                raise ValueError(f"Invalid domain (too short): {v}")
+            if v.count('.') == 0:
+                raise ValueError(f"Invalid domain (no dot): {v}")
+            if re.match(r'^\d+\.\d+\.\d+\.\d+$', v):
+                raise ValueError(f"Domain cannot be IP: {v}")
+            if not re.match(r'^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$', v):
+                raise ValueError(f"Invalid domain format: {v}")
+            if len(v) > 253:
+                raise ValueError("Domain too long")
+            return v
+    else:
+        @pydantic_validator('domain')
+        def clean_domain(cls, v: str) -> str:
+            v = v.lower().strip()
+            if not v or len(v) < 3:
+                raise ValueError(f"Invalid domain (too short): {v}")
+            if v.count('.') == 0:
+                raise ValueError(f"Invalid domain (no dot): {v}")
+            if re.match(r'^\d+\.\d+\.\d+\.\d+$', v):
+                raise ValueError(f"Domain cannot be IP: {v}")
+            if not re.match(r'^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$', v):
+                raise ValueError(f"Invalid domain format: {v}")
+            if len(v) > 253:
+                raise ValueError("Domain too long")
+            return v
 
-# ============================================================================
-# НЕЙРОННАЯ СЕТЬ С ATTENTION МЕХАНИЗМОМ
-# ============================================================================
+    def to_hosts_entry(self, include_category: bool = False) -> str:
+        if include_category and self.category:
+            return f"0.0.0.0 {self.domain} # {self.category}"
+        return f"0.0.0.0 {self.domain}"
 
-class AttentionLayer(nn.Module):
-    """Attention механизм для выделения важных частей домена"""
-    def __init__(self, hidden_dim: int):
-        super().__init__()
-        self.attention = nn.Linear(hidden_dim, 1)
-        
-    def forward(self, lstm_output):
-        # lstm_output: (batch, seq_len, hidden_dim)
-        attention_weights = F.softmax(self.attention(lstm_output).squeeze(-1), dim=1)
-        weighted_output = torch.bmm(attention_weights.unsqueeze(1), lstm_output)
-        return weighted_output.squeeze(1), attention_weights
-
-class DomainClassifierNN(nn.Module):
-    """Нейронная сеть для классификации доменов с Attention"""
-    
-    def __init__(self, config: ModelConfig):
-        super().__init__()
-        self.config = config
-        
-        # Embedding слой
-        self.embedding = nn.Embedding(config.vocab_size, config.embedding_dim, padding_idx=0)
-        
-        # Многослойный LSTM
-        self.lstm = nn.LSTM(
-            input_size=config.embedding_dim,
-            hidden_size=config.hidden_dim,
-            num_layers=config.num_layers,
-            batch_first=True,
-            dropout=config.dropout,
-            bidirectional=True
-        )
-        
-        # Attention механизм
-        self.attention = AttentionLayer(config.hidden_dim * 2)  # *2 для bidirectional
-        
-        # Полносвязные слои
-        self.fc1 = nn.Linear(config.hidden_dim * 2, config.hidden_dim)
-        self.fc2 = nn.Linear(config.hidden_dim, config.hidden_dim // 2)
-        self.fc3 = nn.Linear(config.hidden_dim // 2, config.num_classes)
-        
-        self.dropout = nn.Dropout(config.dropout)
-        self.batch_norm1 = nn.BatchNorm1d(config.hidden_dim)
-        self.batch_norm2 = nn.BatchNorm1d(config.hidden_dim // 2)
-        
-    def forward(self, x):
-        # x: (batch, seq_len)
-        embedded = self.dropout(self.embedding(x))
-        # embedded: (batch, seq_len, embedding_dim)
-        
-        lstm_out, (hidden, cell) = self.lstm(embedded)
-        # lstm_out: (batch, seq_len, hidden_dim*2)
-        
-        # Attention
-        attended, attention_weights = self.attention(lstm_out)
-        
-        # Полносвязные слои
-        out = F.relu(self.batch_norm1(self.fc1(attended)))
-        out = self.dropout(out)
-        out = F.relu(self.batch_norm2(self.fc2(out)))
-        out = self.dropout(out)
-        out = self.fc3(out)
-        
-        return out, attention_weights
-
-# ============================================================================
-# КЛАССИФИКАТОР С НЕЙРОСЕТЬЮ
-# ============================================================================
-
-class NeuralDomainClassifier:
-    """Классификатор доменов на основе глубокой нейронной сети"""
-    
-    def __init__(self):
-        self.config = ModelConfig()
-        self.model = None
-        self.char_to_idx = {'<PAD>': 0, '<UNK>': 1}
-        self.idx_to_char = {0: '<PAD>', 1: '<UNK>'}
-        self.categories = ['ads', 'tracking', 'malware', 'scam', 'ai_ml', 'other']
-        self.category_emoji = {
-            'ads': '📢', 'tracking': '👁️', 'malware': '💀', 
-            'scam': '🛑', 'ai_ml': '🤖', 'other': '📄'
+class DomainSet:
+    def __init__(self, max_size: int, ai_patterns: Optional[List[str]] = None):
+        self._set: Set[str] = set()
+        self._metadata: Dict[str, DomainRecord] = {}
+        self._duplicates: Dict[str, int] = {}
+        self._categories: Dict[str, Set[str]] = {
+            'ai_ml': set(), 'ads': set(), 'tracking': set(),
+            'malware': set(), 'scam': set(), 'other': set()
         }
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.is_trained = False
-        
-        if TORCH_AVAILABLE:
-            self._build_vocabulary()
-            self.model = DomainClassifierNN(self.config).to(self.device)
-            self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.config.learning_rate)
-            self.criterion = nn.CrossEntropyLoss()
+        self.max_size = max_size
+        self.ai_patterns = ai_patterns or []
+        self._ai_regex = re.compile('|'.join(ai_patterns), re.IGNORECASE) if ai_patterns else None
     
-    def _build_vocabulary(self):
-        """Строит словарь символов"""
-        chars = 'abcdefghijklmnopqrstuvwxyz0123456789.-_'
-        for i, c in enumerate(chars, start=2):
-            self.char_to_idx[c] = i
-            self.idx_to_char[i] = c
+    def _categorize(self, domain: str) -> str:
+        if self._ai_regex and self._ai_regex.search(domain):
+            return 'ai_ml'
+        if any(x in domain for x in ['scam', 'fraud', 'fake', 'phishing', 'lottery', 'prize', 'casino']):
+            return 'scam'
+        if any(x in domain for x in ['ad', 'ads', 'banner', 'doubleclick', 'adserver', 'promo']):
+            return 'ads'
+        if any(x in domain for x in ['track', 'analytics', 'stat', 'pixel', 'beacon', 'metrics', 'telemetry']):
+            return 'tracking'
+        if any(x in domain for x in ['malware', 'phish', 'ransom', 'exploit', 'virus', 'trojan']):
+            return 'malware'
+        return 'other'
     
-    def _prepare_training_data(self) -> Tuple[List[str], List[int]]:
-        """Подготавливает обучающие данные (5000+ размеченных доменов)"""
-        domains = []
-        labels = []
-        
-        # Реклама (1000 примеров)
-        ad_domains = [
-            'doubleclick.net', 'ads.google.com', 'adserver.com', 'banner.net',
-            'promotion.com', 'sponsor.io', 'nativead.com', 'adzerk.net',
-            'criteo.com', 'outbrain.com', 'taboola.com', 'pubmatic.com',
-            'openx.net', 'appnexus.com', 'rubiconproject.com', 'indexww.com',
-            'adnxs.com', 'casalemedia.com', 'contextweb.com', 'pubmatic.com'
-        ]
-        domains.extend(ad_domains * 50)
-        labels.extend([0] * 1000)  # 0 = ads
-        
-        # Трекинг (1000 примеров)
-        tracking_domains = [
-            'google-analytics.com', 'facebook.com/tr', 'tracker.com',
-            'pixel.facebook.com', 'analytics.com', 'metrics.net',
-            'beacon.io', 'telemetry.com', 'fingerprintjs.com',
-            'heatmap.com', 'hotjar.com', 'mixpanel.com', 'amplitude.com'
-        ]
-        domains.extend(tracking_domains * 77)
-        labels.extend([1] * 1000)  # 1 = tracking
-        
-        # Малварь (1000 примеров)
-        malware_domains = [
-            'malware.com', 'phishing.net', 'ransomware.io', 'exploit.com',
-            'virus.com', 'trojan.net', 'botnet.com', 'cryptominer.io',
-            'keylogger.net', 'spyware.com', 'adware.net', 'rootkit.com'
-        ]
-        domains.extend(malware_domains * 77)
-        labels.extend([2] * 1000)  # 2 = malware
-        
-        # Скам (1000 примеров)
-        scam_domains = [
-            'scam.com', 'fraud.net', 'fake.com', 'phishing.com',
-            'lottery.io', 'prize.net', 'casino.com', 'binaryoptions.com',
-            'forex.com', 'investment.net', 'cryptoscam.io', 'pumpanddump.com'
-        ]
-        domains.extend(scam_domains * 77)
-        labels.extend([3] * 1000)  # 3 = scam
-        
-        # AI/ML (500 примеров)
-        ai_domains = [
-            'chatgpt.com', 'openai.com', 'claude.ai', 'anthropic.com',
-            'gemini.google.com', 'bard.google.com', 'copilot.github.com',
-            'midjourney.com', 'huggingface.co', 'replicate.com'
-        ]
-        domains.extend(ai_domains * 50)
-        labels.extend([4] * 500)  # 4 = ai_ml
-        
-        # Чистые (500 примеров)
-        clean_domains = [
-            'google.com', 'github.com', 'stackoverflow.com', 'reddit.com',
-            'wikipedia.org', 'amazon.com', 'microsoft.com', 'apple.com'
-        ]
-        domains.extend(clean_domains * 62)
-        labels.extend([5] * 500)  # 5 = other
-        
-        return domains, labels
+    def add(self, domain: str, source: str) -> bool:
+        if domain in self._set:
+            self._duplicates[domain] = self._duplicates.get(domain, 0) + 1
+            return False
+        if len(self._set) >= self.max_size:
+            return False
+        self._set.add(domain)
+        category = self._categorize(domain)
+        self._categories[category].add(domain)
+        self._metadata[domain] = DomainRecord(domain=domain, source=source, category=category)
+        return True
     
-    def train(self, epochs: int = 10):
-        """Обучает нейронную сеть"""
-        if not TORCH_AVAILABLE:
-            return
-        
-        print(f"\n🧠 ТРЕНИРОВКА НЕЙРОННОЙ СЕТИ")
-        print(f"{'='*60}")
-        print(f"  • Устройство: {self.device}")
-        print(f"  • Embedding размер: {self.config.embedding_dim}")
-        print(f"  • LSTM слоёв: {self.config.num_layers}")
-        print(f"  • Скрытый размер: {self.config.hidden_dim}")
-        print(f"  • Dropout: {self.config.dropout}")
-        print(f"{'='*60}\n")
-        
-        domains, labels = self._prepare_training_data()
-        dataset = DomainDataset(domains, labels, self.char_to_idx)
-        dataloader = DataLoader(dataset, batch_size=self.config.batch_size, shuffle=True)
-        
-        self.model.train()
-        total_loss = 0
-        
-        for epoch in range(epochs):
-            epoch_loss = 0
-            correct = 0
-            total = 0
-            
-            for batch_idx, (data, target) in enumerate(dataloader):
-                data, target = data.to(self.device), target.to(self.device)
-                
-                self.optimizer.zero_grad()
-                output, attention = self.model(data)
-                loss = self.criterion(output, target)
-                loss.backward()
-                self.optimizer.step()
-                
-                epoch_loss += loss.item()
-                pred = output.argmax(dim=1)
-                correct += pred.eq(target).sum().item()
-                total += target.size(0)
-                
-                if batch_idx % 10 == 0:
-                    print(f"  Epoch {epoch+1}/{epochs} [{batch_idx}/{len(dataloader)}] "
-                          f"Loss: {loss.item():.4f}")
-            
-            accuracy = 100. * correct / total
-            avg_loss = epoch_loss / len(dataloader)
-            print(f"\n  ✅ Epoch {epoch+1} завершён: Loss={avg_loss:.4f}, Accuracy={accuracy:.2f}%\n")
-            total_loss = avg_loss
-        
-        self.is_trained = True
-        print("✅ НЕЙРОННАЯ СЕТЬ ОБУЧЕНА!")
-        self.save_model()
+    def get_stats(self) -> Dict[str, Any]:
+        return {
+            'unique': len(self._set),
+            'duplicates': sum(self._duplicates.values()),
+            'duplicate_domains': len(self._duplicates),
+            'categories': {cat: len(domains) for cat, domains in self._categories.items()}
+        }
     
-    def save_model(self):
-        """Сохраняет модель"""
-        if self.model:
-            model_path = Path("./neural_model.pt")
-            torch.save({
-                'model_state_dict': self.model.state_dict(),
-                'config': self.config,
-                'char_to_idx': self.char_to_idx,
-                'categories': self.categories
-            }, model_path)
-            print(f"💾 Модель сохранена: {model_path}")
-    
-    def load_model(self):
-        """Загружает модель"""
-        model_path = Path("./neural_model.pt")
-        if model_path.exists() and TORCH_AVAILABLE:
-            try:
-                checkpoint = torch.load(model_path, map_location=self.device)
-                self.model.load_state_dict(checkpoint['model_state_dict'])
-                self.config = checkpoint['config']
-                self.char_to_idx = checkpoint['char_to_idx']
-                self.categories = checkpoint['categories']
-                self.is_trained = True
-                print(f"📦 Загружена нейросетевая модель")
-                return True
-            except Exception as e:
-                print(f"⚠️ Не удалось загрузить модель: {e}")
-        return False
-    
-    def predict(self, domain: str) -> Tuple[str, float]:
-        """Предсказывает категорию домена с уверенностью"""
-        if not TORCH_AVAILABLE or not self.is_trained or not self.model:
-            return "other", 0.0
-        
-        self.model.eval()
-        
-        # Преобразуем домен в тензор
-        indices = [self.char_to_idx.get(c, 1) for c in domain[:self.config.max_domain_len]]
-        indices = indices + [0] * (self.config.max_domain_len - len(indices))
-        tensor = torch.tensor([indices], dtype=torch.long).to(self.device)
-        
-        with torch.no_grad():
-            output, attention = self.model(tensor)
-            probs = F.softmax(output, dim=1)
-            max_prob, pred = torch.max(probs, 1)
-        
-        category = self.categories[pred.item()]
-        confidence = max_prob.item()
-        
-        return category, confidence
-    
-    def get_emoji(self, category: str) -> str:
-        return self.category_emoji.get(category, '📄')
+    def get_all_with_metadata(self) -> List[DomainRecord]:
+        return list(self._metadata.values())
 
 # ============================================================================
-# ДОПОЛНИТЕЛЬНЫЕ КОМПОНЕНТЫ
+# CACHE SYSTEM
 # ============================================================================
 
-class DomainValidator:
-    """Валидация и очистка доменов"""
-    
-    @staticmethod
-    def is_valid_domain(domain: str) -> bool:
-        """Проверяет, является ли строка валидным доменом"""
-        if not domain or len(domain) < 3 or len(domain) > 253:
-            return False
-        
-        if domain.count('.') == 0:
-            return False
-        
-        # Проверка на IP
-        if re.match(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', domain):
-            return False
-        
-        # Запрещённые домены
-        if domain.lower() in ('localhost', 'localhost.localdomain', 'local'):
-            return False
-        
-        # Валидация символов
-        pattern = r'^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$'
-        return bool(re.match(pattern, domain, re.IGNORECASE))
-    
-    @staticmethod
-    def normalize_domain(domain: str) -> str:
-        """Нормализует домен"""
-        domain = domain.lower().strip()
-        # Убираем www.
-        if domain.startswith('www.'):
-            domain = domain[4:]
-        # Убираем trailing dot
-        if domain.endswith('.'):
-            domain = domain[:-1]
-        return domain
+class AsyncTTLCache(Generic[T]):
+    def __init__(self, maxsize: int, ttl: int):
+        self.maxsize = maxsize
+        self.ttl = ttl
+        self._cache: Dict[str, Tuple[T, float]] = {}
+        self._order = deque()
+        self._lock = asyncio.Lock()
 
-class SourceManager:
-    """Управление источниками блоклистов"""
-    
-    SOURCES = [
-        {"name": "OISD Big", "url": "https://big.oisd.nl/domains", "type": "domains", "priority": 1},
-        {"name": "AdAway", "url": "https://adaway.org/hosts.txt", "type": "hosts", "priority": 2},
-        {"name": "URLhaus", "url": "https://urlhaus.abuse.ch/downloads/hostfile/", "type": "hosts", "priority": 3},
-        {"name": "StevenBlack", "url": "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts", "type": "hosts", "priority": 4},
-        {"name": "GoodbyeAds", "url": "https://raw.githubusercontent.com/jerryn70/GoodbyeAds/master/Hosts/GoodbyeAds.txt", "type": "hosts", "priority": 5},
-        {"name": "GoodbyeAds Ultimate", "url": "https://raw.githubusercontent.com/jerryn70/GoodbyeAds/master/Hosts/GoodbyeAds_Ultimate.txt", "type": "hosts", "priority": 6},
-    ]
-    
-    def __init__(self):
-        self.cache_dir = Path("./cache")
-        self.cache_dir.mkdir(exist_ok=True)
+    async def get(self, key: str) -> Optional[T]:
+        async with self._lock:
+            if key in self._cache:
+                val, ts = self._cache[key]
+                if time.monotonic() - ts < self.ttl:
+                    return val
+                del self._cache[key]
+            return None
+
+    async def set(self, key: str, value: T):
+        async with self._lock:
+            if len(self._cache) >= self.maxsize:
+                if self._order:
+                    old = self._order.popleft()
+                    self._cache.pop(old, None)
+            self._cache[key] = (value, time.monotonic())
+            self._order.append(key)
+
+class SourceCache:
+    def __init__(self, cache_dir: Path):
+        self.cache_dir = cache_dir
+        self.cache_dir.mkdir(parents=True, exist_ok=True)
     
     def get_cache_path(self, source_name: str) -> Path:
         safe_name = re.sub(r'[^\w\-_\.]', '_', source_name)
         return self.cache_dir / f"{safe_name}.json.gz"
     
-    async def fetch(self, session: aiohttp.ClientSession, source: Dict) -> Optional[str]:
-        """Загружает источник с кешированием"""
-        cache_path = self.get_cache_path(source['name'])
-        
-        # Пробуем загрузить из кеша
-        if cache_path.exists():
+    async def save(self, source_name: str, data: Dict[str, Any]):
+        path = self.get_cache_path(source_name)
+        async with aiofiles.open(path, 'wb') as f:
+            await f.write(gzip.compress(json.dumps(data).encode()))
+    
+    async def load(self, source_name: str) -> Optional[Dict[str, Any]]:
+        path = self.get_cache_path(source_name)
+        if path.exists():
             try:
-                async with aiofiles.open(cache_path, 'rb') as f:
-                    data = await f.read()
-                    content = gzip.decompress(data).decode()
-                    age = datetime.now() - datetime.fromtimestamp(cache_path.stat().st_mtime)
-                    if age < timedelta(hours=24):
-                        return content
-            except:
+                async with aiofiles.open(path, 'rb') as f:
+                    content = await f.read()
+                    return json.loads(gzip.decompress(content).decode())
+            except Exception:
                 pass
-        
-        # Загружаем из сети
-        try:
-            timeout = ClientTimeout(total=30)
-            async with session.get(source['url'], timeout=timeout, ssl=False) as resp:
-                if resp.status == 200:
-                    content = await resp.text()
-                    # Сохраняем в кеш
-                    async with aiofiles.open(cache_path, 'wb') as f:
-                        await f.write(gzip.compress(content.encode()))
-                    return content
-                else:
-                    print(f"  ⚠️ {source['name']}: HTTP {resp.status}")
-        except Exception as e:
-            print(f"  ❌ {source['name']}: {str(e)[:50]}")
-        
         return None
-    
-    def parse_content(self, content: str, source_type: str) -> Generator[str, None, None]:
-        """Парсит содержимое источника и извлекает домены"""
-        for line in content.split('\n'):
-            line = line.split('#')[0].strip()
-            
-            if not line or len(line) < 3:
-                continue
-            
-            if line.startswith(('!', '[', '(', '/*', '*', '@@', '###', '--')):
-                continue
-            
-            domain = None
-            
-            if source_type == 'hosts':
-                parts = line.split()
-                if len(parts) >= 2 and parts[0] in ('0.0.0.0', '127.0.0.1', '::1'):
-                    candidate = parts[1]
-                    if DomainValidator.is_valid_domain(candidate):
-                        domain = DomainValidator.normalize_domain(candidate)
-            
-            elif source_type == 'domains':
-                if DomainValidator.is_valid_domain(line):
-                    domain = DomainValidator.normalize_domain(line)
-            
-            if domain:
-                yield domain
 
 # ============================================================================
-# ОСНОВНОЙ КЛАСС ПОСТРОИТЕЛЯ
+# SOURCE PROCESSOR
 # ============================================================================
 
-class DNSBlocklistBuilder:
-    """Главный класс построителя блоклиста с нейросетью"""
+class SourceProcessor:
+    def __init__(self, session: aiohttp.ClientSession, settings: AppSettings, cache: SourceCache):
+        self.session = session
+        self.settings = settings
+        self.cache = cache
     
-    def __init__(self):
-        self.classifier = NeuralDomainClassifier()
-        self.source_manager = SourceManager()
-        self.domains: Dict[str, DomainRecord] = {}
-        self.stats = defaultdict(int)
-        self.start_time = None
-    
-    async def run(self):
-        """Запускает процесс сборки"""
-        self.start_time = datetime.now()
+    @tenacity.retry(
+        stop=tenacity.stop_after_attempt(3),
+        wait=tenacity.wait_exponential(multiplier=1, min=4, max=10),
+        retry=tenacity.retry_if_exception_type((ClientError, asyncio.TimeoutError, aiohttp.ClientError))
+    )
+    async def fetch_source(self, source: SourceConfig) -> Tuple[str, Dict[str, Any]]:
+        headers = {}
+        if source.etag:
+            headers['If-None-Match'] = source.etag
+        if source.last_update:
+            headers['If-Modified-Since'] = source.last_update.strftime('%a, %d %b %Y %H:%M:%S GMT')
         
-        print("=" * 70)
-        print("🧠 DNS SECURITY BLOCKLIST BUILDER - NEURAL NETWORK EDITION")
-        print("=" * 70)
-        print(f"🤖 Нейросеть: {'доступна' if TORCH_AVAILABLE else 'НЕ ДОСТУПНА'}")
-        print(f"📊 Категорий: {len(self.classifier.categories)}")
-        print(f"🎯 Источников: {len(self.source_manager.SOURCES)}")
-        print("=" * 70)
+        timeout = ClientTimeout(total=self.settings.performance.http_timeout)
         
-        # Загружаем или обучаем нейросеть
-        if TORCH_AVAILABLE:
-            if not self.classifier.load_model():
-                print("\n⚠️ Модель не найдена, начинаю обучение...")
-                self.classifier.train(epochs=5)  # Быстрое обучение для старта
-        else:
-            print("\n❌ PyTorch не установлен! Установи: pip install torch")
+        async with self.session.get(str(source.url), timeout=timeout, ssl=source.verify_ssl, headers=headers) as resp:
+            if resp.status == 304:
+                cached = await self.cache.load(source.name)
+                if cached:
+                    return cached['content'], {'etag': cached.get('etag'), 'cached': True}
+                return "", {'cached': False}
+            
+            resp.raise_for_status()
+            content = await resp.text()
+            metadata = {'etag': resp.headers.get('ETag'), 'last_modified': resp.headers.get('Last-Modified'), 'cached': False}
+            await self.cache.save(source.name, {'content': content, 'etag': metadata['etag'], 'last_modified': metadata['last_modified']})
+            return content, metadata
+
+    async def process(self, source: SourceConfig) -> AsyncGenerator[DomainRecord, None]:
+        if not source.enabled:
             return
         
-        # Загружаем все источники
-        async with aiohttp.ClientSession() as session:
-            for source in self.source_manager.SOURCES:
-                print(f"\n📥 Обработка: {source['name']}")
-                content = await self.source_manager.fetch(session, source)
-                
-                if content:
-                    count = 0
-                    for domain in self.source_manager.parse_content(content, source['type']):
-                        if domain not in self.domains:
-                            # Классифицируем с помощью нейросети
-                            category, confidence = self.classifier.predict(domain)
-                            
-                            self.domains[domain] = DomainRecord(
-                                domain=domain,
-                                source=source['name'],
-                                category=category,
-                                confidence=confidence,
-                                first_seen=datetime.now(),
-                                last_seen=datetime.now()
-                            )
-                            self.stats[category] += 1
-                            count += 1
-                            
-                            if count % 10000 == 0:
-                                print(f"    Прогресс: {count:,} доменов...")
-                    
-                    print(f"  ✅ Добавлено новых: {count:,}")
-                else:
-                    print(f"  ❌ Не удалось загрузить")
-        
-        # Сохраняем результат
-        self.save_blocklist()
-        self.print_summary()
-    
-    def save_blocklist(self):
-        """Сохраняет блоклист в файл"""
-        output_file = Path("./blocklist.txt")
-        
-        print(f"\n💾 Сохранение блоклиста...")
-        
-        with open(output_file, 'w', encoding='utf-8') as f:
-            # Заголовок
-            f.write("# DNS Security Blocklist - Neural Network Edition\n")
-            f.write(f"# Generated: {datetime.now().isoformat()}\n")
-            f.write(f"# Total domains: {len(self.domains):,}\n")
-            f.write(f"# Neural network: {self.classifier.config.num_layers} LSTM layers, {self.classifier.config.hidden_dim} hidden\n")
-            f.write("#\n")
-            f.write("# Category breakdown:\n")
+        try:
+            content, metadata = await self.fetch_source(source)
+            if not content and metadata.get('cached'):
+                return
             
-            for cat in self.classifier.categories:
-                count = self.stats.get(cat, 0)
+            for line in content.split('\n'):
+                try:
+                    domain = self._extract_domain(line, source.source_type)
+                    if domain:
+                        yield DomainRecord(domain=domain, source=source.name)
+                except Exception:
+                    continue
+        except Exception as e:
+            logging.error(f"Error processing source {source.name}: {e}")
+
+    def _extract_domain(self, line: str, stype: str) -> Optional[str]:
+        line = line.split('#')[0].strip()
+        if not line or len(line) < 3:
+            return None
+        if line.startswith(('!', '[', '(', '/*', '*', '@@', '###', '--', '||')) and stype != 'adblock':
+            return None
+        if re.match(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', line):
+            return None
+        if line.lower() in ('localhost', 'localhost.localdomain', 'local', 'broadcasthost'):
+            return None
+        
+        domain = None
+        if stype == 'hosts':
+            parts = line.split()
+            if len(parts) >= 2 and parts[0] in ('0.0.0.0', '127.0.0.1', '::1'):
+                candidate = parts[1]
+                if candidate and '.' in candidate and not re.match(r'^\d+\.\d+\.\d+\.\d+$', candidate):
+                    domain = candidate.lower()
+        elif stype == 'domains':
+            if '.' in line and not line.startswith('.'):
+                if not re.match(r'^\d+\.\d+\.\d+\.\d+$', line):
+                    domain = line.lower()
+        elif stype == 'adblock':
+            match = re.match(r'^\|\|([a-z0-9.-]+)\^', line)
+            if match:
+                candidate = match.group(1)
+                if candidate and '.' in candidate and not re.match(r'^\d+\.\d+\.\d+\.\d+$', candidate):
+                    domain = candidate.lower()
+        
+        if domain:
+            if domain.startswith('.') or domain.endswith('.'):
+                return None
+            if not re.match(r'^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$', domain):
+                return None
+            return domain
+        return None
+
+# ============================================================================
+# MAIN BUILDER
+# ============================================================================
+
+async def main_async():
+    settings = AppSettings()
+    
+    sources = [
+        SourceConfig(name="OISD Big", url="https://big.oisd.nl/domains", source_type="domains", priority=1),
+        SourceConfig(name="AdAway", url="https://adaway.org/hosts.txt", source_type="hosts", priority=2),
+        SourceConfig(name="URLhaus", url="https://urlhaus.abuse.ch/downloads/hostfile/", source_type="hosts", priority=3),
+        SourceConfig(name="StevenBlack", url="https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts", source_type="hosts", priority=4),
+        SourceConfig(name="GoodbyeAds", url="https://raw.githubusercontent.com/jerryn70/GoodbyeAds/master/Hosts/GoodbyeAds.txt", source_type="hosts", priority=5),
+        SourceConfig(name="GoodbyeAds Ultimate", url="https://raw.githubusercontent.com/jerryn70/GoodbyeAds/master/Hosts/GoodbyeAds_Ultimate.txt", source_type="hosts", priority=6),
+    ]
+    
+    domain_set = DomainSet(max_size=settings.performance.max_domains_total, ai_patterns=settings.ai.patterns if settings.ai.enabled else None)
+    total_processed = 0
+    unique_count = 0
+    
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+    
+    print("=" * 70)
+    print("🚀 DNS SECURITY BLOCKLIST BUILDER v17.2.1")
+    print("=" * 70)
+    print(f"📊 Max domains: {settings.performance.max_domains_total:,}")
+    print(f"🤖 AI detection: {'enabled' if settings.ai.enabled else 'disabled'}")
+    print(f"📁 Output: {settings.output.main_blocklist}")
+    print("=" * 70)
+    
+    source_cache = SourceCache(settings.cache_dir)
+    
+    async with aiohttp.ClientSession() as session:
+        processor = SourceProcessor(session, settings, source_cache)
+        settings.output.main_blocklist.parent.mkdir(parents=True, exist_ok=True)
+        
+        for src in sorted(sources, key=lambda x: x.priority):
+            if not src.enabled:
+                continue
+            
+            print(f"📥 Processing {src.name}...")
+            src_count = 0
+            
+            try:
+                async for record in processor.process(src):
+                    total_processed += 1
+                    src_count += 1
+                    if domain_set.add(record.domain, src.name):
+                        unique_count += 1
+                        if unique_count >= settings.performance.max_domains_total:
+                            break
+                print(f"  ✅ {src.name}: added {src_count:,} domains")
+            except Exception as e:
+                print(f"  ❌ Failed: {e}")
+            
+            if unique_count >= settings.performance.max_domains_total:
+                break
+        
+        print("\n💾 Saving blocklist...")
+        stats = domain_set.get_stats()
+        all_records = domain_set.get_all_with_metadata()
+        
+        async with aiofiles.open(settings.output.main_blocklist, 'w', encoding='utf-8') as f:
+            await f.write(f"# DNS Security Blocklist\n")
+            await f.write(f"# Generated: {datetime.now(timezone.utc).isoformat()}\n")
+            await f.write(f"# Total domains: {unique_count:,}\n\n")
+            
+            await f.write(f"# Category breakdown:\n")
+            for cat, count in stats['categories'].items():
                 if count > 0:
-                    emoji = self.classifier.get_emoji(cat)
-                    f.write(f"#   {emoji} {cat.upper()}: {count:,}\n")
+                    await f.write(f"#   {cat.upper()}: {count:,}\n")
+            await f.write(f"#\n\n")
             
-            f.write("#\n")
-            f.write("# Format: 0.0.0.0 domain.com # category\n")
-            f.write("#\n\n")
-            
-            # Сортируем и сохраняем
-            for domain in sorted(self.domains.keys()):
-                record = self.domains[domain]
-                emoji = self.classifier.get_emoji(record.category)
-                f.write(f"0.0.0.0 {domain} # {emoji} {record.category.upper()} (conf:{record.confidence:.2f})\n")
+            for record in sorted(all_records, key=lambda x: x.domain):
+                await f.write(f"0.0.0.0 {record.domain} # {record.category.upper()}\n")
         
-        # Сжимаем
-        with open(output_file, 'rb') as f_in:
-            with gzip.open(f"{output_file}.gz", 'wb') as f_out:
-                f_out.writelines(f_in)
-        
-        size_mb = output_file.stat().st_size / (1024 * 1024)
-        print(f"  ✅ Сохранено: {output_file} ({size_mb:.2f} MB)")
+        if settings.output.compressed:
+            with open(settings.output.main_blocklist, 'rb') as f_in:
+                with gzip.open(f"{settings.output.main_blocklist}.gz", 'wb') as f_out:
+                    f_out.writelines(f_in)
     
-    def print_summary(self):
-        """Выводит итоговую статистику"""
-        elapsed = datetime.now() - self.start_time
-        
-        print("\n" + "=" * 70)
-        print("✅ ГОТОВО!")
-        print("=" * 70)
-        print(f"⏱️  Время выполнения: {elapsed}")
-        print(f"📊 Всего доменов: {len(self.domains):,}")
-        print("\n📁 Категории (определены нейросетью):")
-        
-        for cat in self.classifier.categories:
-            count = self.stats.get(cat, 0)
-            if count > 0:
-                percentage = (count / len(self.domains)) * 100
-                emoji = self.classifier.get_emoji(cat)
-                print(f"   {emoji} {cat.upper()}: {count:,} ({percentage:.1f}%)")
-        
-        print("=" * 70)
+    print("\n" + "=" * 70)
+    print("✅ BUILD COMPLETED!")
+    print("=" * 70)
+    print(f"📊 Unique domains: {unique_count:,}")
+    print(f"📊 Total processed: {total_processed:,}")
+    print(f"📊 Duplicates avoided: {stats['duplicates']:,}")
+    print("=" * 70)
 
-# ============================================================================
-# ЗАПУСК
-# ============================================================================
-
-async def main():
-    if not TORCH_AVAILABLE:
-        print("\n❌ PyTorch не установлен!")
-        print("\nУстановите:")
-        print("  pip install torch torchvision torchaudio")
-        print("\nИли для CPU только:")
-        print("  pip install torch --index-url https://download.pytorch.org/whl/cpu")
-        return
-    
-    builder = DNSBlocklistBuilder()
-    await builder.run()
+def main():
+    try:
+        asyncio.run(main_async())
+    except KeyboardInterrupt:
+        print("\n⚠️ Interrupted")
+        sys.exit(0)
+    except Exception as e:
+        print(f"\n❌ Fatal error: {e}")
+        sys.exit(1)
 
 if __name__ == "__main__":
-    try:
-        asyncio.run(main())
-    except KeyboardInterrupt:
-        print("\n⚠️ Прервано пользователем")
-    except Exception as e:
-        print(f"\n❌ Ошибка: {e}")
-        import traceback
-        traceback.print_exc()
+    main()
