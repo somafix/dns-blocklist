@@ -1,6 +1,5 @@
 # DNS Security Blocklist
-# Generated: 2026-04-02T20:02:51.399136+00:00
+# Generated: 2026-04-02T20:06:57.217496+00:00
 # Total Domains: 0
-# Categories: {"ai_ml": 0, "ads": 0, "tracking": 0, "malware": 0, "other": 0}
-
+# Categories: {}
 
