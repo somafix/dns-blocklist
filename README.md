@@ -1,58 +1,57 @@
 # 🛡️ DNS Security Blocklist Builder 
 
-### **Next-Gen Threat Intelligence & AI/ML Domain Filtering**
-**Version 17.2.1** • *High-Concurrency Async Engine* • *Production Ready*
+### **Zero-Config • Fully Autonomous • AI-Powered Security**
+**Version 17.2.1 (Autonomous Edition)** • *High-Concurrency Async Engine*
 
 [![Python](https://img.shields.io/badge/Python-3.8%2B-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![Pydantic](https://img.shields.io/badge/Pydantic-V2-E92063?style=for-the-badge&logo=pydantic&logoColor=white)](https://docs.pydantic.dev/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
-[![Security](https://img.shields.io/badge/Security-Hardened-red?style=for-the-badge&logo=shield-check)](#)
+[![Self-Installing](https://img.shields.io/badge/Dependencies-Auto--Install-green?style=for-the-badge&logo=unrealengine)](#)
 
 ---
 
 ## 🎯 Project Overview
 
-**DNS Security Blocklist Builder** is a high-performance orchestration tool designed to aggregate, validate, and categorize threat intelligence feeds into a single, clean security manifest.
+The **DNS Security Blocklist Builder** is an enterprise-grade orchestration tool designed to aggregate, validate, and categorize global threat intelligence into a single, optimized manifest.
 
-Version **v17.2.1** is a "Fixed Production" release focused on data purity. It implements a sophisticated parsing engine that strips out IP addresses, local hosts, and syntax noise common in raw public feeds.
+The **Autonomous Edition** is built for "Set and Forget" operation. It removes the need for manual environment preparation by managing its own lifecycle—from dependency installation to final compression.
 
 > [!IMPORTANT]
-> **What's new in v17.2.1:** 
-> * Added **GoodbyeAds-YouTube** and **GoodbyeAds Ultimate** integration.
-> * Fixed parsing: Automatically handles AdBlock-style prefixes like `||`, `@@`, and `^`.
-> * Strict Regex Validation: Eliminates malformed domains and junk entries.
+> **Zero Manual Intervention:** The script features a self-bootstrapping layer. It detects missing libraries (`aiohttp`, `pydantic`, `tenacity`, `numpy`, etc.) and installs them via `pip` automatically before execution.
 
 ---
 
 ## 🔥 Key Features
 
-### 🛠 Smart Extraction & Cleaning
-Unlike basic bash scripts, this engine performs deep inspection of every line:
-* **Anti-IP Filtering:** Automatically skips IPv4/IPv6 addresses, ensuring only FQDNs enter the list.
-* **Format Normalization:** Converts to lowercase, strips trailing dots, and removes inline comments.
-* **Localhost Shield:** Protects critical infrastructure names (localhost, broadcasthost, etc.) from accidental blocking.
+### 🚀 Self-Bootstrapping Engine
+No more `pip install -r requirements.txt`. On launch, the script:
+* **Environment Scan:** Checks for all required Python packages.
+* **Auto-Repair:** Silently installs missing dependencies in the background.
+* **Workspace Setup:** Automatically initializes cache directories and output paths.
 
-### 🤖 AI/ML Smart Categorization
-Built-in heuristic analysis identifies Artificial Intelligence infrastructure. The engine automatically tags domains from **OpenAI, Anthropic, Gemini, Midjourney**, and more as `AI_ML`, allowing granular control over AI tool access.
+### 🤖 AI/ML Infrastructure Detection
+Integrated heuristic analysis identifies domains used by Artificial Intelligence services (OpenAI, Anthropic, Gemini, Midjourney, etc.). These are tagged as `AI_ML`, giving you granular control over AI tool access in your network.
 
-### ⚡ High-Performance Async Engine
-Leveraging `AsyncIO` and `aiohttp`, the pipeline processes millions of domains in seconds.
-* **Smart Caching:** Full support for `ETag` and `If-Modified-Since` headers to save bandwidth.
-* **Memory Optimization:** Uses Python slots and efficient hash-sets for deduplication without bloating RAM.
-* **Atomic Writes:** Ensures your production blocklist is never corrupted during the update process.
+### ⚡ Production-Grade Cleansing
+* **Strict Validation:** Strips AdBlock noise (`||`, `^`), removes IP addresses, and ignores local network hostnames.
+* **Duplicate Suppression:** Efficiently de-duplicates millions of domains using high-performance sets.
+* **Resource Efficient:** Powered by `AsyncIO` for non-blocking I/O and optimized for low memory footprint.
 
 ---
 
 ## 📂 Output Anatomy
 
-The generated `blocklist.txt` is fully compatible with **Pi-hole**, **AdGuard Home**, **pfSense (Unbound)**, and **Mikrotik**.
+The script generates a unified `blocklist.txt` (and a compressed `.gz` version) compatible with **Pi-hole**, **AdGuard Home**, **pfSense**, and **Mikrotik**.
 
 ```text
-# DNS Security Blocklist - v17.2.1 FIXED
-# Total unique domains: 1,842,901
-# Stats: 🤖 AI_ML: 1.2k | 💀 MALWARE: 84k | 👁️ TRACKING: 210k
+# DNS Security Blocklist
+# Generated: 2026-04-02T16:32:00Z
+# Total domains: 1,842,901
+# Category breakdown:
+#   AI_ML: 1,240
+#   MALWARE: 84,120
+#   TRACKING: 210,050
 
 0.0.0.0 api.openai.com # AI_ML
 0.0.0.0 doubleclick.net # ADS
 0.0.0.0 track.analytics-data.io # TRACKING
-0.0.0.0 malware-site.biz # MALWARE
