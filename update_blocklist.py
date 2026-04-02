@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 DNS Security Blocklist Builder - Autonomous Edition
-Version: 4.0.0 - Self-Healing, Auto-Update, Zero Supervision
+Version: 4.0.1 - FIXED (Global Logger)
 """
 
 from __future__ import annotations
@@ -27,6 +27,18 @@ import aiohttp
 from aiohttp import ClientSession, ClientTimeout, TCPConnector
 from pydantic import BaseModel, Field, HttpUrl, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# ============================================================================
+# LOGGING (ГЛОБАЛЬНЫЙ - ДОЛЖЕН БЫТЬ ДО ВСЕХ КЛАССОВ)
+# ============================================================================
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+    stream=sys.stdout,
+)
+logger = logging.getLogger("DNSBL_Builder")
 
 # ============================================================================
 # CONFIGURATION
@@ -70,10 +82,10 @@ class AppSettings(BaseSettings):
     
     # Auto-healing
     auto_repair: bool = Field(default=True)
-    checkpoint_interval: int = Field(default=100000)  # Save state every N domains
+    checkpoint_interval: int = Field(default=100000)
     max_checkpoints: int = Field(default=5)
     
-    # Schedule (cron in seconds)
+    # Schedule
     update_interval_hours: int = Field(default=6, ge=1)
     
     def setup_dirs(self):
@@ -83,7 +95,7 @@ class AppSettings(BaseSettings):
 
 
 # ============================================================================
-# PERSISTENT STATE MANAGER (для восстановления после сбоев)
+# PERSISTENT STATE MANAGER
 # ============================================================================
 
 class StateManager:
@@ -104,11 +116,9 @@ class StateManager:
                 "domain_count": len(domains)
             }
             
-            # Save checkpoint metadata
             with open(self.checkpoint_file, 'wb') as f:
                 pickle.dump(checkpoint, f)
             
-            # Save domains (incremental)
             with open(self.domains_file, 'wb') as f:
                 pickle.dump(domains, f)
             
@@ -144,7 +154,7 @@ class StateManager:
 
 
 # ============================================================================
-# DOMAIN PROCESSOR (с автосохранением)
+# DOMAIN PROCESSOR
 # ============================================================================
 
 class DomainProcessor:
@@ -161,7 +171,6 @@ class DomainProcessor:
         self.processed_count = 0
         self.stats = {"processed": 0, "added": 0, "duplicates": 0, "invalid": 0}
         
-        # Try to restore from checkpoint
         restored_domains, restored_count, _ = state_manager.load_checkpoint()
         if restored_domains:
             self.domains = restored_domains
@@ -173,7 +182,6 @@ class DomainProcessor:
         self.processed_count += 1
         self.stats["processed"] += 1
         
-        # Validation
         if len(domain) < 4 or len(domain) > 253:
             self.stats["invalid"] += 1
             return False
@@ -196,7 +204,6 @@ class DomainProcessor:
         self.domains[domain] = True
         self.stats["added"] += 1
         
-        # Auto-checkpoint
         if self.processed_count % self.checkpoint_interval == 0:
             self.state_manager.save_checkpoint(self.domains, self.processed_count, 0)
         
@@ -204,7 +211,7 @@ class DomainProcessor:
 
 
 # ============================================================================
-# AUTO-RETRY FETCHER (с экспоненциальной задержкой)
+# AUTO-RETRY FETCHER
 # ============================================================================
 
 class RobustFetcher:
@@ -222,7 +229,7 @@ class RobustFetcher:
             try:
                 async for line in self._fetch(url):
                     yield line
-                return  # Success
+                return
             except Exception as e:
                 wait_time = self.retry_delay * (2 ** attempt)
                 logger.warning(f"Attempt {attempt + 1}/{self.max_retries} failed for {source_name}: {e}")
@@ -246,7 +253,7 @@ class RobustFetcher:
 
 
 # ============================================================================
-# HEALTH MONITOR & AUTO-REPAIR
+# HEALTH MONITOR
 # ============================================================================
 
 class HealthMonitor:
@@ -259,19 +266,18 @@ class HealthMonitor:
         self._load_health()
     
     def _load_health(self):
-        """Load previous health status"""
         if self.health_file.exists():
             try:
                 with open(self.health_file, 'r') as f:
                     data = json.load(f)
-                    self.health.last_success = datetime.fromisoformat(data['last_success']) if data.get('last_success') else None
+                    if data.get('last_success'):
+                        self.health.last_success = datetime.fromisoformat(data['last_success'])
                     self.health.consecutive_failures = data.get('consecutive_failures', 0)
                     self.health.total_updates = data.get('total_updates', 0)
             except Exception:
                 pass
     
     def _save_health(self):
-        """Save health status"""
         try:
             with open(self.health_file, 'w') as f:
                 json.dump({
@@ -292,33 +298,25 @@ class HealthMonitor:
         self._save_health()
     
     def needs_repair(self) -> bool:
-        """Check if system needs repair"""
         if self.health.consecutive_failures >= 3:
             return True
         if self.health.last_success:
-            # No success in last 24 hours
             if datetime.now(timezone.utc) - self.health.last_success > timedelta(hours=24):
                 return True
         return False
     
     async def auto_repair(self):
-        """Attempt automatic repair"""
         logger.warning("🔧 Attempting auto-repair...")
-        
-        # Clear corrupted checkpoint
         self.state_manager.clear_checkpoint()
-        
-        # Reset health
         self.health.consecutive_failures = 0
         self.health.last_error = None
         self._save_health()
-        
         logger.info("✅ Auto-repair completed")
         return True
 
 
 # ============================================================================
-# SCHEDULER (автоматический запуск)
+# SCHEDULER
 # ============================================================================
 
 class AutonomousScheduler:
@@ -331,14 +329,11 @@ class AutonomousScheduler:
         self.last_run: Optional[datetime] = None
     
     async def run_forever(self):
-        """Main scheduler loop"""
         logger.info(f"⏰ Scheduler started. Update interval: {self.update_interval // 3600} hours")
         
-        # Run immediately on start
         await self._run_with_handling()
         
         while self.running:
-            # Wait for next interval
             for _ in range(self.update_interval):
                 if not self.running:
                     return
@@ -347,7 +342,6 @@ class AutonomousScheduler:
             await self._run_with_handling()
     
     async def _run_with_handling(self):
-        """Run update with error handling"""
         try:
             logger.info("🔄 Scheduled update starting...")
             await self.update_func()
@@ -367,10 +361,10 @@ class AutonomousScheduler:
 class SourceConfig(BaseModel):
     name: str
     url: HttpUrl
-    source_type: str  # 'hosts' or 'domains'
+    source_type: str
     priority: int = 0
     enabled: bool = True
-    etag: Optional[str] = None  # For conditional requests
+    etag: Optional[str] = None
     
     @field_validator('source_type')
     @classmethod
@@ -418,25 +412,21 @@ class AutonomousUpdater:
     async def update(self) -> bool:
         """Main update process with full autonomy"""
         try:
-            # Check if repair is needed
             if self.health_monitor.needs_repair() and self.settings.auto_repair:
                 await self.health_monitor.auto_repair()
             
-            # Initialize processor
             processor = DomainProcessor(
                 max_size=self.settings.max_domains,
                 state_manager=self.state_manager,
                 checkpoint_interval=self.settings.checkpoint_interval
             )
             
-            # Sources (hardcoded for security)
             sources = [
                 SourceConfig(name="OISD Big", url="https://big.oisd.nl/domains", source_type="hosts", priority=1),
                 SourceConfig(name="AdAway", url="https://adaway.org/hosts.txt", source_type="hosts", priority=2),
                 SourceConfig(name="StevenBlack", url="https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts", source_type="hosts", priority=3),
             ]
             
-            # Process each source
             for source in sorted(sources, key=lambda x: x.priority):
                 if not source.enabled:
                     continue
@@ -447,10 +437,8 @@ class AutonomousUpdater:
                     if domain:
                         processor.add_domain(domain)
             
-            # Generate output
             await self._generate_output(processor)
             
-            # Success!
             self.state_manager.clear_checkpoint()
             self.health_monitor.record_success()
             
@@ -478,7 +466,6 @@ class AutonomousUpdater:
         
         output_file = self.settings.output_dir / "blocklist.txt"
         
-        # Write blocklist
         fd, tmp_path = tempfile.mkstemp(dir=str(self.settings.output_dir), suffix='.tmp')
         try:
             with os.fdopen(fd, 'w', encoding='utf-8') as f:
@@ -494,7 +481,6 @@ class AutonomousUpdater:
                 os.unlink(tmp_path)
             raise
         
-        # Compress
         gz_path = self.settings.output_dir / "blocklist.txt.gz"
         with open(output_file, 'rb') as f_in:
             with gzip.open(gz_path, 'wb', compresslevel=6) as f_out:
@@ -513,14 +499,11 @@ async def main():
     settings = AppSettings()
     updater = AutonomousUpdater(settings)
     
-    # Check for command line arguments
     if len(sys.argv) > 1 and sys.argv[1] == "--once":
-        # Single run mode
         logger.info("🚀 Running single update...")
         success = await updater.update()
         sys.exit(0 if success else 1)
     else:
-        # Daemon mode with scheduler
         logger.info("🤖 Starting Autonomous DNS Blocklist Builder")
         logger.info("=" * 50)
         
@@ -529,7 +512,6 @@ async def main():
             update_func=updater.update
         )
         
-        # Handle shutdown signals
         def shutdown(signum, frame):
             logger.info("🛑 Shutdown signal received")
             scheduler.stop()
@@ -550,8 +532,8 @@ if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        logger.info("Interrupted by user")
+        print("Interrupted by user")
         sys.exit(130)
     except Exception as e:
-        logger.exception("Fatal error occurred")
+        print(f"Fatal error occurred: {e}")
         sys.exit(1)
