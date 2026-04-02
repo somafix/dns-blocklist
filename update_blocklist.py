@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-DNS Security Blocklist Builder - v17.2.0 (All-in-One Production Version)
-Вся мощь в одном файле: blocklist.txt
+DNS Security Blocklist Builder - v17.2.1 (FIXED PRODUCTION VERSION)
+Починен: парсинг доменов, убраны IP/мусор, добавлен GoodbyeAds-YouTube
 """
 
 import asyncio
@@ -46,13 +46,6 @@ try:
 except ImportError:
     from pydantic import BaseSettings
     PYDANTIC_SETTINGS = False
-
-try:
-    from tqdm.asyncio import tqdm
-    TQDM_AVAILABLE = True
-except ImportError:
-    TQDM_AVAILABLE = False
-    tqdm = None
 
 T = TypeVar('T')
 
@@ -144,11 +137,11 @@ class AIConfig(BaseModel):
     ])
 
 class OutputConfig(BaseModel):
-    main_blocklist: Path = Field(default=Path("./blocklist.txt"))  # ТОЛЬКО ОДИН ФАЙЛ
+    main_blocklist: Path = Field(default=Path("./blocklist.txt"))
     compressed: bool = Field(default=True)
     format_hosts: bool = Field(default=True)
     include_metadata: bool = Field(default=True)
-    include_categories: bool = Field(default=True)  # Добавлять категории в комментариях
+    include_categories: bool = Field(default=True)
 
 if PYDANTIC_SETTINGS:
     class AppSettings(BaseSettings):
@@ -172,7 +165,7 @@ else:
             case_sensitive = False
 
 # ============================================================================
-# DOMAIN MANAGEMENT
+# DOMAIN MANAGEMENT - FIXED CATEGORIZATION
 # ============================================================================
 
 class DomainRecord(BaseModel):
@@ -188,8 +181,15 @@ class DomainRecord(BaseModel):
         @classmethod
         def clean_domain(cls, v: str) -> str:
             v = v.lower().strip()
+            # FIXED: более строгая проверка, отсекаем IP и мусор
+            if not v or len(v) < 3:
+                raise ValueError(f"Invalid domain (too short): {v}")
+            if v.count('.') == 0:
+                raise ValueError(f"Invalid domain (no dot): {v}")
+            if re.match(r'^\d+\.\d+\.\d+\.\d+$', v):
+                raise ValueError(f"Domain cannot be IP: {v}")
             if not re.match(r'^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$', v):
-                raise ValueError(f"Invalid domain: {v}")
+                raise ValueError(f"Invalid domain format: {v}")
             if len(v) > 253:
                 raise ValueError("Domain too long")
             return v
@@ -197,8 +197,14 @@ class DomainRecord(BaseModel):
         @pydantic_validator('domain')
         def clean_domain(cls, v: str) -> str:
             v = v.lower().strip()
+            if not v or len(v) < 3:
+                raise ValueError(f"Invalid domain (too short): {v}")
+            if v.count('.') == 0:
+                raise ValueError(f"Invalid domain (no dot): {v}")
+            if re.match(r'^\d+\.\d+\.\d+\.\d+$', v):
+                raise ValueError(f"Domain cannot be IP: {v}")
             if not re.match(r'^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$', v):
-                raise ValueError(f"Invalid domain: {v}")
+                raise ValueError(f"Invalid domain format: {v}")
             if len(v) > 253:
                 raise ValueError("Domain too long")
             return v
@@ -220,6 +226,7 @@ class DomainSet:
             'ads': set(),
             'tracking': set(),
             'malware': set(),
+            'scam': set(),
             'other': set()
         }
         self.max_size = max_size
@@ -231,16 +238,16 @@ class DomainSet:
         if self._ai_regex and self._ai_regex.search(domain):
             return 'ai_ml'
         
-        # Ad patterns
-        if any(x in domain for x in ['ad', 'ads', 'banner', 'doubleclick', 'adserver']):
+        if any(x in domain for x in ['scam', 'fraud', 'fake', 'phishing', 'lottery', 'prize', 'casino']):
+            return 'scam'
+        
+        if any(x in domain for x in ['ad', 'ads', 'banner', 'doubleclick', 'adserver', 'promo']):
             return 'ads'
         
-        # Tracking patterns
-        if any(x in domain for x in ['track', 'analytics', 'stat', 'pixel', 'beacon', 'metrics']):
+        if any(x in domain for x in ['track', 'analytics', 'stat', 'pixel', 'beacon', 'metrics', 'telemetry']):
             return 'tracking'
         
-        # Malware patterns
-        if any(x in domain for x in ['malware', 'phish', 'ransom', 'exploit', 'virus']):
+        if any(x in domain for x in ['malware', 'phish', 'ransom', 'exploit', 'virus', 'trojan']):
             return 'malware'
         
         return 'other'
@@ -329,7 +336,7 @@ class SourceCache:
         return None
 
 # ============================================================================
-# SOURCE PROCESSOR WITH RETRY
+# SOURCE PROCESSOR WITH RETRY - FIXED PARSER
 # ============================================================================
 
 class SourceProcessor:
@@ -410,43 +417,70 @@ class SourceProcessor:
             logging.error(f"Error processing source {source.name}: {e}")
 
     def _extract_domain(self, line: str, stype: str) -> Optional[str]:
-        """Extract domain from different source formats"""
+        """FIXED: правильное извлечение доменов, отсев IP и мусора"""
         line = line.split('#')[0].strip()
         
-        if not line or line.startswith(('!', '#')):
+        if not line or len(line) < 3:
             return None
+        
+        # Пропускаем очевидный мусор
+        if line.startswith(('!', '[', '(', '/*', '*', '@@', '###', '--', '||', 'www.')) and stype != 'adblock':
+            return None
+        
+        # Пропускаем IP-адреса
+        if re.match(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', line):
+            return None
+        
+        # Пропускаем localhost
+        if line.lower() in ('localhost', 'localhost.localdomain', 'local', 'broadcasthost'):
+            return None
+        
+        domain = None
         
         if stype == 'hosts':
             parts = line.split()
-            if len(parts) >= 2 and parts[0] in ('0.0.0.0', '127.0.0.1', '::1'):
-                domain = parts[1]
-                if domain in ('localhost', 'localhost.localdomain', 'local'):
-                    return None
-                if ' ' in domain or not domain:
-                    return None
-                return domain
-            return None
-            
+            if len(parts) >= 2:
+                ip = parts[0]
+                if ip in ('0.0.0.0', '127.0.0.1', '::1'):
+                    candidate = parts[1]
+                    # Проверяем, что это не IP и не мусор
+                    if candidate and '.' in candidate and len(candidate) >= 3:
+                        if not re.match(r'^\d+\.\d+\.\d+\.\d+$', candidate):
+                            domain = candidate.lower()
+        
+        elif stype == 'domains':
+            if '.' in line and not line.startswith('.'):
+                if not re.match(r'^\d+\.\d+\.\d+\.\d+$', line):
+                    domain = line.lower()
+        
         elif stype == 'adblock':
             match = re.match(r'^\|\|([a-z0-9.-]+)\^', line)
             if match:
-                return match.group(1)
-            return None
-            
-        else:  # domains
-            if '.' in line and not line.startswith('.'):
-                return line
-            return None
+                candidate = match.group(1)
+                if candidate and '.' in candidate and not re.match(r'^\d+\.\d+\.\d+\.\d+$', candidate):
+                    domain = candidate.lower()
+        
+        # Финальная валидация домена
+        if domain:
+            if domain.startswith('.') or domain.endswith('.'):
+                return None
+            if ' ' in domain:
+                return None
+            if not re.match(r'^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$', domain):
+                return None
+            return domain
+        
+        return None
 
 # ============================================================================
-# MAIN BUILDER - ONE FILE ONLY
+# MAIN BUILDER - FIXED SOURCES
 # ============================================================================
 
 async def main_async():
     """Main async entry point - creates ONLY blocklist.txt"""
     settings = AppSettings()
     
-    # Initialize sources
+    # FIXED: рабочие источники + GoodbyeAds-YouTube
     sources = [
         SourceConfig(
             name="OISD Big",
@@ -476,19 +510,32 @@ async def main_async():
             priority=4,
             update_interval=86400
         ),
+        SourceConfig(
+            name="GoodbyeAds",
+            url="https://raw.githubusercontent.com/jerryn70/GoodbyeAds/master/Hosts/GoodbyeAds.txt",
+            source_type="hosts",
+            priority=5,
+            update_interval=86400
+        ),
+        SourceConfig(
+            name="GoodbyeAds-YouTube",
+            url="https://raw.githubusercontent.com/jerryn70/GoodbyeAds/master/Hosts/GoodbyeAds_Ultimate.txt",
+            source_type="hosts",
+            priority=6,
+            update_interval=86400
+        ),
     ]
     
-    # Create domain set with AI patterns
     domain_set = DomainSet(
         max_size=settings.performance.max_domains_total,
-        ai_patterns=settings.ai.patterns
+        ai_patterns=settings.ai.patterns if settings.ai.enabled else None
     )
     
     total_processed = 0
     unique_count = 0
     
     logging.info("=" * 70)
-    logging.info("🚀 DNS Security Blocklist Builder v17.2.0 (All-in-One)")
+    logging.info("🚀 DNS Security Blocklist Builder v17.2.1 (FIXED PRODUCTION)")
     logging.info("=" * 70)
     logging.info(f"📊 Max domains: {settings.performance.max_domains_total:,}")
     logging.info(f"🤖 AI detection: {'enabled' if settings.ai.enabled else 'disabled'}")
@@ -534,44 +581,33 @@ async def main_async():
             if unique_count >= settings.performance.max_domains_total:
                 break
         
-        # Save ONE blocklist file with categories in comments
         logging.info("\n💾 Saving blocklist...")
         
         stats = domain_set.get_stats()
         all_records = domain_set.get_all_with_metadata()
         
         async with aiofiles.open(settings.output.main_blocklist, 'w', encoding='utf-8') as f:
-            # Header
-            await f.write(f"# DNS Security Blocklist - All-in-One\n")
+            await f.write(f"# DNS Security Blocklist - v17.2.1 FIXED\n")
             await f.write(f"# Generated: {datetime.now(timezone.utc).isoformat()}\n")
-            await f.write(f"# Version: 17.2.0\n")
             await f.write(f"# Total domains: {unique_count:,}\n")
             await f.write(f"# Active sources: {len([s for s in sources if s.enabled])}\n\n")
             
-            # Category statistics in header
             await f.write(f"# Category breakdown:\n")
             for cat, count in stats['categories'].items():
                 if count > 0:
-                    emoji = {'ai_ml': '🤖', 'ads': '📢', 'tracking': '👁️', 'malware': '💀', 'other': '📄'}.get(cat, '📄')
-                    await f.write(f"#   {emoji} {cat.upper()}: {count:,}\n")
+                    await f.write(f"#   {cat.upper()}: {count:,}\n")
             await f.write(f"#\n")
             await f.write(f"# Format: 0.0.0.0 domain.com # category\n")
             await f.write(f"#\n\n")
             
-            # Write all domains with categories
             for record in sorted(all_records, key=lambda x: x.domain):
-                category_emoji = {
-                    'ai_ml': '🤖', 'ads': '📢', 'tracking': '👁️', 'malware': '💀', 'other': '📄'
-                }.get(record.category, '📄')
-                await f.write(f"0.0.0.0 {record.domain} # {category_emoji} {record.category.upper()}\n")
+                await f.write(f"0.0.0.0 {record.domain} # {record.category.upper()}\n")
         
-        # Create compressed version
         if settings.output.compressed:
             with open(settings.output.main_blocklist, 'rb') as f_in:
                 with gzip.open(f"{settings.output.main_blocklist}.gz", 'wb') as f_out:
                     f_out.writelines(f_in)
     
-    # Print summary
     stats = domain_set.get_stats()
     logging.info(f"\n{'='*70}")
     logging.info(f"✅ BUILD COMPLETED SUCCESSFULLY!")
@@ -583,10 +619,8 @@ async def main_async():
     logging.info(f"\n📁 Category breakdown:")
     for cat, count in stats['categories'].items():
         if count > 0:
-            emoji = {'ai_ml': '🤖', 'ads': '📢', 'tracking': '👁️', 'malware': '💀', 'other': '📄'}.get(cat, '📄')
-            logging.info(f"   {emoji} {cat.upper()}: {count:,}")
+            logging.info(f"   {cat.upper()}: {count:,}")
     
-    # File size
     if settings.output.main_blocklist.exists():
         size = settings.output.main_blocklist.stat().st_size
         if size < 1024:
@@ -615,7 +649,6 @@ async def main_async():
     logging.info(f"{'='*70}")
 
 def main():
-    """Main entry point"""
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s - %(levelname)s - %(message)s',
