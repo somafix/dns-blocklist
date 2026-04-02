@@ -1,8 +1,7 @@
+
 #!/usr/bin/env python3
 """
 DNS SECURITY BLOCKLIST BUILDER - FULL AUTONOMOUS VERSION
-Сам устанавливает зависимости, сам работает, сам пушит
-НИЧЕГО ДЕЛАТЬ НЕ НАДО
 """
 
 import subprocess
@@ -24,12 +23,10 @@ REQUIRED_PACKAGES = [
 ]
 
 def install_package(package):
-    """Устанавливает пакет через pip"""
     print(f"📦 Устанавливаю {package}...")
     subprocess.check_call([sys.executable, "-m", "pip", "install", package, "--quiet"])
 
 def ensure_dependencies():
-    """Проверяет и устанавливает все зависимости"""
     for package in REQUIRED_PACKAGES:
         try:
             importlib.import_module(package.replace('-', '_'))
@@ -37,7 +34,6 @@ def ensure_dependencies():
             print(f"⚠️ {package} не найден, устанавливаю...")
             install_package(package)
 
-# Устанавливаем зависимости перед запуском
 print("=" * 70)
 print("🔧 ПРОВЕРКА ЗАВИСИМОСТЕЙ")
 print("=" * 70)
@@ -47,32 +43,24 @@ print("=" * 70)
 print()
 
 # ============================================================================
-# ОСНОВНОЙ СКРИПТ# ============================================================================
+# ОСНОВНОЙ СКРИПТ
+# ============================================================================
 
 import asyncio
 import ipaddress
-import logging
-import re
+import loggingimport re
 import time
 import json
 import gzip
-from collections import deque
-from datetime import datetime, timezone, timedelta
-from typing import Any, Dict, List, Optional, Set, Tuple, TypeVar, Generic, AsyncGenerator
+from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional, Set, Tuple, AsyncGenerator
 import aiofiles
 import aiohttp
 from aiohttp import ClientTimeout, ClientError
 import tenacity
 
-# Pydantic Imports (V2)
-try:
-    from pydantic import BaseModel, Field, ValidationError, HttpUrl, ConfigDict, field_validator
-    from pydantic_settings import BaseSettings
-except ImportError:
-    print("❌ Critical error: Pydantic V2 not found after installation.")
-    sys.exit(1)
-
-T = TypeVar('T')
+from pydantic import BaseModel, Field, HttpUrl, ConfigDict, field_validator
+from pydantic_settings import BaseSettings
 
 # ============================================================================
 # CONFIGURATION MODELS
@@ -97,6 +85,7 @@ class SecurityConfig(BaseModel):
             except ValueError as e:
                 raise ValueError(f"Invalid network {net}: {e}")
         return v
+
 class PerformanceConfig(BaseModel):
     max_concurrent_downloads: int = Field(10, ge=1, le=50)
     http_timeout: int = Field(30, ge=1)
@@ -108,8 +97,7 @@ class PerformanceConfig(BaseModel):
 
 class SourceConfig(BaseModel):
     name: str
-    url: HttpUrl
-    source_type: str
+    url: HttpUrl    source_type: str
     enabled: bool = Field(True)
     priority: int = Field(0)
     verify_ssl: bool = Field(True)
@@ -145,7 +133,8 @@ class AIConfig(BaseModel):
 class OutputConfig(BaseModel):
     main_blocklist: Path = Field(default=Path("./blocklist.txt"))
     compressed: bool = Field(default=True)
-    format_hosts: bool = Field(default=True)    include_meta: bool = Field(default=True)
+    format_hosts: bool = Field(default=True)
+    include_meta: bool = Field(default=True)
     include_categories: bool = Field(default=True)
 
 class AppSettings(BaseSettings):
@@ -157,8 +146,7 @@ class AppSettings(BaseSettings):
     output: OutputConfig = Field(default_factory=OutputConfig)
     cache_dir: Path = Field(default=Path("./cache"))
 
-# ============================================================================
-# DOMAIN MANAGEMENT
+# ============================================================================# DOMAIN MANAGEMENT
 # ============================================================================
 
 class DomainRecord(BaseModel):
@@ -185,16 +173,12 @@ class DomainRecord(BaseModel):
             raise ValueError("Domain too long")
         return v
 
-    def to_hosts_entry(self, include_category: bool = False) -> str:
-        if include_category and self.category:
-            return f"0.0.0.0 {self.domain} # {self.category}"
-        return f"0.0.0.0 {self.domain}"
-
 class DomainSet:
     def __init__(self, max_size: int, ai_patterns: Optional[List[str]] = None):
         self._set: Set[str] = set()
         self._metadata: Dict[str, DomainRecord] = {}
-        self._duplicates: Dict[str, int] = {}        self._categories: Dict[str, Set[str]] = {
+        self._duplicates: Dict[str, int] = {}
+        self._categories: Dict[str, Set[str]] = {
             'ai_ml': set(), 'ads': set(), 'tracking': set(),
             'malware': set(), 'scam': set(), 'other': set()
         }
@@ -211,8 +195,7 @@ class DomainSet:
             return 'ads'
         if any(x in domain for x in ['track', 'analytics', 'stat', 'pixel', 'beacon', 'metrics', 'telemetry']):
             return 'tracking'
-        if any(x in domain for x in ['malware', 'phish', 'ransom', 'exploit', 'virus', 'trojan']):
-            return 'malware'
+        if any(x in domain for x in ['malware', 'phish', 'ransom', 'exploit', 'virus', 'trojan']):            return 'malware'
         return 'other'
     
     def add(self, domain: str, source: str) -> bool:
@@ -243,7 +226,8 @@ class DomainSet:
 # ============================================================================
 
 class SourceCache:
-    def __init__(self, cache_dir: Path):        self.cache_dir = cache_dir
+    def __init__(self, cache_dir: Path):
+        self.cache_dir = cache_dir
         self.cache_dir.mkdir(parents=True, exist_ok=True)
     
     def get_cache_path(self, source_name: str) -> Path:
@@ -260,8 +244,7 @@ class SourceCache:
     
     async def load(self, source_name: str) -> Optional[Dict[str, Any]]:
         path = self.get_cache_path(source_name)
-        if path.exists():
-            try:
+        if path.exists():            try:
                 async with aiofiles.open(path, 'rb') as f:
                     content = await f.read()
                     return json.loads(gzip.decompress(content).decode())
@@ -292,7 +275,8 @@ class SourceProcessor:
             headers['If-Modified-Since'] = source.last_update.strftime('%a, %d %b %Y %H:%M:%S GMT')
         
         timeout = ClientTimeout(total=self.settings.performance.http_timeout)
-                try:
+        
+        try:
             async with self.session.get(str(source.url), timeout=timeout, ssl=source.verify_ssl, headers=headers) as resp:
                 if resp.status == 304:
                     cached = await self.cache.load(source.name)
@@ -309,8 +293,7 @@ class SourceProcessor:
                 }
                 await self.cache.save(source.name, {
                     'content': content, 
-                    'etag': metadata['etag'], 
-                    'last_modified': metadata['last_modified']
+                    'etag': metadata['etag'],                     'last_modified': metadata['last_modified']
                 })
                 return content, metadata
         except Exception as e:
@@ -324,7 +307,6 @@ class SourceProcessor:
         try:
             content, metadata = await self.fetch_source(source)
             if not content and metadata.get('cached'):
-                logging.info(f"Using cached data for {source.name} (if available)")
                 if not content:
                     return
             
@@ -341,16 +323,14 @@ class SourceProcessor:
     def _extract_domain(self, line: str, stype: str) -> Optional[str]:
         line = line.split('#')[0].strip()
         if not line or len(line) < 3:
-            return None        
-        # Skip comments and common non-domain lines
+            return None
+        
         if line.startswith(('!', '[', '(', '/*', '*', '@@', '###', '--')):
             return None
             
-        # Skip pure IPs
         if re.match(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', line):
             return None
             
-        # Skip localhost variants
         if line.lower() in ('localhost', 'localhost.localdomain', 'local', 'broadcasthost'):
             return None
         
@@ -362,11 +342,9 @@ class SourceProcessor:
                 if candidate and '.' in candidate and not re.match(r'^\d+\.\d+\.\d+\.\d+$', candidate):
                     domain = candidate.lower()
         elif stype == 'domains':
-            if '.' in line and not line.startswith('.'):
-                if not re.match(r'^\d+\.\d+\.\d+\.\d+$', line):
+            if '.' in line and not line.startswith('.'):                if not re.match(r'^\d+\.\d+\.\d+\.\d+$', line):
                     domain = line.lower()
         elif stype == 'adblock':
-            # Simple adblock parser for ||domain^
             match = re.match(r'^\|\|([a-z0-9.-]+)\^', line)
             if match:
                 candidate = match.group(1)
@@ -376,7 +354,6 @@ class SourceProcessor:
         if domain:
             if domain.startswith('.') or domain.endswith('.'):
                 return None
-            # Final validation regex
             if not re.match(r'^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$', domain):
                 return None
             return domain
@@ -390,7 +367,8 @@ async def main_async():
     settings = AppSettings()
     
     sources = [
-        SourceConfig(name="OISD Big", url="https://big.oisd.nl/domains", source_type="domains", priority=1),        SourceConfig(name="AdAway", url="https://adaway.org/hosts.txt", source_type="hosts", priority=2),
+        SourceConfig(name="OISD Big", url="https://big.oisd.nl/domains", source_type="domains", priority=1),
+        SourceConfig(name="AdAway", url="https://adaway.org/hosts.txt", source_type="hosts", priority=2),
         SourceConfig(name="URLhaus", url="https://urlhaus.abuse.ch/downloads/hostfile/", source_type="hosts", priority=3),
         SourceConfig(name="StevenBlack", url="https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts", source_type="hosts", priority=4),
         SourceConfig(name="GoodbyeAds", url="https://raw.githubusercontent.com/jerryn70/GoodbyeAds/master/Hosts/GoodbyeAds.txt", source_type="hosts", priority=5),
@@ -407,16 +385,13 @@ async def main_async():
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
     
     print("=" * 70)
-    print("🚀 DNS SECURITY BLOCKLIST BUILDER v17.2.2")
+    print("🚀 DNS SECURITY BLOCKLIST BUILDER v17.2.3")
     print("=" * 70)
     print(f"📊 Max domains: {settings.performance.max_domains_total:,}")
     print(f"🤖 AI detection: {'enabled' if settings.ai.enabled else 'disabled'}")
     print(f"📁 Output: {settings.output.main_blocklist}")
     print("=" * 70)
-    
-    source_cache = SourceCache(settings.cache_dir)
-    
-    # Create output directory
+        source_cache = SourceCache(settings.cache_dir)
     settings.output.main_blocklist.parent.mkdir(parents=True, exist_ok=True)
     
     async with aiohttp.ClientSession() as session:
@@ -439,7 +414,8 @@ async def main_async():
                             break
                 print(f"  ✅ {src.name}: processed {src_count:,} lines")
             except Exception as e:
-                print(f"  ❌ Failed: {e}")            
+                print(f"  ❌ Failed: {e}")
+            
             if unique_count >= settings.performance.max_domains_total:
                 print("⚠️ Max domain limit reached. Stopping.")
                 break
@@ -447,8 +423,6 @@ async def main_async():
         print("\n💾 Saving blocklist...")
         stats = domain_set.get_stats()
         all_records = domain_set.get_all_with_metadata()
-        
-        # Sort records for deterministic output
         sorted_records = sorted(all_records, key=lambda x: x.domain)
         
         async with aiofiles.open(settings.output.main_blocklist, 'w', encoding='utf-8') as f:
@@ -463,12 +437,10 @@ async def main_async():
             await f.write(f"#\n\n")
             
             for record in sorted_records:
-                # Write in hosts format
                 await f.write(f"0.0.0.0 {record.domain} # {record.category.upper()}\n")
         
         if settings.output.compressed:
-            print("🗜️ Compressing...")
-            with open(settings.output.main_blocklist, 'rb') as f_in:
+            print("🗜️ Compressing...")            with open(settings.output.main_blocklist, 'rb') as f_in:
                 with gzip.open(f"{settings.output.main_blocklist}.gz", 'wb') as f_out:
                     f_out.writelines(f_in)
     
@@ -488,7 +460,8 @@ def main():
         asyncio.run(main_async())
     except KeyboardInterrupt:
         print("\n⚠️ Interrupted by user")
-        sys.exit(0)    except Exception as e:
+        sys.exit(0)
+    except Exception as e:
         logging.exception("Fatal error occurred")
         print(f"\n❌ Fatal error: {e}")
         sys.exit(1)
