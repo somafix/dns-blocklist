@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 DNS Security Blocklist Builder - Autonomous Edition
-Version: 4.0.3 - OISD REMOVED, Clean & Stable
+Version: 4.0.4 - WITH GIT PUSH
 """
 
 from __future__ import annotations
@@ -16,6 +16,7 @@ import tempfile
 import gzip
 import json
 import pickle
+import subprocess
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import AsyncGenerator, Dict, Optional, Tuple
@@ -449,6 +450,9 @@ class AutonomousUpdater:
             
             await self._generate_output(processor)
             
+            # PUSH TO GITHUB
+            await self._push_to_github()
+            
             self.state_manager.clear_checkpoint()
             self.health_monitor.record_success()
             
@@ -498,6 +502,42 @@ class AutonomousUpdater:
                     f_out.write(chunk)
         
         logger.info(f"✅ Blocklist saved: {output_file} ({len(processor.domains):,} domains)")
+    
+    async def _push_to_github(self) -> None:
+        """Commit and push changes to GitHub"""
+        logger.info("📤 Pushing changes to GitHub...")
+        
+        # Git config
+        subprocess.run(["git", "config", "--local", "user.email", "action@github.com"], capture_output=True)
+        subprocess.run(["git", "config", "--local", "user.name", "github-actions[bot]"], capture_output=True)
+        
+        # Add output directory
+        subprocess.run(["git", "add", "output/"], capture_output=True)
+        
+        # Check if there are changes
+        status_result = subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True)
+        
+        if not status_result.stdout.strip():
+            logger.info("No changes to commit")
+            return
+        
+        # Commit
+        commit_msg = f"Update blocklist {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')}"
+        commit_result = subprocess.run(["git", "commit", "-m", commit_msg], capture_output=True, text=True)
+        
+        if commit_result.returncode != 0:
+            logger.warning(f"Commit failed: {commit_result.stderr}")
+            return
+        
+        logger.info("✅ Committed successfully")
+        
+        # Push
+        push_result = subprocess.run(["git", "push"], capture_output=True, text=True)
+        
+        if push_result.returncode == 0:
+            logger.info("✅ Successfully pushed to GitHub")
+        else:
+            logger.warning(f"Push failed: {push_result.stderr}")
 
 
 # ============================================================================
