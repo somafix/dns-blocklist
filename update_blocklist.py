@@ -21,7 +21,6 @@ REQUIRED_PACKAGES = [
     'tenacity',
     'pydantic',
     'pydantic-settings',
-    # numpy is not actually used in the main logic, removed to save space/time
 ]
 
 def install_package(package):
@@ -34,7 +33,6 @@ def ensure_dependencies():
     for package in REQUIRED_PACKAGES:
         try:
             importlib.import_module(package.replace('-', '_'))
-            # print(f"✅ {package} уже установлен") # Silent success for cleaner output
         except ImportError:
             print(f"⚠️ {package} не найден, устанавливаю...")
             install_package(package)
@@ -47,9 +45,9 @@ ensure_dependencies()
 print("✅ Зависимости проверены")
 print("=" * 70)
 print()
+
 # ============================================================================
-# ОСНОВНОЙ СКРИПТ
-# ============================================================================
+# ОСНОВНОЙ СКРИПТ# ============================================================================
 
 import asyncio
 import ipaddress
@@ -66,7 +64,7 @@ import aiohttp
 from aiohttp import ClientTimeout, ClientError
 import tenacity
 
-# Pydantic Imports (Assuming V2 as it's current standard)
+# Pydantic Imports (V2)
 try:
     from pydantic import BaseModel, Field, ValidationError, HttpUrl, ConfigDict, field_validator
     from pydantic_settings import BaseSettings
@@ -96,9 +94,9 @@ class SecurityConfig(BaseModel):
         for net in v:
             try:
                 ipaddress.ip_network(net, strict=False)
-            except ValueError as e:                raise ValueError(f"Invalid network {net}: {e}")
+            except ValueError as e:
+                raise ValueError(f"Invalid network {net}: {e}")
         return v
-
 class PerformanceConfig(BaseModel):
     max_concurrent_downloads: int = Field(10, ge=1, le=50)
     http_timeout: int = Field(30, ge=1)
@@ -145,9 +143,9 @@ class AIConfig(BaseModel):
     ])
 
 class OutputConfig(BaseModel):
-    main_blocklist: Path = Field(default=Path("./blocklist.txt"))    compressed: bool = Field(default=True)
-    format_hosts: bool = Field(default=True)
-    include_metadata: bool = Field(default=True)
+    main_blocklist: Path = Field(default=Path("./blocklist.txt"))
+    compressed: bool = Field(default=True)
+    format_hosts: bool = Field(default=True)    include_meta: bool = Field(default=True)
     include_categories: bool = Field(default=True)
 
 class AppSettings(BaseSettings):
@@ -194,9 +192,9 @@ class DomainRecord(BaseModel):
 
 class DomainSet:
     def __init__(self, max_size: int, ai_patterns: Optional[List[str]] = None):
-        self._set: Set[str] = set()        self._metadata: Dict[str, DomainRecord] = {}
-        self._duplicates: Dict[str, int] = {}
-        self._categories: Dict[str, Set[str]] = {
+        self._set: Set[str] = set()
+        self._metadata: Dict[str, DomainRecord] = {}
+        self._duplicates: Dict[str, int] = {}        self._categories: Dict[str, Set[str]] = {
             'ai_ml': set(), 'ads': set(), 'tracking': set(),
             'malware': set(), 'scam': set(), 'other': set()
         }
@@ -243,9 +241,9 @@ class DomainSet:
 # ============================================================================
 # CACHE SYSTEM
 # ============================================================================
+
 class SourceCache:
-    def __init__(self, cache_dir: Path):
-        self.cache_dir = cache_dir
+    def __init__(self, cache_dir: Path):        self.cache_dir = cache_dir
         self.cache_dir.mkdir(parents=True, exist_ok=True)
     
     def get_cache_path(self, source_name: str) -> Path:
@@ -292,9 +290,9 @@ class SourceProcessor:
             headers['If-None-Match'] = source.etag
         if source.last_update:
             headers['If-Modified-Since'] = source.last_update.strftime('%a, %d %b %Y %H:%M:%S GMT')
-                timeout = ClientTimeout(total=self.settings.performance.http_timeout)
         
-        try:
+        timeout = ClientTimeout(total=self.settings.performance.http_timeout)
+                try:
             async with self.session.get(str(source.url), timeout=timeout, ssl=source.verify_ssl, headers=headers) as resp:
                 if resp.status == 304:
                     cached = await self.cache.load(source.name)
@@ -327,8 +325,6 @@ class SourceProcessor:
             content, metadata = await self.fetch_source(source)
             if not content and metadata.get('cached'):
                 logging.info(f"Using cached data for {source.name} (if available)")
-                # If fetch returned empty and not cached, it means 304 but no cache?
-                # Or just empty content.
                 if not content:
                     return
             
@@ -341,11 +337,11 @@ class SourceProcessor:
                     continue
         except Exception as e:
             logging.error(f"Error processing source {source.name}: {e}")
+
     def _extract_domain(self, line: str, stype: str) -> Optional[str]:
         line = line.split('#')[0].strip()
         if not line or len(line) < 3:
-            return None
-        
+            return None        
         # Skip comments and common non-domain lines
         if line.startswith(('!', '[', '(', '/*', '*', '@@', '###', '--')):
             return None
@@ -390,11 +386,11 @@ class SourceProcessor:
 # MAIN BUILDER
 # ============================================================================
 
-async def main_async():    settings = AppSettings()
+async def main_async():
+    settings = AppSettings()
     
     sources = [
-        SourceConfig(name="OISD Big", url="https://big.oisd.nl/domains", source_type="domains", priority=1),
-        SourceConfig(name="AdAway", url="https://adaway.org/hosts.txt", source_type="hosts", priority=2),
+        SourceConfig(name="OISD Big", url="https://big.oisd.nl/domains", source_type="domains", priority=1),        SourceConfig(name="AdAway", url="https://adaway.org/hosts.txt", source_type="hosts", priority=2),
         SourceConfig(name="URLhaus", url="https://urlhaus.abuse.ch/downloads/hostfile/", source_type="hosts", priority=3),
         SourceConfig(name="StevenBlack", url="https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts", source_type="hosts", priority=4),
         SourceConfig(name="GoodbyeAds", url="https://raw.githubusercontent.com/jerryn70/GoodbyeAds/master/Hosts/GoodbyeAds.txt", source_type="hosts", priority=5),
@@ -439,11 +435,11 @@ async def main_async():    settings = AppSettings()
                     src_count += 1
                     if domain_set.add(record.domain, src.name):
                         unique_count += 1
-                        if unique_count >= settings.performance.max_domains_total:                            break
+                        if unique_count >= settings.performance.max_domains_total:
+                            break
                 print(f"  ✅ {src.name}: processed {src_count:,} lines")
             except Exception as e:
-                print(f"  ❌ Failed: {e}")
-            
+                print(f"  ❌ Failed: {e}")            
             if unique_count >= settings.performance.max_domains_total:
                 print("⚠️ Max domain limit reached. Stopping.")
                 break
@@ -488,11 +484,11 @@ async def main_async():    settings = AppSettings()
     print("=" * 70)
 
 def main():
-    try:        asyncio.run(main_async())
+    try:
+        asyncio.run(main_async())
     except KeyboardInterrupt:
         print("\n⚠️ Interrupted by user")
-        sys.exit(0)
-    except Exception as e:
+        sys.exit(0)    except Exception as e:
         logging.exception("Fatal error occurred")
         print(f"\n❌ Fatal error: {e}")
         sys.exit(1)
