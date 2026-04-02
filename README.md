@@ -10,41 +10,42 @@
 
 ---
 
-## 🎯 Обзор проекта
+## 🎯 Project Overview
 
-**DNS Security Blocklist Builder** — это высокопроизводительный агрегатор данных об угрозах (Threat Intelligence), который собирает, валидирует и классифицирует домены в единый манифест безопасности. 
+**DNS Security Blocklist Builder** is a high-performance orchestration tool designed to aggregate, validate, and categorize threat intelligence feeds into a single, clean security manifest.
 
-Версия **v17.2.1** полностью переработана для обеспечения максимальной чистоты данных: из списков исключены IP-адреса, локальные хосты и синтаксический мусор, специфичный для AdBlock-форматов.
+Version **v17.2.1** is a "Fixed Production" release focused on data purity. It implements a sophisticated parsing engine that strips out IP addresses, local hosts, and syntax noise common in raw public feeds.
 
 > [!IMPORTANT]
-> **Что нового в 17.2.1:** 
-> * Добавлена интеграция **GoodbyeAds-YouTube** и **GoodbyeAds Ultimate**.
-> * Исправлен парсинг: теперь движок корректно обрабатывает префиксы `||`, `@@` и `0.0.0.0`.
-> * Строгая валидация регулярными выражениями для исключения битых доменов.
+> **What's new in v17.2.1:** 
+> * Added **GoodbyeAds-YouTube** and **GoodbyeAds Ultimate** integration.
+> * Fixed parsing: Automatically handles AdBlock-style prefixes like `||`, `@@`, and `^`.
+> * Strict Regex Validation: Eliminates malformed domains and junk entries.
 
 ---
 
-## 🔥 Ключевые возможности
+## 🔥 Key Features
 
-### 🛠 Умная фильтрация и очистка
-В отличие от стандартных скриптов, этот движок выполняет глубокую проверку каждой строки:
-* **Anti-IP Filter:** Автоматический пропуск IPv4/IPv6 адресов, которые не должны быть в DNS-списках.
-* **Format Normalization:** Приведение доменов к нижнему регистру, удаление мусорных символов и комментариев.
-* **Localhost Shield:** Защита от блокировки критических локальных имен (localhost, broadcasthost и др.).
+### 🛠 Smart Extraction & Cleaning
+Unlike basic bash scripts, this engine performs deep inspection of every line:
+* **Anti-IP Filtering:** Automatically skips IPv4/IPv6 addresses, ensuring only FQDNs enter the list.
+* **Format Normalization:** Converts to lowercase, strips trailing dots, and removes inline comments.
+* **Localhost Shield:** Protects critical infrastructure names (localhost, broadcasthost, etc.) from accidental blocking.
 
 ### 🤖 AI/ML Smart Categorization
-Встроенный эвристический анализ идентифицирует инфраструктуру Искусственного Интеллекта. Движок автоматически помечает домены **OpenAI, Anthropic, Gemini, Midjourney** и других сервисов тегом `AI_ML`, позволяя гибко управлять доступом к AI-инструментам в корпоративной сети.
+Built-in heuristic analysis identifies Artificial Intelligence infrastructure. The engine automatically tags domains from **OpenAI, Anthropic, Gemini, Midjourney**, and more as `AI_ML`, allowing granular control over AI tool access.
 
-### ⚡ Async Processing Engine
-Использование `AsyncIO` и `aiohttp` позволяет обрабатывать миллионы доменов за считанные секунды. 
-* **Smart Caching:** Система кэширования с поддержкой `ETag` и `Gzip` позволяет не скачивать данные повторно, если они не изменились на сервере.
-* **Low Memory Footprint:** Оптимизация через Python slots и эффективные хэш-сеты для дедупликации.
+### ⚡ High-Performance Async Engine
+Leveraging `AsyncIO` and `aiohttp`, the pipeline processes millions of domains in seconds.
+* **Smart Caching:** Full support for `ETag` and `If-Modified-Since` headers to save bandwidth.
+* **Memory Optimization:** Uses Python slots and efficient hash-sets for deduplication without bloating RAM.
+* **Atomic Writes:** Ensures your production blocklist is never corrupted during the update process.
 
 ---
 
-## 📂 Структура выходного файла
+## 📂 Output Anatomy
 
-Генерируемый файл `blocklist.txt` полностью совместим с **Pi-hole**, **AdGuard Home**, **pfSense**, **Unbound** и **Mikrotik**.
+The generated `blocklist.txt` is fully compatible with **Pi-hole**, **AdGuard Home**, **pfSense (Unbound)**, and **Mikrotik**.
 
 ```text
 # DNS Security Blocklist - v17.2.1 FIXED
