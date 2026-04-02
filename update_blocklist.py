@@ -1,4 +1,3 @@
-```python
 #!/usr/bin/env python3
 """
 DNS Security Blocklist Builder - Autonomous Edition
