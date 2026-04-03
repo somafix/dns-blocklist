@@ -2,8 +2,8 @@ name: Build DNS Blocklist
 
 on:
   schedule:
-    - cron: '0 */6 * * *'  # Каждые 6 часов
-  workflow_dispatch:        # Ручной запуск
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
   push:
     branches: [ main, master ]
     paths:
@@ -37,10 +37,7 @@ jobs:
       
       - name: Run blocklist builder
         run: |
-          python your_script_name.py --once
-        env:
-          DNSBL_MAX_DOMAINS: 2000000
-          DNSBL_UPDATE_INTERVAL_HOURS: 6
+          python update_blocklist.py --once
       
       - name: Check if files changed
         id: check
