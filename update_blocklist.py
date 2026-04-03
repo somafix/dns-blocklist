@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 DNS Security Blocklist Builder - Autonomous Edition
-Version: 4.0.5 - NO GIT PUSH IN SCRIPT (GitHub Actions handles it)
+Version: 4.0.6 - FIXED: saves to root directory, not output folder
 """
 
 from __future__ import annotations
@@ -27,7 +27,7 @@ from pydantic import BaseModel, Field, HttpUrl, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # ============================================================================
-# LOGGING (ГЛОБАЛЬНЫЙ)
+# LOGGING
 # ============================================================================
 
 logging.basicConfig(
@@ -44,7 +44,6 @@ logger = logging.getLogger("DNSBL_Builder")
 
 @dataclass
 class HealthStatus:
-    """Tracks health of the application"""
     last_success: Optional[datetime] = None
     consecutive_failures: int = 0
     total_updates: int = 0
@@ -64,11 +63,11 @@ class HealthStatus:
 
 
 class AppSettings(BaseSettings):
-    """Auto-recovering configuration"""
+    """Configuration - saves blocklist.txt to root directory"""
     model_config = SettingsConfigDict(env_prefix="DNSBL_", case_sensitive=False)
     
-    # Directories
-    output_dir: Path = Field(default=Path("./output"))
+    # Directories - FIXED: output goes to root (.)
+    output_dir: Path = Field(default=Path("."))  # ← ИСПРАВЛЕНО: теперь в корень
     cache_dir: Path = Field(default=Path("./cache"))
     state_dir: Path = Field(default=Path("./state"))
     
@@ -87,9 +86,10 @@ class AppSettings(BaseSettings):
     update_interval_hours: int = Field(default=6, ge=1)
     
     def setup_dirs(self):
-        """Create all required directories"""
-        for dir_path in [self.output_dir, self.cache_dir, self.state_dir]:
+        """Create required directories (cache and state only)"""
+        for dir_path in [self.cache_dir, self.state_dir]:
             dir_path.mkdir(parents=True, exist_ok=True)
+        # output_dir is root (.), no need to create
 
 
 # ============================================================================
@@ -97,15 +97,12 @@ class AppSettings(BaseSettings):
 # ============================================================================
 
 class StateManager:
-    """Saves and restores processing state for crash recovery"""
-    
     def __init__(self, state_dir: Path):
         self.state_dir = state_dir
         self.checkpoint_file = state_dir / "checkpoint.pkl"
         self.domains_file = state_dir / "domains.pkl"
         
     def save_checkpoint(self, domains: Dict[str, bool], processed_count: int, source_index: int) -> None:
-        """Save current state for recovery"""
         try:
             checkpoint = {
                 "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -113,35 +110,28 @@ class StateManager:
                 "source_index": source_index,
                 "domain_count": len(domains)
             }
-            
             with open(self.checkpoint_file, 'wb') as f:
                 pickle.dump(checkpoint, f)
-            
             with open(self.domains_file, 'wb') as f:
                 pickle.dump(domains, f)
-            
             logger.info(f"💾 Checkpoint saved: {processed_count} domains processed")
         except Exception as e:
             logger.warning(f"Failed to save checkpoint: {e}")
     
     def load_checkpoint(self) -> Tuple[Optional[Dict], Optional[int], Optional[int]]:
-        """Load previous state if exists"""
         if self.checkpoint_file.exists() and self.domains_file.exists():
             try:
                 with open(self.checkpoint_file, 'rb') as f:
                     checkpoint = pickle.load(f)
                 with open(self.domains_file, 'rb') as f:
                     domains = pickle.load(f)
-                
                 logger.info(f"🔄 Restored checkpoint: {checkpoint['domain_count']} domains from {checkpoint['timestamp']}")
                 return domains, checkpoint['processed_count'], checkpoint['source_index']
             except Exception as e:
                 logger.warning(f"Failed to load checkpoint: {e}")
-        
         return None, None, None
     
     def clear_checkpoint(self) -> None:
-        """Clear checkpoint after successful completion"""
         try:
             if self.checkpoint_file.exists():
                 self.checkpoint_file.unlink()
@@ -156,8 +146,6 @@ class StateManager:
 # ============================================================================
 
 class DomainProcessor:
-    """Handles deduplication with automatic checkpointing"""
-    
     VALID_DOMAIN_RE = re.compile(r'^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$')
     IP_RE = re.compile(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$')
 
@@ -213,17 +201,13 @@ class DomainProcessor:
 # ============================================================================
 
 class RobustFetcher:
-    """Fetches with automatic retry and backoff - creates new session each time"""
-    
     def __init__(self, timeout: int, max_retries: int, retry_delay: int):
         self.timeout = ClientTimeout(total=timeout)
         self.max_retries = max_retries
         self.retry_delay = retry_delay
     
     async def fetch_with_retry(self, url: str, source_name: str) -> AsyncGenerator[str, None]:
-        """Fetch with exponential backoff retry"""
         last_error = None
-        
         for attempt in range(self.max_retries):
             try:
                 async for line in self._fetch(url):
@@ -233,7 +217,6 @@ class RobustFetcher:
                 last_error = e
                 wait_time = self.retry_delay * (2 ** attempt)
                 logger.warning(f"Attempt {attempt + 1}/{self.max_retries} failed for {source_name}: {e}")
-                
                 if attempt < self.max_retries - 1:
                     logger.info(f"Retrying in {wait_time}s...")
                     await asyncio.sleep(wait_time)
@@ -242,14 +225,11 @@ class RobustFetcher:
                     raise last_error
     
     async def _fetch(self, url: str) -> AsyncGenerator[str, None]:
-        """Internal fetch method - creates NEW session each time"""
         connector = TCPConnector(limit=10, enable_cleanup_closed=True)
-        
         async with ClientSession(connector=connector, timeout=self.timeout) as session:
             async with session.get(url, allow_redirects=False) as resp:
                 if resp.status != 200:
                     raise Exception(f"HTTP {resp.status}")
-                
                 async for line in resp.content:
                     yield line.decode('utf-8', errors='ignore').strip()
 
@@ -259,8 +239,6 @@ class RobustFetcher:
 # ============================================================================
 
 class HealthMonitor:
-    """Monitors system health and triggers repairs"""
-    
     def __init__(self, state_manager: StateManager):
         self.state_manager = state_manager
         self.health = HealthStatus()
@@ -322,8 +300,6 @@ class HealthMonitor:
 # ============================================================================
 
 class AutonomousScheduler:
-    """Runs the updater automatically on schedule"""
-    
     def __init__(self, update_interval_hours: int, update_func):
         self.update_interval = update_interval_hours * 3600
         self.update_func = update_func
@@ -332,15 +308,12 @@ class AutonomousScheduler:
     
     async def run_forever(self):
         logger.info(f"⏰ Scheduler started. Update interval: {self.update_interval // 3600} hours")
-        
         await self._run_with_handling()
-        
         while self.running:
             for _ in range(self.update_interval):
                 if not self.running:
                     return
                 await asyncio.sleep(1)
-            
             await self._run_with_handling()
     
     async def _run_with_handling(self):
@@ -378,10 +351,8 @@ class SourceConfig(BaseModel):
 
 
 def parse_line(line: str, source_type: str) -> Optional[str]:
-    """Parses a single line based on source type."""
     if not line or line.startswith(('#', '!', '[', '*')):
         return None
-
     domain = None
     if source_type == 'hosts':
         parts = line.split()
@@ -389,7 +360,6 @@ def parse_line(line: str, source_type: str) -> Optional[str]:
             domain = parts[1]
     elif source_type == 'domains':
         domain = line
-    
     if domain:
         return domain.lower().rstrip('.')
     return None
@@ -412,7 +382,6 @@ class AutonomousUpdater:
         )
         
     async def update(self) -> bool:
-        """Main update process with full autonomy"""
         try:
             if self.health_monitor.needs_repair() and self.settings.auto_repair:
                 await self.health_monitor.auto_repair()
@@ -423,7 +392,6 @@ class AutonomousUpdater:
                 checkpoint_interval=self.settings.checkpoint_interval
             )
             
-            # SOURCES
             sources = [
                 SourceConfig(name="AdAway", url="https://adaway.org/hosts.txt", source_type="hosts", priority=1),
                 SourceConfig(name="StevenBlack", url="https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts", source_type="hosts", priority=2),
@@ -433,7 +401,6 @@ class AutonomousUpdater:
             for source in sorted(sources, key=lambda x: x.priority):
                 if not source.enabled:
                     continue
-                
                 logger.info(f"📥 Processing: {source.name}")
                 try:
                     async for line in self.fetcher.fetch_with_retry(str(source.url), source.name):
@@ -448,10 +415,8 @@ class AutonomousUpdater:
                 raise Exception("No domains were collected from any source")
             
             await self._generate_output(processor)
-            
             self.state_manager.clear_checkpoint()
             self.health_monitor.record_success()
-            
             logger.info(f"✅ Update successful. Stats: {processor.stats}")
             return True
             
@@ -461,7 +426,6 @@ class AutonomousUpdater:
             return False
     
     async def _generate_output(self, processor: DomainProcessor):
-        """Generate final blocklist files"""
         logger.info("📝 Generating output...")
         
         timestamp = datetime.now(timezone.utc).isoformat()
@@ -474,6 +438,7 @@ class AutonomousUpdater:
             f"# Invalid Skipped: {processor.stats['invalid']}\n\n"
         )
         
+        # FIXED: saves directly to current directory, not to output folder
         output_file = self.settings.output_dir / "blocklist.txt"
         
         fd, tmp_path = tempfile.mkstemp(dir=str(self.settings.output_dir), suffix='.tmp')
@@ -484,7 +449,6 @@ class AutonomousUpdater:
                     f.write(f"0.0.0.0 {domain}\n")
                 f.flush()
                 os.fsync(f.fileno())
-            
             os.replace(tmp_path, str(output_file))
         except Exception as e:
             if os.path.exists(tmp_path):
@@ -505,7 +469,6 @@ class AutonomousUpdater:
 # ============================================================================
 
 async def main():
-    """Main autonomous entry point"""
     settings = AppSettings()
     updater = AutonomousUpdater(settings)
     
