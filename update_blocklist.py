@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 DNS Security Blocklist Builder - Autonomous Edition
-Version: 4.0.7 - FAT LISTS ONLY (no Hagezi, no OISD, no Ransomware)
+Version: 4.0.8 - FINAL: working sources only, saves to root
 """
 
 from __future__ import annotations
@@ -71,9 +71,9 @@ class AppSettings(BaseSettings):
     cache_dir: Path = Field(default=Path("./cache"))
     state_dir: Path = Field(default=Path("./state"))
     
-    # Limits - RAISED for fat blocklist
-    max_domains: int = Field(default=10_000_000, ge=1000)  # 10 million domains
-    http_timeout: int = Field(default=30, ge=5)
+    # Limits - 10 million domains max
+    max_domains: int = Field(default=10_000_000, ge=1000)
+    http_timeout: int = Field(default=45, ge=5)  # Increased timeout
     max_retries: int = Field(default=3, ge=1)
     retry_delay: int = Field(default=5, ge=1)
     
@@ -392,15 +392,15 @@ class AutonomousUpdater:
             )
             
             # ================================================================
-            # FAT SOURCES - NO HAGEZI, NO OISD, NO RANSOMWARE
+            # WORKING SOURCES ONLY - NO DEAD/GLITCHY SOURCES
             # ================================================================
             sources = [
-                # MEGA FAT (10-30 MB each)
+                # MEGA FAT (10-30 MB each) - ALL WORKING
                 SourceConfig(name="StevenBlack", url="https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts", source_type="hosts", priority=1),
                 SourceConfig(name="MVPS", url="https://winhelp2002.mvps.org/hosts.txt", source_type="hosts", priority=2),
                 SourceConfig(name="Peter Lowe", url="https://pgl.yoyo.org/adservers/serverlist.php?hostformat=hosts&showintro=0&mimetype=plaintext", source_type="hosts", priority=3),
-                SourceConfig(name="MalwareDomains", url="https://www.malwaredomainlist.com/hostslist/hosts.txt", source_type="hosts", priority=4),
-                SourceConfig(name="Someone Who Cares", url="https://someonewhocares.org/hosts/hosts", source_type="hosts", priority=5),
+                SourceConfig(name="Someone Who Cares", url="https://someonewhocares.org/hosts/hosts", source_type="hosts", priority=4),
+                SourceConfig(name="ThreatFox", url="https://threatfox.abuse.ch/downloads/hostfile/", source_type="hosts", priority=5),
                 SourceConfig(name="URLhaus", url="https://urlhaus.abuse.ch/downloads/hostfile/", source_type="hosts", priority=6),
                 
                 # MEDIUM FAT (3-8 MB each)
