@@ -1,36 +1,31 @@
-name: Build DNS Blocklist
+name: Update Blocklist
 
 on:
   schedule:
     - cron: '0 */6 * * *'
   workflow_dispatch:
-  push:
-    branches: [ main, master ]
-
-permissions:
-  contents: write
 
 jobs:
-  build:
+  update:
     runs-on: ubuntu-latest
-    
+    permissions:
+      contents: write
+
     steps:
       - uses: actions/checkout@v4
-      
-      - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-      
-      - name: Install dependencies
-        run: pip install aiohttp pydantic pydantic-settings
-      
-      - name: Run blocklist builder
-        run: python update_blocklist.py --once
-      
+          fetch-depth: 0
+
+      - name: Update blocklist
+        run: |
+          # Твоя команда обновления, замени на свою
+          curl -s https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/fakenews-gambling-porn/hosts > blocklist.txt
+
       - name: Commit and push
         run: |
           git config --local user.name "github-actions[bot]"
-          git config --local user.email "actions@github.com"
-          git add blocklist.txt blocklist.txt.gz
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
           git diff --staged --quiet || git commit -m "Update blocklist $(date '+%Y-%m-%d %H:%M:%S')"
-          git push
+          git pull --rebase origin main
+          git push origin main
