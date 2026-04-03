@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 DNS Security Blocklist Builder - Autonomous Edition
-Version: 4.0.6 - FIXED: saves to root directory, not output folder
+Version: 4.0.7 - FAT LISTS ONLY (no Hagezi, no OISD, no Ransomware)
 """
 
 from __future__ import annotations
@@ -66,13 +66,13 @@ class AppSettings(BaseSettings):
     """Configuration - saves blocklist.txt to root directory"""
     model_config = SettingsConfigDict(env_prefix="DNSBL_", case_sensitive=False)
     
-    # Directories - FIXED: output goes to root (.)
-    output_dir: Path = Field(default=Path("."))  # ← ИСПРАВЛЕНО: теперь в корень
+    # Directories - output goes to root (.)
+    output_dir: Path = Field(default=Path("."))
     cache_dir: Path = Field(default=Path("./cache"))
     state_dir: Path = Field(default=Path("./state"))
     
-    # Limits
-    max_domains: int = Field(default=2_000_000, ge=1000)
+    # Limits - RAISED for fat blocklist
+    max_domains: int = Field(default=10_000_000, ge=1000)  # 10 million domains
     http_timeout: int = Field(default=30, ge=5)
     max_retries: int = Field(default=3, ge=1)
     retry_delay: int = Field(default=5, ge=1)
@@ -89,7 +89,6 @@ class AppSettings(BaseSettings):
         """Create required directories (cache and state only)"""
         for dir_path in [self.cache_dir, self.state_dir]:
             dir_path.mkdir(parents=True, exist_ok=True)
-        # output_dir is root (.), no need to create
 
 
 # ============================================================================
@@ -392,10 +391,22 @@ class AutonomousUpdater:
                 checkpoint_interval=self.settings.checkpoint_interval
             )
             
+            # ================================================================
+            # FAT SOURCES - NO HAGEZI, NO OISD, NO RANSOMWARE
+            # ================================================================
             sources = [
-                SourceConfig(name="AdAway", url="https://adaway.org/hosts.txt", source_type="hosts", priority=1),
-                SourceConfig(name="StevenBlack", url="https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts", source_type="hosts", priority=2),
+                # MEGA FAT (10-30 MB each)
+                SourceConfig(name="StevenBlack", url="https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts", source_type="hosts", priority=1),
+                SourceConfig(name="MVPS", url="https://winhelp2002.mvps.org/hosts.txt", source_type="hosts", priority=2),
                 SourceConfig(name="Peter Lowe", url="https://pgl.yoyo.org/adservers/serverlist.php?hostformat=hosts&showintro=0&mimetype=plaintext", source_type="hosts", priority=3),
+                SourceConfig(name="MalwareDomains", url="https://www.malwaredomainlist.com/hostslist/hosts.txt", source_type="hosts", priority=4),
+                SourceConfig(name="Someone Who Cares", url="https://someonewhocares.org/hosts/hosts", source_type="hosts", priority=5),
+                SourceConfig(name="URLhaus", url="https://urlhaus.abuse.ch/downloads/hostfile/", source_type="hosts", priority=6),
+                
+                # MEDIUM FAT (3-8 MB each)
+                SourceConfig(name="EasyList", url="https://easylist.to/easylist/easylist.txt", source_type="domains", priority=7),
+                SourceConfig(name="EasyPrivacy", url="https://easylist.to/easylist/easyprivacy.txt", source_type="domains", priority=8),
+                SourceConfig(name="NoCoin", url="https://raw.githubusercontent.com/hoshsadiq/adblock-nocoin-list/master/nocoin.txt", source_type="domains", priority=9),
             ]
             
             for source in sorted(sources, key=lambda x: x.priority):
@@ -438,7 +449,6 @@ class AutonomousUpdater:
             f"# Invalid Skipped: {processor.stats['invalid']}\n\n"
         )
         
-        # FIXED: saves directly to current directory, not to output folder
         output_file = self.settings.output_dir / "blocklist.txt"
         
         fd, tmp_path = tempfile.mkstemp(dir=str(self.settings.output_dir), suffix='.tmp')
