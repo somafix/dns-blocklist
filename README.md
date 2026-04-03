@@ -1,57 +1,63 @@
-# 🛡️ DNS Security Blocklist Builder 
+# 🏆 Autonomous DNS Blocklist Builder
 
-### **Zero-Config • Fully Autonomous • AI-Powered Security**
-**Version 17.2.1 (Autonomous Edition)** • *High-Concurrency Async Engine*
+### Enterprise-Grade Threat Intelligence Platform with Crash Recovery
+### v4.0.5 | Pydantic-Powered | High Performance & Resiliency
 
-[![Python](https://img.shields.io/badge/Python-3.8%2B-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
-[![Pydantic](https://img.shields.io/badge/Pydantic-V2-E92063?style=for-the-badge&logo=pydantic&logoColor=white)](https://docs.pydantic.dev/)
-[![License](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
-[![Self-Installing](https://img.shields.io/badge/Dependencies-Auto--Install-green?style=for-the-badge&logo=unrealengine)](#)
-
----
-
-## 🎯 Project Overview
-
-The **DNS Security Blocklist Builder** is an enterprise-grade orchestration tool designed to aggregate, validate, and categorize global threat intelligence into a single, optimized manifest.
-
-The **Autonomous Edition** is built for "Set and Forget" operation. It removes the need for manual environment preparation by managing its own lifecycle—from dependency installation to final compression.
-
-> [!IMPORTANT]
-> **Zero Manual Intervention:** The script features a self-bootstrapping layer. It detects missing libraries (`aiohttp`, `pydantic`, `tenacity`, `numpy`, etc.) and installs them via `pip` automatically before execution.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
+[![Python 3.8+](https://img.shields.io/badge/Python-3.8%2B-blue?style=for-the-badge)](https://www.python.org/)
+[![Framework: Pydantic](https://img.shields.io/badge/Framework-Pydantic_V2-red?style=for-the-badge)](https://docs.pydantic.dev/)
+[![Status: Production Ready](https://img.shields.io/badge/Status-Production_Ready-brightgreen?style=for-the-badge)](#-autonomous-operation)
 
 ---
 
-## 🔥 Key Features
+## 🎯 EXECUTIVE SUMMARY
 
-### 🚀 Self-Bootstrapping Engine
-No more `pip install -r requirements.txt`. On launch, the script:
-* **Environment Scan:** Checks for all required Python packages.
-* **Auto-Repair:** Silently installs missing dependencies in the background.
-* **Workspace Setup:** Automatically initializes cache directories and output paths.
+The **Autonomous DNS Blocklist Builder** (v4.0.5) is a professional-grade security solution designed to aggregate, validate, and deduplicate threat intelligence from multiple DNS sources. Built with **Pydantic V2** and **AsyncIO**, it offers a "set-and-forget" architecture for maintaining high-quality blocklists for Pi-hole, AdGuard Home, or custom Unbound/dnsmasq resolvers.
 
-### 🤖 AI/ML Infrastructure Detection
-Integrated heuristic analysis identifies domains used by Artificial Intelligence services (OpenAI, Anthropic, Gemini, Midjourney, etc.). These are tagged as `AI_ML`, giving you granular control over AI tool access in your network.
-
-### ⚡ Production-Grade Cleansing
-* **Strict Validation:** Strips AdBlock noise (`||`, `^`), removes IP addresses, and ignores local network hostnames.
-* **Duplicate Suppression:** Efficiently de-duplicates millions of domains using high-performance sets.
-* **Resource Efficient:** Powered by `AsyncIO` for non-blocking I/O and optimized for low memory footprint.
+- ✅ **High-Speed Processing:** Asynchronous fetching and regex-optimized validation.
+- ✅ **Crash Recovery:** Persistent state management saves progress every 100k domains.
+- ✅ **Auto-Healing:** Integrated health monitor detects failures and triggers self-repair.
+- ✅ **RFC Compliant:** Strict validation of domain syntax, length, and character sets.
+- ✅ **Zero-Dependency Core:** Only requires standard Python security and async libraries.
 
 ---
 
-## 📂 Output Anatomy
+## 🚀 KEY FEATURES
 
-The script generates a unified `blocklist.txt` (and a compressed `.gz` version) compatible with **Pi-hole**, **AdGuard Home**, **pfSense**, and **Mikrotik**.
+### 🤖 Autonomous Operation
+The script features an integrated **Autonomous Scheduler** that manages update cycles automatically. It handles OS signals (SIGINT/SIGTERM) for graceful shutdowns and maintains a health ledger to ensure 24/7 reliability without human intervention.
 
-```text
-# DNS Security Blocklist
-# Generated: 2026-04-02T16:32:00Z
-# Total domains: 1,842,901
-# Category breakdown:
-#   AI_ML: 1,240
-#   MALWARE: 84,120
-#   TRACKING: 210,050
+### 💾 Persistent State & Recovery
+Unlike standard scripts, this builder uses a **StateManager** to survive system reboots or process crashes:
+- **Checkpoints:** Periodically serializes (pickles) processed domains to disk.
+- **Resumption:** If interrupted, it automatically reloads the last known state to avoid re-processing massive datasets.
 
-0.0.0.0 api.openai.com # AI_ML
-0.0.0.0 doubleclick.net # ADS
-0.0.0.0 track.analytics-data.io # TRACKING
+### 🛡️ Enterprise-Grade Fetching
+- **Exponential Backoff:** Retries failed downloads with increasing delays (5s, 10s, 20s...).
+- **Atomic Writes:** Uses temporary files and `os.replace` to ensure output files are never corrupted during generation.
+- **Resource Management:** Hard limits on domain count and memory protection through streaming.
+
+---
+
+## 📁 OUTPUT FILES
+
+The builder generates structured output in the designated `./output` directory:
+
+| Filename | Format | Description |
+| :--- | :--- | :--- |
+| `blocklist.txt` | Hosts File | Standard `0.0.0.0 domain.com` format. |
+| `blocklist.txt.gz` | Gzip | Compressed version for bandwidth efficiency. |
+
+---
+
+## ⚙️ CONFIGURATION
+
+The application is fully configurable via **Environment Variables** (prefix `DNSBL_`):
+
+```bash
+# Example environment configuration
+DNSBL_OUTPUT_DIR="./my_lists"
+DNSBL_MAX_DOMAINS=2000000
+DNSBL_UPDATE_INTERVAL_HOURS=6
+DNSBL_HTTP_TIMEOUT=30
+DNSBL_AUTO_REPAIR=True
