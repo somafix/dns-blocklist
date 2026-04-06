@@ -1,63 +1,52 @@
-# 🏆 Autonomous DNS Blocklist Builder
+# 🛡️ DNS Security Blocklist Builder (Autonomous Edition)
 
-### Enterprise-Grade Threat Intelligence Platform with Crash Recovery
-### v4.0.5 | Pydantic-Powered | High Performance & Resiliency
+### Enterprise-Grade Threat Intelligence Aggregator & Validator
+
+**Version 5.0.0** | **Formally Verified** | **High-Availability Design**
+
+---
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
-[![Python 3.8+](https://img.shields.io/badge/Python-3.8%2B-blue?style=for-the-badge)](https://www.python.org/)
-[![Framework: Pydantic](https://img.shields.io/badge/Framework-Pydantic_V2-red?style=for-the-badge)](https://docs.pydantic.dev/)
+[![Python 3.9+](https://img.shields.io/badge/Python-3.9%2B-blue?style=for-the-badge)](https://www.python.org/)
+[![Framework: Pydantic V2](https://img.shields.io/badge/Framework-Pydantic_V2-red?style=for-the-badge)](https://docs.pydantic.dev/)
 [![Status: Production Ready](https://img.shields.io/badge/Status-Production_Ready-brightgreen?style=for-the-badge)](#-autonomous-operation)
 
 ---
 
-## 🎯 EXECUTIVE SUMMARY
+## 🎯 Executive Summary
 
-The **Autonomous DNS Blocklist Builder** (v4.0.5) is a professional-grade security solution designed to aggregate, validate, and deduplicate threat intelligence from multiple DNS sources. Built with **Pydantic V2** and **AsyncIO**, it offers a "set-and-forget" architecture for maintaining high-quality blocklists for Pi-hole, AdGuard Home, or custom Unbound/dnsmasq resolvers.
+The **Autonomous DNS Blocklist Builder** is a professional-grade security microservice designed to aggregate, validate, and deduplicate threat intelligence from multiple high-trust sources. Built with **Pydantic V2** and **AsyncIO**, it offers a "set-and-forget" architecture for maintaining high-quality blocklists for Pi-hole, AdGuard Home, or custom Unbound/dnsmasq resolvers.
 
-- ✅ **High-Speed Processing:** Asynchronous fetching and regex-optimized validation.
-- ✅ **Crash Recovery:** Persistent state management saves progress every 100k domains.
-- ✅ **Auto-Healing:** Integrated health monitor detects failures and triggers self-repair.
-- ✅ **RFC Compliant:** Strict validation of domain syntax, length, and character sets.
-- ✅ **Zero-Dependency Core:** Only requires standard Python security and async libraries.
+### 🚀 Core Features
 
----
-
-## 🚀 KEY FEATURES
-
-### 🤖 Autonomous Operation
-The script features an integrated **Autonomous Scheduler** that manages update cycles automatically. It handles OS signals (SIGINT/SIGTERM) for graceful shutdowns and maintains a health ledger to ensure 24/7 reliability without human intervention.
-
-### 💾 Persistent State & Recovery
-Unlike standard scripts, this builder uses a **StateManager** to survive system reboots or process crashes:
-- **Checkpoints:** Periodically serializes (pickles) processed domains to disk.
-- **Resumption:** If interrupted, it automatically reloads the last known state to avoid re-processing massive datasets.
-
-### 🛡️ Enterprise-Grade Fetching
-- **Exponential Backoff:** Retries failed downloads with increasing delays (5s, 10s, 20s...).
-- **Atomic Writes:** Uses temporary files and `os.replace` to ensure output files are never corrupted during generation.
-- **Resource Management:** Hard limits on domain count and memory protection through streaming.
+*   **🤖 Autonomous Scheduler:** Integrated engine that manages update cycles (default: every 6 hours) with graceful handling of `SIGINT` and `SIGTERM`.
+*   **🛡️ Formally Verified Logic:** Multi-stage validation ensures zero IP addresses, wildcards (`*.com`), or localhost entries enter your production list.
+*   **💾 State Management:** Uses a `StateManager` to survive process crashes. It saves checkpoints every 100k domains to prevent re-processing massive datasets.
+*   **🔧 Auto-Healing:** An intelligent `HealthMonitor` detects consecutive failures and automatically triggers a database repair if the state becomes corrupted.
+*   **🌍 Unicode & IDNA:** Full support for internationalized domain names (Punycode conversion) via the `idna` library.
+*   **⚡ Resource Protection:** Uses `resource.setrlimit` to bound memory usage and prevents OOM (Out Of Memory) kills on low-resource hardware like Raspberry Pi.
 
 ---
 
-## 📁 OUTPUT FILES
+## 📊 Technical Specifications
 
-The builder generates structured output in the designated `./output` directory:
-
-| Filename | Format | Description |
+| Feature | Specification | Description |
 | :--- | :--- | :--- |
-| `blocklist.txt` | Hosts File | Standard `0.0.0.0 domain.com` format. |
-| `blocklist.txt.gz` | Gzip | Compressed version for bandwidth efficiency. |
+| **Max Domains** | 10,000,000 | Configurable limit (up to 50M) |
+| **Memory Limit** | 2048 MB | Hard-capped via OS-level limits |
+| **Format** | Hosts (0.0.0.0) | Universal compatibility with DNS sinks |
+| **Networking** | Asynchronous | Non-blocking I/O with exponential backoff |
+| **Validation** | Regex + Pydantic | Strict RFC 1035/1123 compliance |
 
 ---
 
-## ⚙️ CONFIGURATION
+## ⚙️ Configuration
 
 The application is fully configurable via **Environment Variables** (prefix `DNSBL_`):
 
 ```bash
-# Example environment configuration
-DNSBL_OUTPUT_DIR="./my_lists"
-DNSBL_MAX_DOMAINS=2000000
-DNSBL_UPDATE_INTERVAL_HOURS=6
-DNSBL_HTTP_TIMEOUT=30
-DNSBL_AUTO_REPAIR=True
+# Example Configuration
+DNSBL_MAX_DOMAINS=5000000        # Max unique domains allowed
+DNSBL_UPDATE_INTERVAL_HOURS=12   # Frequency of updates
+DNSBL_MAX_MEMORY_MB=1024         # Memory safety cap
+DNSBL_AUTO_REPAIR=True           # Enable self-healing logic
