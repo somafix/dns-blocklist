@@ -2,13 +2,25 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>🔥 АДСКИЙ ТЕСТ БЛОКИРОВЩИКОВ 🔥</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AdBlock Stress Test — проверка блокировщиков рекламы онлайн</title>
+    <meta name="description" content="Бесплатный адский тест блокировщиков рекламы: AdGuard, uBlock Origin, AdBlock Plus. Проверьте, выдержит ли ваш adblock 40+ методов обхода.">
+    <meta name="keywords" content="тест адблока, проверка блокировщика рекламы, adblock test, ublock test, adguard test">
+    <meta name="author" content="Adblock Test">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://adblock-test.example/">
+    <meta property="og:title" content="AdBlock Stress Test — проверка блокировщиков рекламы">
+    <meta property="og:description" content="Проверьте свой adblock на прочность. 40+ методов обхода.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://adblock-test.example/">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="AdBlock Stress Test">
+    <meta name="twitter:description" content="Проверьте блокировщик рекламы на прочность">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             background: #0a0f1e;
-            font-family: 'Segoe UI', system-ui, monospace;
+            font-family: system-ui, 'Segoe UI', monospace;
             padding: 20px;
             color: #eee;
         }
@@ -19,18 +31,16 @@
             padding: 25px;
             margin-bottom: 30px;
             border-radius: 16px;
-            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.5);
         }
-        h1 { font-size: 2.2rem; background: linear-gradient(45deg, #ff3366, #ffaa33); -webkit-background-clip: text; background-clip: text; color: transparent; }
+        h1 { font-size: 2rem; color: #ffaa66; margin-bottom: 8px; }
         .badge {
             background: #ff3366;
             color: white;
             padding: 4px 12px;
             border-radius: 40px;
             font-size: 0.8rem;
-            font-weight: bold;
             display: inline-block;
-            margin-top: 12px;
+            margin: 12px 0;
         }
         .grid {
             display: grid;
@@ -42,8 +52,6 @@
             border-radius: 24px;
             border: 1px solid #2a2f3a;
             overflow: hidden;
-            transition: 0.2s;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
         }
         .card-title {
             background: #1e2432;
@@ -51,13 +59,12 @@
             font-weight: bold;
             border-bottom: 1px solid #2e3545;
             font-family: monospace;
-            font-size: 1.1rem;
+            font-size: 1rem;
             color: #ffaa66;
         }
         .card-content {
             padding: 20px;
             min-height: 200px;
-            position: relative;
         }
         .footer-note {
             margin-top: 40px;
@@ -79,158 +86,123 @@
             cursor: pointer;
             font-size: 0.8rem;
         }
-        .detected {
-            color: #4caf50;
-            font-weight: bold;
-        }
-        .failed {
-            color: #ff6666;
-        }
+        .detected { color: #4caf50; font-weight: bold; }
+        .failed { color: #ff6666; }
+        img { max-width: 100%; height: auto; }
+        a { color: #ffaa66; text-decoration: none; }
+        a:hover { text-decoration: underline; }
     </style>
 </head>
 <body>
 <div class="container">
-    <div class="header">
-        <h1>🔥 ADBLOCK STRESS TEST: HELL EDITION 🔥</h1>
-        <div class="badge">⚠️ МАКСИМАЛЬНО АДСКИЙ ТЕСТ ⚠️</div>
-        <p style="margin-top: 16px;">Этот тест использует все известные методы: классические баннеры, обфускацию, CNAME-маскировку, фейковые видео-плееры, пуш-уведомления, iframe-вторжения и WebSocket-ловушки.<br>
+    <header class="header">
+        <h1>🔥 AdBlock Stress Test: Hell Edition 🔥</h1>
+        <div class="badge">⚠️ МАКСИМАЛЬНЫЙ ТЕСТ ⚠️</div>
+        <p>Этот тест использует все известные методы: классические баннеры, обфускацию, CNAME-маскировку, фейковые видео-плееры, пуш-уведомления, iframe-вторжения и WebSocket-ловушки.<br>
         ✅ <strong>Если блокировщик жив</strong> — вы не видите ничего, кроме чистых карточек.<br>
         ❌ <strong>Если блокировщик сдался</strong> — вы увидите всплывашки, визжащую рекламу и красные пятна.</p>
-    </div>
+    </header>
 
-    <div class="grid">
-        <!-- 1. КЛАССИЧЕСКИЕ БАННЕРЫ С ТИПОВЫМИ ID/CLASS -->
-        <div class="card">
-            <div class="card-title">📌 Классика: .banner, #ad, .ads</div>
-            <div class="card-content">
-                <div class="banner" style="background:#2a2f3a; padding:10px; border-radius:12px;">🔴 Баннер .banner (должен исчезнуть)</div>
-                <div id="ad" style="margin-top:10px; background:#2a2f3a; padding:10px;">🔴 Блок #ad (должен исчезнуть)</div>
-                <div class="ads" style="margin-top:10px;">🔴 .ads контейнер</div>
-                <div data-ad="true" style="margin-top:10px;">🔴 data-ad атрибут</div>
-            </div>
-        </div>
-
-        <!-- 2. ГООГЛ-СИМУЛЯТОР / DOUBLE CLICK -->
-        <div class="card">
-            <div class="card-title">📦 Google / DoubleClick симуляция</div>
-            <div class="card-content">
-                <iframe src="about:blank" id="google_ads_iframe_1" style="width:100%; height:90px; background:#1e2432;"></iframe>
-                <div id="div-gpt-ad-123456789-0" style="margin-top:10px;">GPT Ad Slot</div>
-                <ins class="adsbygoogle" style="display:block">Adsense инъекция</ins>
-                <div data-google-query-id="test">Google Query ID</div>
-            </div>
-        </div>
-
-        <!-- 3. CNAME-МАСКИРАД (симуляция скрытых доменов) -->
-        <div class="card">
-            <div class="card-title">🌐 CNAME Cloaking (маскировка)</div>
-            <div class="card-content">
-                <iframe src="about:blank" data-cdn-domain="metrics.analytics-cdn.com" style="width:100%; height:80px;"></iframe>
-                <img src="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%201%201'%3E%3C/svg%3E" data-src="https://adservice.google.com/pagead/ads?test=1" class="lazy-ad">
-                <div id="prebid_container" style="margin-top:10px;">Prebid.js wrapper</div>
-                <script>window.googletag = window.googletag || {cmd:[]};</script>
-            </div>
-        </div>
-
-        <!-- 4. ВСПЛЫВАЮЩИЕ ОКНА И ОВЕРЛЕИ -->
-        <div class="card">
-            <div class="card-title">🎭 Попапы / Оверлеи</div>
-            <div class="card-content" id="popup-test-area">
-                <button onclick="showFakePopup()">🔴 НАЖМИ (тест попап-блокера)</button>
-                <div id="floating-overlay" style="display:none; position:fixed; bottom:20px; right:20px; background:red; padding:20px; z-index:9999;">ВСПЛЫВАШКА!</div>
-            </div>
-        </div>
-
-        <!-- 5. ВИДЕО-ПРЕРОЛЛ (фейк плеер) -->
-        <div class="card">
-            <div class="card-title">🎬 Video Preroll (IMA SDK)</div>
-            <div class="card-content">
-                <div id="video-ad-container" style="background:#000; height:120px; display:flex; align-items:center; justify-content:center;">▶️ Видео-плеер с рекламным overlay</div>
-                <div class="vast-skip-button" style="font-size:10px;">Skip Ad</div>
-                <div id="ad-overlay" style="margin-top:8px;">📺 Pre-roll Ad</div>
-            </div>
-        </div>
-
-        <!-- 6. ПУШ-НОТИФИКАЦИИ И SUBSCRIBE -->
-        <div class="card">
-            <div class="card-title">🔔 Web Push / Subscribe</div>
-            <div class="card-content">
-                <div id="onesignal-bell-container">OneSignal уведомления</div>
-                <div class="push-subscribe" style="background:#2a2f3a; padding:8px;">Подписаться на уведомления</div>
-                <iframe srcdoc="<script>Notification.requestPermission()</script>" style="display:none;"></iframe>
-            </div>
-        </div>
-
-        <!-- 7. МАСКИРОВАННЫЙ ТЕКСТ + РЕКЛАМНЫЕ ССЫЛКИ -->
-        <div class="card">
-            <div class="card-title">🔗 Маскировка: "спонсорский контент"</div>
-            <div class="card-content">
-                <a href="#" class="sponsored-link">🎯 Рекомендуем: Супер-товар</a>
-                <div class="promoted">Продвигаемый пост</div>
-                <div style="border:1px solid #333; margin-top:10px; padding:8px;">
-                    <span class="ad-label">Реклама</span> Текст-рыба...
+    <main>
+        <div class="grid">
+            <section class="card">
+                <h2 class="card-title">📌 Классика: .banner, #ad, .ads</h2>
+                <div class="card-content">
+                    <div class="banner" style="background:#2a2f3a; padding:10px; border-radius:12px;">🔴 Баннер .banner</div>
+                    <div id="ad" style="margin-top:10px; background:#2a2f3a; padding:10px;">🔴 Блок #ad</div>
+                    <div class="ads" style="margin-top:10px;">🔴 .ads контейнер</div>
+                    <div data-ad="true" style="margin-top:10px;">🔴 data-ad атрибут</div>
                 </div>
-            </div>
-        </div>
+            </section>
 
-        <!-- 8. СКРИПТОВЫЕ ИНЪЕКЦИИ И РЕКЛАМНЫЙ JS -->
-        <div class="card">
-            <div class="card-title">⚙️ Ad JS Injection</div>
-            <div class="card-content" id="js-inject-area">
-                <div id="dynamic-ad-placeholder"></div>
-                <script>
-                    // Эмуляция скрипта, который вставляет рекламу
-                    setTimeout(() => {
-                        let d = document.getElementById('dynamic-ad-placeholder');
-                        if(d && !d.innerHTML.includes('заблокирован')) {
-                            d.innerHTML = '<div style="background:#ff3366; padding:8px; margin-top:8px;">🚨 РЕКЛАМА: ДИНАМИЧЕСКАЯ ВСТАВКА (если видно — блокировщик пропустил)</div>';
-                        }
-                    }, 200);
-                </script>
-            </div>
-        </div>
+            <section class="card">
+                <h2 class="card-title">📦 Google / DoubleClick симуляция</h2>
+                <div class="card-content">
+                    <iframe src="about:blank" id="google_ads_iframe_1" style="width:100%; height:90px; background:#1e2432;" title="тестовый iframe"></iframe>
+                    <div id="div-gpt-ad-123456789-0" style="margin-top:10px;">GPT Ad Slot</div>
+                    <ins class="adsbygoogle" style="display:block">Adsense инъекция</ins>
+                    <div data-google-query-id="test">Google Query ID</div>
+                </div>
+            </section>
 
-        <!-- 9. IFRAME ИЗВЕСТНЫХ РЕКЛАМНЫХ СЕТЕЙ (локальная заглушка, но с известными src) -->
-        <div class="card">
-            <div class="card-title">🖼️ Iframe-бомба (известные домены)</div>
-            <div class="card-content">
-                <iframe src="about:blank" data-src="https://doubleclick.net" style="height:100px; width:100%;"></iframe>
-                <iframe src="about:blank" data-src="https://criteo.com" style="height:80px;"></iframe>
-                <iframe src="about:blank" data-src="https://outbrain.com" style="height:80px;"></iframe>
-                <iframe src="about:blank" data-src="https://taboola.com"></iframe>
-            </div>
-        </div>
+            <section class="card">
+                <h2 class="card-title">🌐 CNAME Cloaking (маскировка)</h2>
+                <div class="card-content">
+                    <iframe src="about:blank" data-cdn-domain="metrics.analytics-cdn.com" style="width:100%; height:80px;" title="cname тест"></iframe>
+                    <img src="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%201%201'%3E%3C/svg%3E" data-src="https://adservice.google.com/pagead/ads?test=1" class="lazy-ad" alt="lazy ad placeholder">
+                    <div id="prebid_container" style="margin-top:10px;">Prebid.js wrapper</div>
+                </div>
+            </section>
 
-        <!-- 10. ADBLOCK DETECTION SCRIPTS (обход детекта) -->
-        <div class="card">
-            <div class="card-title">🕵️ Анти-адблок скрипты</div>
-            <div class="card-content" id="antiadb">
-                <div id="ab-message" style="background:#330000; padding:8px;">⚠️ Если видите это — возможно сработал "антиадблок"</div>
-                <script>
-                    // Эмуляция детекции адблока
-                    let testAd = document.createElement('div');
-                    testAd.className = 'adsbox';
-                    testAd.style.display = 'none';
-                    document.body.appendChild(testAd);
-                    setTimeout(() => {
-                        if(testAd.offsetHeight === 0) {
-                            console.log('[тест] Адблок предположительно активен');
-                        }
-                    }, 100);
-                </script>
-            </div>
-        </div>
-    </div>
+            <section class="card">
+                <h2 class="card-title">🎭 Попапы / Оверлеи</h2>
+                <div class="card-content" id="popup-test-area">
+                    <button onclick="showFakePopup()">🔴 НАЖМИ (тест попап-блокера)</button>
+                </div>
+            </section>
 
-    <div class="footer-note">
+            <section class="card">
+                <h2 class="card-title">🎬 Video Preroll (IMA SDK)</h2>
+                <div class="card-content">
+                    <div id="video-ad-container" style="background:#000; height:120px; display:flex; align-items:center; justify-content:center;">▶️ Видео-плеер с рекламным overlay</div>
+                    <div class="vast-skip-button" style="font-size:10px;">Skip Ad</div>
+                    <div id="ad-overlay" style="margin-top:8px;">📺 Pre-roll Ad</div>
+                </div>
+            </section>
+
+            <section class="card">
+                <h2 class="card-title">🔔 Web Push / Subscribe</h2>
+                <div class="card-content">
+                    <div id="onesignal-bell-container">OneSignal уведомления</div>
+                    <div class="push-subscribe" style="background:#2a2f3a; padding:8px;">Подписаться на уведомления</div>
+                </div>
+            </section>
+
+            <section class="card">
+                <h2 class="card-title">🔗 Маскировка: "спонсорский контент"</h2>
+                <div class="card-content">
+                    <a href="#" class="sponsored-link">🎯 Рекомендуем: Супер-товар</a>
+                    <div class="promoted">Продвигаемый пост</div>
+                    <div style="border:1px solid #333; margin-top:10px; padding:8px;">
+                        <span class="ad-label">Реклама</span> Текст-рыба...
+                    </div>
+                </div>
+            </section>
+
+            <section class="card">
+                <h2 class="card-title">⚙️ Ad JS Injection</h2>
+                <div class="card-content" id="js-inject-area">
+                    <div id="dynamic-ad-placeholder"></div>
+                </div>
+            </section>
+
+            <section class="card">
+                <h2 class="card-title">🖼️ Iframe-бомба (известные домены)</h2>
+                <div class="card-content">
+                    <iframe src="about:blank" data-src="https://doubleclick.net" style="height:100px; width:100%;" title="iframe doubleclick"></iframe>
+                    <iframe src="about:blank" data-src="https://criteo.com" style="height:80px;" title="iframe criteo"></iframe>
+                    <iframe src="about:blank" data-src="https://outbrain.com" style="height:80px;" title="iframe outbrain"></iframe>
+                    <iframe src="about:blank" data-src="https://taboola.com" title="iframe taboola"></iframe>
+                </div>
+            </section>
+
+            <section class="card">
+                <h2 class="card-title">🕵️ Анти-адблок скрипты</h2>
+                <div class="card-content" id="antiadb">
+                    <div id="ab-message" style="background:#330000; padding:8px;">⚠️ Если видите это — возможно сработал "антиадблок"</div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <footer class="footer-note">
         ⚡ <strong>Результат:</strong> Если вы видите текст "🔴 Баннер" или красные вставки — ваш блокировщик <span class="failed">НЕ СПРАВИЛСЯ</span>.<br>
         ✅ Если все карточки выглядят пустыми/серыми или содержат только нейтральные заголовки — у вас <span class="detected">абсолютная защита (титановый уровень)</span>.<br>
         🔥 Этот тест объединяет 40+ правил фильтрации EasyList, uBlock filters, AdGuard Base и обфусцированные селекторы.
-    </div>
+    </footer>
 </div>
 
 <script>
-    // Эмуляция попап-ловушки
     function showFakePopup() {
         let existing = document.getElementById('floating-overlay');
         if(existing) existing.style.display = 'block';
@@ -249,42 +221,30 @@
         }
     }
 
-    // Эмуляция попытки WebSocket ad-трекинга (безопасно, только тест)
     try {
-        // Имитация ws://ads.xxx трекера — многие блокировщики режут ws:// на рекламных доменах
         let wsTest = new WebSocket('wss://adserver-eu.doubleclick.net/test');
-        wsTest.onerror = () => console.log('WebSocket заблокирован (хорошо)');
+        wsTest.onerror = () => console.log('WebSocket blocked');
     } catch(e) { console.log('ws blocked'); }
 
-    // Фейковый маршрутизатор для имитации CNAME-подмены
-    let cnameScript = document.createElement('script');
-    cnameScript.src = 'https://cdn.adsafeprotected.com/scene7.js'; // известный ad-домен
-    cnameScript.onerror = () => console.log('ad-скрипт заблокирован');
-    // Не добавляем в DOM, чтобы не мусорить, но проверка факта: если бы добавили — uBlock бы заблокировал
-</script>
+    setTimeout(() => {
+        let d = document.getElementById('dynamic-ad-placeholder');
+        if(d && !d.innerHTML.includes('заблокирован')) {
+            d.innerHTML = '<div style="background:#ff3366; padding:8px; margin-top:8px;">🚨 РЕКЛАМА: ДИНАМИЧЕСКАЯ ВСТАВКА</div>';
+        }
+    }, 200);
 
-<!-- Дополнительная "бомба": инъекция через внешний ресурс, который обычно подгружает рекламу -->
-<iframe src="about:blank" name="adserver" style="display:none;"></iframe>
-<div id="__profiler_wrapper" style="display:none;"></div>
-<div class="page_ads" style="display:none;"></div>
-
-<script>
-    // Финальный тест: обфусцированная вставка через innerHTML
-    (function(){
+    setTimeout(() => {
         let zones = document.querySelectorAll('.card-content');
         if(zones.length > 0 && !document.querySelector('.adblock-warning')) {
-            // Это имитация "умной" рекламы, которая пытается загрузиться через 3 секунды
-            setTimeout(() => {
-                let testDiv = document.createElement('div');
-                testDiv.className = 'native-ad native-article-ad';
-                testDiv.innerHTML = '<div style="background:#222; border-top:2px solid red; padding:10px; margin-top:10px;"><b>📢 Native Advertisement</b> — если видите этот блок, адблок не отработал нативный формат</div>';
-                let lastCard = zones[zones.length-1];
-                if(lastCard && !lastCard.querySelector('.native-ad')) {
-                    lastCard.appendChild(testDiv);
-                }
-            }, 1500);
+            let testDiv = document.createElement('div');
+            testDiv.className = 'native-ad native-article-ad';
+            testDiv.innerHTML = '<div style="background:#222; border-top:2px solid red; padding:10px; margin-top:10px;"><b>📢 Native Advertisement</b> — если видите этот блок, адблок не отработал</div>';
+            let lastCard = zones[zones.length-1];
+            if(lastCard && !lastCard.querySelector('.native-ad')) {
+                lastCard.appendChild(testDiv);
+            }
         }
-    })();
+    }, 1500);
 </script>
 </body>
 </html>
