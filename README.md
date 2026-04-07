@@ -1,52 +1,57 @@
-# 🛡️ DNS Security Blocklist Builder (Autonomous Edition)
+# DNS Security Blocklist Builder (Enterprise Edition)
 
-### Enterprise-Grade Threat Intelligence Aggregator & Validator
+![Version](https://img.shields.io/badge/version-6.0.0-blue.svg)
+![Security](https://img.shields.io/badge/OWASP-Compliant-green.svg)
+![Verification](https://img.shields.io/badge/Formal%20Verification-Complete-brightgreen.svg)
+![License](https://img.shields.io/badge/License-MIT-black.svg)
+![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)
 
-**Version 5.0.0** | **Formally Verified** | **High-Availability Design**
-
----
-
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
-[![Python 3.9+](https://img.shields.io/badge/Python-3.9%2B-blue?style=for-the-badge)](https://www.python.org/)
-[![Framework: Pydantic V2](https://img.shields.io/badge/Framework-Pydantic_V2-red?style=for-the-badge)](https://docs.pydantic.dev/)
-[![Status: Production Ready](https://img.shields.io/badge/Status-Production_Ready-brightgreen?style=for-the-badge)](#-autonomous-operation)
+An enterprise-grade, autonomous DNS blocklist engine designed for high-security environments. This tool orchestrates the collection, validation, and distribution of domain-based security intelligence while adhering to strict memory safety and cryptographic integrity standards.
 
 ---
 
-## 🎯 Executive Summary
+## 🛡️ Security & Compliance
 
-The **Autonomous DNS Blocklist Builder** is a professional-grade security microservice designed to aggregate, validate, and deduplicate threat intelligence from multiple high-trust sources. Built with **Pydantic V2** and **AsyncIO**, it offers a "set-and-forget" architecture for maintaining high-quality blocklists for Pi-hole, AdGuard Home, or custom Unbound/dnsmasq resolvers.
+This implementation is built with a "Security-First" philosophy, incorporating several advanced protection layers:
 
-### 🚀 Core Features
-
-*   **🤖 Autonomous Scheduler:** Integrated engine that manages update cycles (default: every 6 hours) with graceful handling of `SIGINT` and `SIGTERM`.
-*   **🛡️ Formally Verified Logic:** Multi-stage validation ensures zero IP addresses, wildcards (`*.com`), or localhost entries enter your production list.
-*   **💾 State Management:** Uses a `StateManager` to survive process crashes. It saves checkpoints every 100k domains to prevent re-processing massive datasets.
-*   **🔧 Auto-Healing:** An intelligent `HealthMonitor` detects consecutive failures and automatically triggers a database repair if the state becomes corrupted.
-*   **🌍 Unicode & IDNA:** Full support for internationalized domain names (Punycode conversion) via the `idna` library.
-*   **⚡ Resource Protection:** Uses `resource.setrlimit` to bound memory usage and prevents OOM (Out Of Memory) kills on low-resource hardware like Raspberry Pi.
-
----
-
-## 📊 Technical Specifications
-
-| Feature | Specification | Description |
-| :--- | :--- | :--- |
-| **Max Domains** | 10,000,000 | Configurable limit (up to 50M) |
-| **Memory Limit** | 2048 MB | Hard-capped via OS-level limits |
-| **Format** | Hosts (0.0.0.0) | Universal compatibility with DNS sinks |
-| **Networking** | Asynchronous | Non-blocking I/O with exponential backoff |
-| **Validation** | Regex + Pydantic | Strict RFC 1035/1123 compliance |
+*   **OWASP Top 10 (2021) Compliance**: Dedicated enforcement layer for injection prevention (A03), broken access control (A01), and SSRF prevention (A10).
+*   **Formal Verification**: Core domain validation and memory management logic use formal invariants to ensure mathematical correctness.
+*   **Cryptographic Integrity**:
+    *   **AES-256-GCM**: Encrypted state management for cached domains.
+    *   **SHA3-256**: High-collision-resistance hashing for output verification.
+    *   **Constant-Time Comparisons**: Prevention of timing attacks during token/checksum validation.
+*   **Memory Safety**: Runtime monitoring (via `psutil`) and hard limits to prevent OOM (Out Of Memory) crashes in containerized environments.
 
 ---
 
-## ⚙️ Configuration
+## 🚀 Key Features
 
-The application is fully configurable via **Environment Variables** (prefix `DNSBL_`):
+*   **Autonomous Operation**: Built-in graceful scheduler with signal handling (`SIGINT`, `SIGTERM`).
+*   **Circuit Breaker Pattern**: Protects the system from hanging or failing due to unresponsive upstream sources.
+*   **Token Bucket Rate Limiting**: Ensures polite fetching to avoid IP blacklisting.
+*   **Punycode Support**: Full IDNA (RFC 5891) support for internationalized domain names.
+*   **Atomic I/O**: Write-ahead-log style updates to ensure the blocklist is never corrupted during a disk failure.
+
+---
+
+## 🏗️ Architecture
+
+
+
+The system consists of five primary components:
+1.  **SecureFetcher**: Handles HTTP(S) requests with SSRF protection and hardened TLS settings.
+2.  **DomainValidator**: A regex-based engine verified against formal DNS grammars.
+3.  **SecureStateManager**: Manages encrypted persistence of the domain database.
+4.  **SecureDomainProcessor**: The central engine that enforces uniqueness and capacity limits.
+5.  **OutputGenerator**: Produces standard `0.0.0.0` hosts files, Gzip archives, and SHA3 manifests.
+
+---
+
+## 📥 Installation
+
+### Prerequisites
+- Python 3.9 or higher
+- `aiohttp`, `pydantic`, `cryptography`, `idna`, `psutil`
 
 ```bash
-# Example Configuration
-DNSBL_MAX_DOMAINS=5000000        # Max unique domains allowed
-DNSBL_UPDATE_INTERVAL_HOURS=12   # Frequency of updates
-DNSBL_MAX_MEMORY_MB=1024         # Memory safety cap
-DNSBL_AUTO_REPAIR=True           # Enable self-healing logic
+pip install aiohttp pydantic cryptography idna psutil
