@@ -1,9 +1,1 @@
-# requirements.txt
-aiohttp>=3.9.0
-pydantic>=2.5.0
-cryptography>=41.0.0
-idna>=3.4
-psutil>=5.9.0  # optional
-
-# Run with security hardening
-python -OO dnsbl_builder.py  # Optimized + strip docstrings
+idna>=3.7,<4.0
