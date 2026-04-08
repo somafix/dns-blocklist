@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-DNSBL Builder - Production Ready
+UpDate Blocklister - Production Ready
 
 What it does:
 - Validates domain names (RFC 1034/1035)
@@ -341,8 +341,8 @@ def setup_logging(verbose: bool = False) -> None:
 def main() -> None:
     """Main entry point"""
     parser = argparse.ArgumentParser(
-        description="DNSBL Builder - Production Ready",
-        epilog="Example: dnsbl.py --fetch --output blocklist.txt"
+        description="UpDate Blocklister - Production Ready",
+        epilog="Example: update_blocklist.py --fetch --output blocklist.txt"
     )
     
     # Input options
@@ -364,7 +364,7 @@ def main() -> None:
     args = parser.parse_args()
     
     if args.version:
-        print("DNSBL Builder v1.0.0")
+        print("UpDate Blocklister v1.0.0")
         print("Audit: ruff | mypy | bandit | pip-audit | pytest")
         return
     
