@@ -1,75 +1,83 @@
-0.0.0.0 adtago.s3.amazonaws.com
-0.0.0.0 analyticsengine.s3.amazonaws.com
-0.0.0.0 analytics.s3.amazonaws.com
-0.0.0.0 advice-ads.s3.amazonaws.com
-0.0.0.0 doubleclick.net
-0.0.0.0 stats.g.doubleclick.net
-0.0.0.0 ad.doubleclick.net
-0.0.0.0 static.doubleclick.net
-0.0.0.0 m.doubleclick.net
-0.0.0.0 pagead2.googlesyndication.com
-0.0.0.0 adservice.google.com
-0.0.0.0 pagead2.googleadservices.com
-0.0.0.0 afs.googlesyndication.com
-0.0.0.0 analytics.google.com
-0.0.0.0 click.googleanalytics.com
+# 15 украинских рекламных агенций
+0.0.0.0 uamaster.com
+0.0.0.0 roman.ua
+0.0.0.0 wedex.com
+0.0.0.0 inweb.ua
+0.0.0.0 promodo.com
+0.0.0.0 wezom.com
+0.0.0.0 netrocket.com
+0.0.0.0 panem.com
+0.0.0.0 kiwiagency.com
+0.0.0.0 redchameleon.com
+0.0.0.0 kit.agency
+0.0.0.0 braintank.com
+0.0.0.0 adloonix.com
+0.0.0.0 epom.com
+0.0.0.0 cryptotrafficmarket.com
+
+# Крупные платформы аналитики
 0.0.0.0 google-analytics.com
-0.0.0.0 ssl.google-analytics.com
-0.0.0.0 ads.youtube.com
-0.0.0.0 static.media.net
-0.0.0.0 adservetx.media.net
-0.0.0.0 ads30.adcolony.com
-0.0.0.0 adc3-launch.adcolony.com
-0.0.0.0 events3alt.adcolony.com
-0.0.0.0 wd.adcolony.com
-0.0.0.0 cdn.mouseflow.com
-0.0.0.0 gtm.mouseflow.com
-0.0.0.0 api.mouseflow.com
-0.0.0.0 tools.mouseflow.com
-0.0.0.0 luckyorange.com
-0.0.0.0 api.luckyorange.com
-0.0.0.0 realtime.luckyorange.com
-0.0.0.0 cdn.luckyorange.com
-0.0.0.0 w1.luckyorange.com
-0.0.0.0 upload.luckyorange.net
-0.0.0.0 cs.luckyorange.net
-0.0.0.0 settings.luckyorange.net
-0.0.0.0 adm.hotjar.com
-0.0.0.0 identify.hotjar.com
-0.0.0.0 insights.hotjar.com
-0.0.0.0 script.hotjar.com
-0.0.0.0 surveys.hotjar.com
-0.0.0.0 events.hotjar.io
-0.0.0.0 freshmarketer.com
-0.0.0.0 claritybt.freshmarketer.com
-0.0.0.0 fwtracks.freshmarketer.com
-0.0.0.0 notify.bugsnag.com
-0.0.0.0 sessions.bugsnag.com
-0.0.0.0 api.bugsnag.com
-0.0.0.0 app.bugsnag.com
-0.0.0.0 browser.sentry-cdn.com
-0.0.0.0 stats.wp.com
-0.0.0.0 pixel.facebook.com
-0.0.0.0 an.facebook.com
-0.0.0.0 events.reddit.com
-0.0.0.0 events.redditmedia.com
-0.0.0.0 ads-api.tiktok.com
+0.0.0.0 analytics.google.com
+0.0.0.0 googletagmanager.com
+0.0.0.0 doubleclick.net
+0.0.0.0 facebook.com
+0.0.0.0 connect.facebook.net
+0.0.0.0 graph.facebook.com
+0.0.0.0 tiktok.com
 0.0.0.0 analytics.tiktok.com
-0.0.0.0 ads-sg.tiktok.com
-0.0.0.0 analytics-sg.tiktok.com
-0.0.0.0 business-api.tiktok.com
-0.0.0.0 ads.tiktok.com
-0.0.0.0 log.byteoversea.com
-0.0.0.0 static.ads-twitter.com
-0.0.0.0 ads-api.twitter.com
-0.0.0.0 ads.pinterest.com
-0.0.0.0 log.pinterest.com
-0.0.0.0 ads.yahoo.com
-0.0.0.0 geo.yahoo.com
-0.0.0.0 udcm.yahoo.com
-0.0.0.0 analytics.query.yahoo.com
-0.0.0.0 log.fc.yahoo.com
-0.0.0.0 config.unityads.unity3d.com
-0.0.0.0 adserver.unityads.unity3d.com
+0.0.0.0 linkedin.com
+0.0.0.0 ads.linkedin.com
+0.0.0.0 twitter.com
+0.0.0.0 ads.twitter.com
+0.0.0.0 youtube.com
+0.0.0.0 ytimg.com
+0.0.0.0 googlevideo.com
+
+# Украинские трекеры
+0.0.0.0 hotlog.ru
 0.0.0.0 yandex.ru
-0.0.0.0 iot-logser.realme.com
+0.0.0.0 yandex.ua
+0.0.0.0 liveinternet.ru
+0.0.0.0 brand24.com
+0.0.0.0 determ.com
+
+# Email маркетинг
+0.0.0.0 sendpulse.com
+0.0.0.0 esputnik.com
+0.0.0.0 mailchimp.com
+0.0.0.0 klaviyo.com
+0.0.0.0 getresponse.com
+
+# Поведенческое отслеживание
+0.0.0.0 hotjar.com
+0.0.0.0 crazyegg.com
+0.0.0.0 fullstory.com
+0.0.0.0 logrocket.com
+0.0.0.0 inspectlet.com
+
+# Fingerprinting
+0.0.0.0 fingerprintjs.com
+0.0.0.0 maxmind.com
+0.0.0.0 sift.com
+0.0.0.0 turnstile.one
+0.0.0.0 cloudflare.com
+
+# Ad Networks
+0.0.0.0 openx.com
+0.0.0.0 pubmatic.com
+0.0.0.0 criteo.com
+0.0.0.0 outbrain.com
+0.0.0.0 taboola.com
+
+# Data Brokers
+0.0.0.0 clearbit.com
+0.0.0.0 zoominfo.com
+0.0.0.0 apollo.io
+0.0.0.0 rocketreach.co
+0.0.0.0 hunter.io
+
+# .UA домены
+0.0.0.0 ads.ua
+0.0.0.0 analytics.ua
+0.0.0.0 tracker.ua
+0.0.0.0 pixel.ua
