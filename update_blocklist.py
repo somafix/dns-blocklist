@@ -342,7 +342,8 @@ def setup_logging(verbose: bool = False) -> None:
 def main() -> None:
     """Main entry point"""
     # License check
-    if os.getenv("LICENSE_KEY") != "OK-2026":
+    license_key = os.getenv("LICENSE_KEY")
+    if license_key != "OK-2026":
         print("Invalid license. Please set LICENSE_KEY=OK-2026")
         sys.exit(1)
     
