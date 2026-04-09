@@ -26,6 +26,11 @@ import sys
 import threading
 import time
 import queue
+import os
+import tempfile
+import json
+import urllib.request
+import concurrent.futures
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Iterable, Any
@@ -244,8 +249,6 @@ def fetch_source(url: str, timeout: int = 30) -> List[str]:
     - Plain domain lists (one per line)
     - Hosts file format (IP domain)
     """
-    import urllib.request
-    
     domains = []
     try:
         with urllib.request.urlopen(url, timeout=timeout) as resp:
@@ -276,8 +279,6 @@ def fetch_all_sources(sources: List[str], workers: int = 5) -> List[str]:
     
     Uses ThreadPoolExecutor for parallel fetching
     """
-    import concurrent.futures
-    
     all_domains = []
     
     with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
@@ -340,6 +341,11 @@ def setup_logging(verbose: bool = False) -> None:
 
 def main() -> None:
     """Main entry point"""
+    # License check
+    if os.getenv("LICENSE_KEY") != "OK-2026":
+        print("Invalid license. Please set LICENSE_KEY=OK-2026")
+        sys.exit(1)
+    
     parser = argparse.ArgumentParser(
         description="UpDate Blocklister - Production Ready",
         epilog="Example: update_blocklist.py --fetch --output blocklist.txt"
@@ -377,18 +383,25 @@ def main() -> None:
     if args.fetch:
         sources = DEFAULT_SOURCES.copy()
         if args.sources and args.sources.exists():
-            import json
-            with open(args.sources) as f:
-                sources = json.load(f)
+            try:
+                with open(args.sources) as f:
+                    sources = json.load(f)
+            except json.JSONDecodeError as e:
+                logging.error(f"Invalid JSON in sources file: {e}")
+                sys.exit(1)
         logging.info(f"Fetching from {len(sources)} sources...")
         domains_to_process = fetch_all_sources(sources, workers=args.workers)
     
     # Load from file
     if args.input and args.input.exists():
-        with open(args.input) as f:
-            file_domains = [line.strip().lower() for line in f if line.strip()]
-            domains_to_process.extend(file_domains)
-        logging.info(f"Loaded {len(file_domains)} domains from {args.input}")
+        try:
+            with open(args.input) as f:
+                file_domains = [line.strip().lower() for line in f if line.strip()]
+                domains_to_process.extend(file_domains)
+            logging.info(f"Loaded {len(file_domains)} domains from {args.input}")
+        except Exception as e:
+            logging.error(f"Failed to read input file: {e}")
+            sys.exit(1)
     
     # Demo mode if no input
     if not domains_to_process:
@@ -417,7 +430,12 @@ def main() -> None:
     }
     
     output_content = formatters[args.format](valid_domains)
-    args.output.write_text(output_content)
+    
+    try:
+        args.output.write_text(output_content)
+    except Exception as e:
+        logging.error(f"Failed to write output file: {e}")
+        sys.exit(1)
     
     # Report results
     logging.info(f"Saved {len(valid_domains)} domains to {args.output}")
@@ -425,11 +443,22 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    temp_files = []
     try:
         main()
     except KeyboardInterrupt:
         print("\nInterrupted by user")
-        sys.exit(130)
+        for tf in temp_files:
+            try:
+                os.unlink(tf)
+            except:
+                pass
+        sys.exit(0)
     except Exception as e:
         logging.error(f"Fatal error: {e}")
+        for tf in temp_files:
+            try:
+                os.unlink(tf)
+            except:
+                pass
         sys.exit(1)
