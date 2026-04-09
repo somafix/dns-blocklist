@@ -1,41 +1,55 @@
-# 🛡️ UpDate Blocklister v1.0.0
-### High-Performance Enterprise Domain Filtering & Validation
+# UpDate Blocklister 🛡️
 
-![Python](https://img.shields.io/badge/python-3.9+-blue.svg)
-![Type Checking](https://img.shields.io/badge/mypy-checked-green.svg)
-![Security](https://img.shields.io/badge/security-bandit-yellow.svg)
-![Standards](https://img.shields.io/badge/RFC-1034%2F1035-blue.svg)
+[![Python Version](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Code Style: ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![Type Checked: mypy](https://img.shields.io/badge/type_checked-mypy-blue.svg)](https://mypy-lang.org/)
+[![Security: bandit](https://img.shields.io/badge/security-bandit-black.svg)](https://github.com/PyCQA/bandit)
 
-**UpDate Blocklister** is a production-ready utility designed for mission-critical network environments. It automates the fetching, RFC-compliant validation, and multi-format export of domain blocklists. Engineered for performance, it utilizes a thread-safe producer-consumer model to handle millions of records with minimal latency.
-
----
-
-## 🏗️ Technical Architecture
-
-The system is partitioned into modular components designed for maximum reliability and scalability:
-
-1.  **Strict Domain Validator:** An RFC 1034/1035 compliant engine featuring an **LRU Cache (100k entries)** to drastically reduce regex overhead during massive batch processing.
-2.  **Multithreaded Domain Processor:** A core orchestration layer utilizing a thread-safe `queue.Queue` and worker pool. It ensures data integrity via `RLock` synchronization and prevents memory exhaustion with a 10M record ceiling.
-3.  **Concurrent Source Aggregator:** Uses `ThreadPoolExecutor` to perform non-blocking I/O when fetching remote blocklists, supporting both plain-text lists and standard Hosts-file formats.
-4.  **Extensible Output Formatter:** Native generation of configuration files for high-performance DNS resolvers including **dnsmasq** and **Unbound**.
+**UpDate Blocklister** is a production-ready Python tool designed to fetch, validate, and convert domain blocklists into various DNS server formats. It features high-performance concurrent processing and strict RFC compliance.
 
 ---
 
-## 🛡️ Quality Assurance & Security
+## ✨ Key Features
 
-This codebase is pre-configured to pass rigorous enterprise audit suites:
-
-*   **Ruff:** Validates code style and ensures optimal linting performance.
-*   **Mypy:** Enforces strict static typing for architectural predictability.
-*   **Bandit:** Scans for common Python-specific security vulnerabilities.
-*   **Pytest:** Facilitates unit testing with comprehensive coverage metrics.
-*   **Pip-audit:** Monitors the dependency tree for known CVEs.
+*   **RFC 1034/1035 Compliance:** Strict domain validation (labels, length, characters).
+*   **High Performance:** Concurrent domain processing using a thread-safe worker pool.
+*   **Multiple Formats:** Exports to `dnsmasq`, `unbound`, and `plain` text lists.
+*   **Smart Fetching:** Supports standard hosts file formats and plain domain lists from URLs.
+*   **Production Grade:** Built-in LRU caching, graceful shutdown, and comprehensive logging.
 
 ---
 
-## 🚀 Deployment & Usage
+## 🛠️ Audit Stack
 
-### 1. Automated Fetching
-Aggregates domains from default enterprise-grade sources and outputs a dnsmasq configuration:
+This codebase is optimized for and tested with:
+*   **Ruff:** Formatting and linting.
+*   **Mypy:** Static type checking.
+*   **Bandit:** Security vulnerability scanning.
+*   **Pip-audit:** Dependency vulnerability checking.
+*   **Pytest:** Unit testing and coverage.
+
+---
+
+## 🚀 Installation
+
+1.  **Clone the repository:**
+    ```bash
+    git clone [https://github.com/youruser/update-blocklister.git](https://github.com/youruser/update-blocklister.git)
+    cd update-blocklister
+    ```
+
+2.  **Set the Environment Variable:**
+    The application requires a license key to run in production mode:
+    ```bash
+    export LICENSE_KEY="OK-2026"
+    ```
+
+---
+
+## 📖 Usage
+
+### Basic Command
+Fetch default sources and save as a dnsmasq config:
 ```bash
-python update_blocklist.py --fetch --output /etc/dnsmasq.d/blocklist.conf
+python3 blocklister.py --fetch --output blocklist.conf
