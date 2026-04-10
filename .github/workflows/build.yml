@@ -1,27 +1,30 @@
 name: Update Blocklist
 on:
   schedule:
-    - cron: '0 */12 * * *'
+    - cron: '0 0 * * *'
   workflow_dispatch:
 
 jobs:
-  update:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-      
-      - name: Run updater
-        run: python3 update_blocklist.py
+      - name: Update blocklist
+        run: |
+          curl -s https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/fake-news-gambling-porn/hosts > blocklist.txt
+          curl -s https://someonewhocares.org/hosts/zero/hosts >> blocklist.txt
+          curl -s https://raw.githubusercontent.com/anudeepND/blacklist/master/adservers.txt >> blocklist.txt
+          curl -s https://raw.githubusercontent.com/PolishFiltersTeam/KADhosts/master/KADhosts.txt >> blocklist.txt
+          
+          # Чистим от комментариев и левых строк, оставляем только домены
+          grep -E '^0\.0\.0\.0\s+' blocklist.txt | awk '{print $2}' | sort -u > temp.txt
+          mv temp.txt blocklist.txt
       
       - name: Commit and push
         run: |
-          git config user.name "GitHub Bot"
-          git config user.email "actions@github.com"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
           git add blocklist.txt
-          git diff --quiet && git diff --staged --quiet || git commit -m "🤖 Update $(date +'%Y-%m-%d')"
+          git diff --quiet && git diff --staged --quiet || git commit -m "auto-update blocklist"
           git push
