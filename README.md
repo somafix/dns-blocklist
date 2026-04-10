@@ -1,38 +1,75 @@
-# 🚀 Blocklist Aggregator (Go)
+# 🚀 Secure Blocklist Aggregator (Go)
 
-![Go Version](https://img.shields.io/badge/Go-1.18%2B-00ADD8?logo=go)
+![Go](https://img.shields.io/badge/Go-1.18%2B-00ADD8?logo=go)
+![Concurrency](https://img.shields.io/badge/Concurrency-Enabled-blue)
+![Security](https://img.shields.io/badge/Security-Hardened-critical)
 ![License](https://img.shields.io/badge/License-MIT-green)
-![Status](https://img.shields.io/badge/Status-Active-success)
-![Build](https://img.shields.io/badge/Build-Passing-brightgreen)
+![Status](https://img.shields.io/badge/Status-Production-success)
+![Network](https://img.shields.io/badge/HTTP-Safe%20Fetch-orange)
+
+---
 
 ## 📌 Overview
-This tool aggregates multiple public host blocklists, extracts domains, filters them, and generates a unified `blocklist.txt`.
+High-performance concurrent blocklist aggregator with security filtering, SSRF protection, rate limiting, and strict domain validation.
+
+---
 
 ## ⚙️ Features
-- Pulls multiple remote blocklists
-- Parses multiple formats (hosts / plain domain lists)
-- Filters invalid domains
-- Deduplicates automatically
-- Sorts output alphabetically
-- Saves optimized `blocklist.txt`
 
-## 📥 Sources
+- Concurrent fetching from multiple sources
+- SSRF protection via URL scheme validation
+- Response size limiting (50MB cap)
+- Rate limiting between requests
+- Strict domain validation (RFC-like rules)
+- Blocks wildcards, IDN, local/internal domains
+- Buffered I/O for high performance
+- Deduplication via hash map
+- Atomic-safe concurrent workers
+- Graceful timeout handling (3 min global)
+
+---
+
+## 🔒 Security Model
+
+### Protected against:
+- SSRF (scheme + URL parsing validation)
+- Oversized payload attacks
+- Malformed scanner input exhaustion
+- Redirect loops (max 5 redirects)
+- Invalid or unsafe domain injection
+
+### Domain filtering:
+- No wildcards (`*`)
+- No Unicode / IDN domains
+- No `.local`, `.lan`, `.internal`, `.localhost`
+- No invalid label patterns
+- No IP-like or path-based entries
+
+---
+
+## 🌐 Sources
+
 - StevenBlack hosts
 - someonewhocares.org zero hosts
-- anudeepND blacklist
+- anudeepND adservers blacklist
 - PolishFiltersTeam KADhosts
 
-## 🧠 How it works
-1. Downloads each source via HTTP client (30s timeout)
-2. Reads line-by-line stream
-3. Extracts valid domains using regex filtering
-4. Normalizes and deduplicates via map
-5. Sorts final dataset
-6. Writes output to file
+---
 
-## 🧪 Output
-- File: `blocklist.txt`
-- Format: one domain per line
+## 🧠 Architecture
+
+### Pipeline
+1. Context-limited execution (`3m timeout`)
+2. Worker goroutines per source
+3. Rate-limited fetch layer
+4. Safe HTTP client with redirect control
+5. Streamed parsing (`bufio.Scanner`)
+6. Domain validation layer
+7. Concurrent aggregation (`map[string]struct{}`)
+8. Sorted final output
+9. Buffered disk write
+
+---
 
 ## 🚀 Run
 
