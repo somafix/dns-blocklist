@@ -2,6 +2,7 @@ package main
 
 import (
     "bufio"
+    "context"
     "fmt"
     "net/http"
     "os"
@@ -18,9 +19,15 @@ var sources = []string{
     "https://raw.githubusercontent.com/PolishFiltersTeam/KADhosts/master/KADhosts.txt",
 }
 
-func fetch(url string) ([]string, error) {
+// fetch с контекстом (чтобы можно было прервать)
+func fetch(ctx context.Context, url string) ([]string, error) {
+    req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+    if err != nil {
+        return nil, err
+    }
+
     client := http.Client{Timeout: 30 * time.Second}
-    resp, err := client.Get(url)
+    resp, err := client.Do(req)
     if err != nil {
         return nil, err
     }
@@ -51,37 +58,53 @@ func fetch(url string) ([]string, error) {
             }
         }
     }
-    return domains, nil
+    return domains, scanner.Err()
 }
 
 func main() {
+    ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+    defer cancel()
+
     fmt.Println("🚀 Fetching blocklists...")
 
-    domainMap := make(map[string]bool)
+    domainMap := make(map[string]struct{}) // Экономим память: struct{} весит 0 байт
 
     for _, url := range sources {
-        domains, err := fetch(url)
+        domains, err := fetch(ctx, url)
         if err != nil {
             fmt.Printf("✗ %s: %v\n", url, err)
             continue
         }
         for _, d := range domains {
-            domainMap[d] = true
+            domainMap[d] = struct{}{}
         }
         fmt.Printf("  ✓ %d domains from %s\n", len(domains), url[strings.LastIndex(url, "/")+1:])
     }
 
-    // Сортируем
+    // Сортируем ключи мапы
     allDomains := make([]string, 0, len(domainMap))
     for d := range domainMap {
         allDomains = append(allDomains, d)
     }
     sort.Strings(allDomains)
 
-    // Сохраняем
-    output := strings.Join(allDomains, "\n")
-    os.WriteFile("blocklist.txt", []byte(output), 0644)
+    // Записываем сразу в файл, без буфера в памяти
+    file, err := os.Create("blocklist.txt")
+    if err != nil {
+        panic(err)
+    }
+    defer file.Close()
 
-    sizeMB := float64(len(output)) / (1024 * 1024)
+    writer := bufio.NewWriter(file)
+    for _, d := range allDomains {
+        writer.WriteString(d)
+        writer.WriteByte('\n')
+    }
+    writer.Flush()
+
+    // Считаем размер через stat, не читая файл обратно
+    info, _ := file.Stat()
+    sizeMB := float64(info.Size()) / (1024 * 1024)
+
     fmt.Printf("\n✅ Done: %d domains, %.1f MB\n", len(allDomains), sizeMB)
 }
