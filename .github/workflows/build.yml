@@ -1,13 +1,12 @@
 name: Update Blocklist
 on:
   schedule:
-    - cron: '0 2 * * *'  # Каждую ночь в 2 часа
+    - cron: '0 */12 * * *'  # Каждые 12 часов
   workflow_dispatch:
 
 jobs:
   update:
     runs-on: ubuntu-latest
-    timeout-minutes: 5  # Максимум 5 минут, чтобы не жрать квоту
     steps:
       - uses: actions/checkout@v4
       
@@ -16,24 +15,19 @@ jobs:
         with:
           python-version: '3.11'
       
-      - name: Download and run updater
-        run: |
-          curl -s -o updater.py https://raw.githubusercontent.com/ТВОЙ_АККАУНТ/ТВОЙ_РЕПО/main/updater.py
-          python3 updater.py --fetch -o blocklist.txt
+      - name: Update blocklist
+        run: python3 update_blocklist.py
       
       - name: Check size
         run: |
-          SIZE=$(du -m blocklist.txt | cut -f1)
+          SIZE=$(du -h blocklist.txt | cut -f1)
           LINES=$(wc -l < blocklist.txt)
-          echo "📊 Size: ${SIZE}MB, Lines: ${LINES}"
-          if [ $SIZE -gt 45 ]; then
-            echo "⚠️ WARNING: Blocklist is ${SIZE}MB, approaching 50MB limit!"
-          fi
+          echo "Размер: $SIZE, Строк: $LINES"
       
       - name: Commit and push
         run: |
           git config user.name "GitHub Bot"
-          git config user.email "bot@github.com"
+          git config user.email "actions@github.com"
           git add blocklist.txt
-          git diff --quiet && git diff --staged --quiet || git commit -m "🤖 Update blocklist $(date +'%Y-%m-%d')"
+          git diff --quiet && git diff --staged --quiet || git commit -m "🤖 Auto-update blocklist $(date +'%Y-%m-%d')"
           git push
