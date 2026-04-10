@@ -11,7 +11,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Set, List, Optional
 
 SOURCES = [
-    "https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/fake-news-gambling-porn/hosts",
+    "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts",  # Заменил на рабочую ссылку
     "https://someonewhocares.org/hosts/zero/hosts",
     "https://raw.githubusercontent.com/anudeepND/blacklist/master/adservers.txt",
     "https://raw.githubusercontent.com/PolishFiltersTeam/KADhosts/master/KADhosts.txt",
@@ -28,7 +28,7 @@ def fetch_url(url: str, retries: int = 3) -> Optional[str]:
             if attempt == retries - 1:
                 print(f"✗ {url}: {e}", file=sys.stderr)
                 return None
-            time.sleep(2 ** attempt)  # Exponential backoff
+            time.sleep(2 ** attempt)
     return None
 
 def parse_hosts(content: str) -> Set[str]:
@@ -47,7 +47,6 @@ def parse_hosts(content: str) -> Set[str]:
         else:
             continue
         
-        # Валидация
         if domain and len(domain) < 253 and '..' not in domain:
             if re.match(r'^[a-z0-9.-]+$', domain):
                 domains.add(domain)
@@ -68,7 +67,11 @@ def main():
             if content:
                 domains = parse_hosts(content)
                 all_domains.update(domains)
-                print(f"  ✓ {domains:>6,} domains from {url.split('/')[-1][:30]}")
+                # Исправлено: теперь domains - это множество, берём его длину
+                print(f"  ✓ {len(domains):>6,} domains from {url.split('/')[-1][:30]}")
+            else:
+                # Добавлен вывод для失败的 источников
+                print(f"  ✗ Failed: {url.split('/')[-1][:30]}")
     
     # Сохраняем результат
     output_path = Path('blocklist.txt')
