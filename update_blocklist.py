@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
 import urllib.request
 import re
-import sys
 from pathlib import Path
 
-# Источники
 SOURCES = [
     "https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/fake-news-gambling-porn/hosts",
     "https://someonewhocares.org/hosts/zero/hosts",
@@ -18,7 +16,7 @@ def fetch_url(url):
         with urllib.request.urlopen(req, timeout=30) as response:
             return response.read().decode('utf-8', errors='ignore')
     except Exception as e:
-        print(f"Ошибка {url}: {e}")
+        print(f"Ошибка: {e}")
         return None
 
 def parse_hosts(content):
@@ -39,37 +37,20 @@ def parse_hosts(content):
                 domains.add(domain)
     return domains
 
-def main():
-    # Аргументы командной строки
-    output_file = None
-    for i, arg in enumerate(sys.argv):
-        if arg == '-o' and i+1 < len(sys.argv):
-            output_file = sys.argv[i+1]
-    
-    if not output_file:
-        output_file = 'blocklist.txt'
-    
-    print("🚀 Загрузка...")
-    
-    all_domains = set()
-    for url in SOURCES:
-        print(f"  {url.split('/')[-1][:40]}...")
-        content = fetch_url(url)
-        if content:
-            domains = parse_hosts(content)
-            all_domains.update(domains)
-            print(f"    +{len(domains)} доменов (всего: {len(all_domains)})")
-    
-    # Сохраняем
-    sorted_domains = sorted(all_domains)
-    with open(output_file, 'w') as f:
-        f.write('\n'.join(sorted_domains))
-    
-    size_mb = Path(output_file).stat().st_size / (1024 * 1024)
-    print(f"\n✅ Готово!")
-    print(f"📊 Доменов: {len(sorted_domains):,}")
-    print(f"💾 Размер: {size_mb:.1f} МБ")
-    print(f"📁 Файл: {output_file}")
+# ВСЁ! Скрипт работает без аргументов
+all_domains = set()
+for url in SOURCES:
+    print(f"Загрузка: {url.split('/')[-1]}")
+    content = fetch_url(url)
+    if content:
+        domains = parse_hosts(content)
+        all_domains.update(domains)
+        print(f"  Найдено: {len(domains)} доменов")
 
-if __name__ == "__main__":
-    main()
+# Сохраняем в blocklist.txt
+sorted_domains = sorted(all_domains)
+with open('blocklist.txt', 'w') as f:
+    f.write('\n'.join(sorted_domains))
+
+size_mb = Path('blocklist.txt').stat().st_size / (1024 * 1024)
+print(f"\n✅ Готово! Доменов: {len(sorted_domains)}, Размер: {size_mb:.1f} МБ")
