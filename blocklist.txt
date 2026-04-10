@@ -55627,8 +55627,6 @@ ip1.cdn.stickyadstv.com.akadns.net
 ip193.cn
 ip2.ads.stickyadstv.com.akadns.net
 ip400054.nym2.appnexus.com
-ip6-localhost
-ip6-loopback
 ip765621.lax1.appnexus.com
 ip781862.nym2.appnexus.com
 ip781880.nym2.appnexus.com
