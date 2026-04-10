@@ -1,7 +1,7 @@
 name: Update Blocklist
 on:
   schedule:
-    - cron: '0 */12 * * *'  # Каждые 12 часов
+    - cron: '0 */12 * * *'
   workflow_dispatch:
 
 jobs:
@@ -15,19 +15,13 @@ jobs:
         with:
           python-version: '3.11'
       
-      - name: Update blocklist
+      - name: Run updater
         run: python3 update_blocklist.py
-      
-      - name: Check size
-        run: |
-          SIZE=$(du -h blocklist.txt | cut -f1)
-          LINES=$(wc -l < blocklist.txt)
-          echo "Размер: $SIZE, Строк: $LINES"
       
       - name: Commit and push
         run: |
           git config user.name "GitHub Bot"
           git config user.email "actions@github.com"
           git add blocklist.txt
-          git diff --quiet && git diff --staged --quiet || git commit -m "🤖 Auto-update blocklist $(date +'%Y-%m-%d')"
+          git diff --quiet && git diff --staged --quiet || git commit -m "🤖 Update $(date +'%Y-%m-%d')"
           git push
