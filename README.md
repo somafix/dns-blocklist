@@ -1,73 +1,100 @@
-# 🚀 Secure Blocklist Aggregator (Go)
+# 🚀 Blocklist Generator v4.0 (Production Grade Go)
 
 ![Go](https://img.shields.io/badge/Go-1.18%2B-00ADD8?logo=go)
-![Concurrency](https://img.shields.io/badge/Concurrency-Enabled-blue)
+![Version](https://img.shields.io/badge/Version-4.0-blue)
+![Status](https://img.shields.io/badge/Status-Production%20Ready-success)
+![Concurrency](https://img.shields.io/badge/Concurrency-Worker%20Pool-blue)
 ![Security](https://img.shields.io/badge/Security-Hardened-critical)
+![Cache](https://img.shields.io/badge/Cache-Disk%20Enabled-orange)
+![Performance](https://img.shields.io/badge/Performance-Optimized-brightgreen)
 ![License](https://img.shields.io/badge/License-MIT-green)
-![Status](https://img.shields.io/badge/Status-Production-success)
-![Network](https://img.shields.io/badge/HTTP-Safe%20Fetch-orange)
 
 ---
 
 ## 📌 Overview
-High-performance concurrent blocklist aggregator with security filtering, SSRF protection, rate limiting, and strict domain validation.
+High-performance production-grade blocklist generator with caching, retry logic, gzip support, external sorting, sharding, and memory-safe processing for large-scale datasets.
 
 ---
 
-## ⚙️ Features
+## ⚙️ Key Features
 
-- Concurrent fetching from multiple sources
-- SSRF protection via URL scheme validation
-- Response size limiting (50MB cap)
-- Rate limiting between requests
-- Strict domain validation (RFC-like rules)
-- Blocks wildcards, IDN, local/internal domains
-- Buffered I/O for high performance
-- Deduplication via hash map
-- Atomic-safe concurrent workers
-- Graceful timeout handling (3 min global)
+### ⚡ Performance
+- Worker pool concurrency
+- Buffered I/O (256KB)
+- Streaming processing (no full memory load)
+- Sharded external sorting (100 shards)
+- Heap-based multi-way merge
+- Adaptive strategy (in-memory vs external sort)
 
----
+### 🔒 Security
+- SSRF protection (URL scheme validation)
+- Input sanitization & strict domain validation
+- Wildcard blocking
+- IDN rejection (Unicode filter)
+- IP detection blocking
+- Internal domain filtering (.local, .localhost)
+- Response size limiting (50MB)
 
-## 🔒 Security Model
+### 🌐 Network Optimization
+- GZIP compression support
+- ETag-aware caching
+- Retry mechanism with exponential backoff
+- Rate limiting per request
+- Redirect chain protection
 
-### Protected against:
-- SSRF (scheme + URL parsing validation)
-- Oversized payload attacks
-- Malformed scanner input exhaustion
-- Redirect loops (max 5 redirects)
-- Invalid or unsafe domain injection
+### 💾 Caching System
+- Disk-based cache (Gob serialization)
+- SHA256 key hashing
+- TTL expiration control (24h)
+- Automatic cache reuse
 
-### Domain filtering:
-- No wildcards (`*`)
-- No Unicode / IDN domains
-- No `.local`, `.lan`, `.internal`, `.localhost`
-- No invalid label patterns
-- No IP-like or path-based entries
-
----
-
-## 🌐 Sources
-
-- StevenBlack hosts
-- someonewhocares.org zero hosts
-- anudeepND adservers blacklist
-- PolishFiltersTeam KADhosts
+### 📊 Scalability
+- Handles >500,000 domains via external sort
+- Sharded temp file pipeline
+- Memory-safe merge strategy
 
 ---
 
 ## 🧠 Architecture
 
 ### Pipeline
-1. Context-limited execution (`3m timeout`)
-2. Worker goroutines per source
-3. Rate-limited fetch layer
-4. Safe HTTP client with redirect control
-5. Streamed parsing (`bufio.Scanner`)
-6. Domain validation layer
-7. Concurrent aggregation (`map[string]struct{}`)
-8. Sorted final output
-9. Buffered disk write
+
+1. Context + signal cancellation
+2. Worker pool execution
+3. Rate-limited fetching
+4. HTTP fetch with retry + gzip + cache
+5. Domain extraction + validation
+6. Deduplication (global set)
+7. Temp file aggregation
+8. Sorting strategy selection:
+   - Small dataset → in-memory sort
+   - Large dataset → external sharded sort
+9. Final SHA256 integrity hashing
+
+---
+
+## 🧱 Components
+
+### 📡 Fetch Engine
+- `fetchSource()` → HTTP + gzip + parsing
+- `fetchWithRetry()` → retry + cache layer
+
+### 🧹 Validation Layer
+- RFC-style domain regex validation
+- IP detection filtering
+- Reserved domain blocking
+- Character set restrictions
+
+### 💽 Cache Layer
+- DiskCache (Gob-based)
+- TTL expiration
+- SHA256 filename hashing
+
+### 🔀 External Sort Engine
+- Hash-based sharding
+- Per-shard sorting
+- Dedup inside shards
+- Heap-based k-way merge
 
 ---
 
