@@ -59,9 +59,23 @@ class Config:
     log_level: str = "INFO"
     log_json: bool = False
     sources: List[str] = field(default_factory=lambda: [
+        # Оригинальные источники
         "https://someonewhocares.org/hosts/zero/hosts",
         "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts",
         "https://raw.githubusercontent.com/PolishFiltersTeam/KADhosts/master/KADhosts.txt",
+        
+        # Новые активные источники (формат 0.0.0.0)
+        "https://raw.githubusercontent.com/anudeepND/blacklist/master/adservers.txt",
+        "https://raw.githubusercontent.com/kadiremrah/Lists/master/everything.txt",
+        "https://raw.githubusercontent.com/Aetherinox/blocklists/main/blocklists/master.hosts",
+        
+        # Дополнительные проверенные источники
+        "https://raw.githubusercontent.com/AdguardTeam/AdguardFilters/master/BaseFilter/sections/adservers.txt",
+        "https://raw.githubusercontent.com/crazy-max/WindowsSpyBlocker/master/data/hosts/spy.txt",
+        "https://raw.githubusercontent.com/DandelionSprout/adfilt/master/Alternate%20versions%20Anti-Malware%20List/AntiMalwareHosts.txt",
+        "https://osint.digitalside.it/Threat-Intel/lists/latestdomains.txt",
+        "https://s3.amazonaws.com/lists.disconnect.me/simple_tracking.txt",
+        "https://s3.amazonaws.com/lists.disconnect.me/simple_ad.txt",
     ])
     rate_limit_per_second: int = 10
     state_file: Optional[Path] = None
