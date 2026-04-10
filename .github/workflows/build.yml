@@ -10,16 +10,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Update blocklist
-        run: |
-          curl -s https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/fake-news-gambling-porn/hosts > blocklist.txt
-          curl -s https://someonewhocares.org/hosts/zero/hosts >> blocklist.txt
-          curl -s https://raw.githubusercontent.com/anudeepND/blacklist/master/adservers.txt >> blocklist.txt
-          curl -s https://raw.githubusercontent.com/PolishFiltersTeam/KADhosts/master/KADhosts.txt >> blocklist.txt
-          
-          # Чистим от комментариев и левых строк, оставляем только домены
-          grep -E '^0\.0\.0\.0\s+' blocklist.txt | awk '{print $2}' | sort -u > temp.txt
-          mv temp.txt blocklist.txt
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Run updater
+        run: python3 update_blocklist.py
       
       - name: Commit and push
         run: |
