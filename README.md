@@ -1,28 +1,40 @@
-# UpDate Blocklister 🛡️
+# 🚀 Blocklist Aggregator (Go)
 
-[![Python Version](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Security: Bandit](https://img.shields.io/badge/security-bandit-black.svg)](https://github.com/PyCQA/bandit)
-[![Code Style: Ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
-[![Type Checked: Mypy](https://img.shields.io/badge/type_checked-mypy-blue.svg)](http://mypy-lang.org/)
+![Go Version](https://img.shields.io/badge/Go-1.18%2B-00ADD8?logo=go)
+![License](https://img.shields.io/badge/License-MIT-green)
+![Status](https://img.shields.io/badge/Status-Active-success)
+![Build](https://img.shields.io/badge/Build-Passing-brightgreen)
 
-**UpDate Blocklister** is a production-ready Python utility designed to fetch, validate, and convert domain blocklists into various DNS server formats. It features high-performance concurrent processing, RFC-compliant domain validation, and zero external dependencies for the core logic.
+## 📌 Overview
+This tool aggregates multiple public host blocklists, extracts domains, filters them, and generates a unified `blocklist.txt`.
 
----
+## ⚙️ Features
+- Pulls multiple remote blocklists
+- Parses multiple formats (hosts / plain domain lists)
+- Filters invalid domains
+- Deduplicates automatically
+- Sorts output alphabetically
+- Saves optimized `blocklist.txt`
 
-## 🚀 Features
+## 📥 Sources
+- StevenBlack hosts
+- someonewhocares.org zero hosts
+- anudeepND blacklist
+- PolishFiltersTeam KADhosts
 
-*   **RFC 1034/1035 Compliance:** Strict validation of domain names (length, characters, and formatting).
-*   **High Performance:** Thread-safe concurrent domain processing using a worker pool and bounded queues.
-*   **Multiple Formats:** Exports to `dnsmasq`, `unbound`, and `plain` text lists.
-*   **Efficient Memory Usage:** Utilizes `lru_cache` for domain validation and optimized sets for de-duplication.
-*   **Security Focused:** Built to pass `bandit` security audits and `mypy` static type checking.
+## 🧠 How it works
+1. Downloads each source via HTTP client (30s timeout)
+2. Reads line-by-line stream
+3. Extracts valid domains using regex filtering
+4. Normalizes and deduplicates via map
+5. Sorts final dataset
+6. Writes output to file
 
----
+## 🧪 Output
+- File: `blocklist.txt`
+- Format: one domain per line
 
-## 🛠️ Installation
+## 🚀 Run
 
-1. **Clone the repository:**
-   ```bash
-   git clone [https://github.com/youruser/update-blocklister.git](https://github.com/youruser/update-blocklister.git)
-   cd update-blocklister
+```bash
+go run main.go
