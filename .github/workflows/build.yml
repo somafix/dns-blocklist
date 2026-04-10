@@ -9,15 +9,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      
-      - name: Run updater
-        run: python3 update_blocklist.py
-      
+      - name: Update blocklist
+        run: python3 update_blocklist.py --fetch -o blocklist.txt -f plain
       - name: Commit and push
         run: |
           git config user.name "github-actions[bot]"
