@@ -1,104 +1,215 @@
-# 🚀 Blocklist Generator v4.0 (Production Grade Go)
+🚀 Blocklist Generator v5.0
 
-![Go](https://img.shields.io/badge/Go-1.18%2B-00ADD8?logo=go)
-![Version](https://img.shields.io/badge/Version-4.0-blue)
-![Status](https://img.shields.io/badge/Status-Production%20Ready-success)
-![Concurrency](https://img.shields.io/badge/Concurrency-Worker%20Pool-blue)
-![Security](https://img.shields.io/badge/Security-Hardened-critical)
-![Cache](https://img.shields.io/badge/Cache-Disk%20Enabled-orange)
-![Performance](https://img.shields.io/badge/Performance-Optimized-brightgreen)
-![License](https://img.shields.io/badge/License-MIT-green)
+"Go Version" (https://img.shields.io/badge/Go-1.20%2B-blue)
+"Build" (https://img.shields.io/badge/build-passing-brightgreen)
+"Performance" (https://img.shields.io/badge/performance-optimized-orange)
+"License" (https://img.shields.io/badge/license-MIT-lightgrey)
+"Concurrency" (https://img.shields.io/badge/concurrency-safe-blueviolet)
 
----
+Production-grade blocklist aggregator written in Go.
 
-## 📌 Overview
-High-performance production-grade blocklist generator with caching, retry logic, gzip support, external sorting, sharding, and memory-safe processing for large-scale datasets.
+Efficiently downloads, validates, deduplicates, and sorts massive domain blocklists from multiple sources — with support for caching, retries, gzip, and external sorting for large datasets.
 
 ---
 
-## ⚙️ Key Features
+✨ Features
 
-### ⚡ Performance
-- Worker pool concurrency
-- Buffered I/O (256KB)
-- Streaming processing (no full memory load)
-- Sharded external sorting (100 shards)
-- Heap-based multi-way merge
-- Adaptive strategy (in-memory vs external sort)
-
-### 🔒 Security
-- SSRF protection (URL scheme validation)
-- Input sanitization & strict domain validation
-- Wildcard blocking
-- IDN rejection (Unicode filter)
-- IP detection blocking
-- Internal domain filtering (.local, .localhost)
-- Response size limiting (50MB)
-
-### 🌐 Network Optimization
-- GZIP compression support
-- ETag-aware caching
-- Retry mechanism with exponential backoff
-- Rate limiting per request
-- Redirect chain protection
-
-### 💾 Caching System
-- Disk-based cache (Gob serialization)
-- SHA256 key hashing
-- TTL expiration control (24h)
-- Automatic cache reuse
-
-### 📊 Scalability
-- Handles >500,000 domains via external sort
-- Sharded temp file pipeline
-- Memory-safe merge strategy
+- ⚡ High-performance concurrent fetching
+- 🔁 Retry with exponential backoff
+- 📦 Disk cache with TTL + ETag support
+- 🧠 Smart deduplication (thread-safe)
+- 🗜️ Transparent GZIP handling
+- 📊 Progress tracking
+- 🧹 Strict domain validation
+- 🧩 External sorting (for millions of domains)
+- 💾 Memory-efficient processing
+- 🛑 Graceful shutdown (SIGINT / SIGTERM)
 
 ---
 
-## 🧠 Architecture
+🏗 Architecture Overview
 
-### Pipeline
-
-1. Context + signal cancellation
-2. Worker pool execution
-3. Rate-limited fetching
-4. HTTP fetch with retry + gzip + cache
-5. Domain extraction + validation
-6. Deduplication (global set)
-7. Temp file aggregation
-8. Sorting strategy selection:
-   - Small dataset → in-memory sort
-   - Large dataset → external sharded sort
-9. Final SHA256 integrity hashing
-
----
-
-## 🧱 Components
-
-### 📡 Fetch Engine
-- `fetchSource()` → HTTP + gzip + parsing
-- `fetchWithRetry()` → retry + cache layer
-
-### 🧹 Validation Layer
-- RFC-style domain regex validation
-- IP detection filtering
-- Reserved domain blocking
-- Character set restrictions
-
-### 💽 Cache Layer
-- DiskCache (Gob-based)
-- TTL expiration
-- SHA256 filename hashing
-
-### 🔀 External Sort Engine
-- Hash-based sharding
-- Per-shard sorting
-- Dedup inside shards
-- Heap-based k-way merge
+          +----------------------+
+          |   Sources (URLs)     |
+          +----------+-----------+
+                     |
+                     v
+        +--------------------------+
+        | Concurrent Fetch Workers |
+        +------------+-------------+
+                     |
+                     v
+        +--------------------------+
+        | Validation + Dedup (Set) |
+        +------------+-------------+
+                     |
+                     v
+        +--------------------------+
+        | Temp File (Raw Domains)  |
+        +------------+-------------+
+                     |
+         +-----------+-----------+
+         |                       |
+         v                       v
+ In-Memory Sort         External Sharded Sort
+ (small datasets)       (large datasets)
+         |                       |
+         +-----------+-----------+
+                     |
+                     v
+          +----------------------+
+          |   Final Blocklist    |
+          +----------------------+
 
 ---
 
-## 🚀 Run
+⚙️ Configuration
 
-```bash
+All parameters are centralized in "Config":
+
+Field| Description
+"Sources"| List of blocklist URLs
+"WorkerCount"| Number of concurrent fetchers
+"MaxRetries"| Retry attempts per source
+"CacheTTL"| Cache lifetime
+"ShardCount"| Number of shards for external sort
+"ChunkSize"| Sorting chunk size
+"MaxResponseSize"| Max download size per source
+"RequestTimeout"| Per-request timeout
+"TotalTimeout"| Global execution timeout
+
+---
+
+🚀 Usage
+
+1. Clone repository
+
+git clone https://github.com/yourname/blocklist-generator.git
+cd blocklist-generator
+
+2. Run
+
 go run main.go
+
+3. Output
+
+blocklist.txt
+
+---
+
+📈 Performance
+
+- Handles millions of domains
+- Automatic strategy switch:
+  - "< 500K" → in-memory sort
+  - ">= 500K" → external sharded sort
+- Minimal memory footprint due to:
+  - streaming I/O
+  - chunked sorting
+  - heap-based merge
+
+---
+
+🧪 Example Sources
+
+- StevenBlack hosts
+- SomeoneWhoCares
+- AdGuard-style lists
+- Custom domain feeds
+
+---
+
+🔒 Security Considerations
+
+- Input validation prevents malformed domains
+- Response size limits mitigate memory abuse
+- Context-based cancellation avoids hanging requests
+- No execution of remote content (read-only parsing)
+
+---
+
+🧠 Key Implementation Details
+
+External Sorting
+
+- SHA256-based sharding
+- Chunk-based sorting
+- Heap merge (k-way merge)
+
+Caching
+
+- File-based ("gob")
+- Keyed via SHA256
+- TTL invalidation
+
+Concurrency
+
+- Worker pool with semaphore
+- Atomic progress tracking
+- Context-aware cancellation
+
+---
+
+📊 Example Output
+
+🚀 Blocklist Generator v5.0 - Production Ready
+📥 Progress: 100.0%
+
+📊 Total unique: 1,234,567
+💾 Memory: 120.45 MB allocated
+
+🔄 External sort with 100 shards...
+
+✅ Done in 12.3s:
+   • Domains: 1234567
+   • Size: 18.42 MB
+   • SHA256: a1b2c3d4e5f67890
+
+---
+
+📦 Output Guarantees
+
+- ✅ Sorted
+- ✅ Deduplicated
+- ✅ Valid domains only
+- ✅ Deterministic result
+
+---
+
+🛠 Future Improvements
+
+- Incremental updates
+- Bloom filter pre-check
+- Distributed fetching
+- CLI flags / config file
+- Metrics export (Prometheus)
+
+---
+
+📄 License
+
+MIT License
+
+---
+
+👨‍💻 Author
+
+Engineered for high-load, real-world usage.
+
+---
+
+⚠️ Notes
+
+If you're processing very large datasets (10M+ domains):
+
+- Increase "ShardCount"
+- Tune "ChunkSize"
+- Ensure fast disk (SSD recommended)
+
+---
+
+🧩 TL;DR
+
+This is not just a script.
+
+It’s a production-grade pipeline for building blocklists at scale.
