@@ -1,26 +1,46 @@
 # Blocklist Generator v5.0
 
-![Go Version](https://img.shields.io/badge/Go-1.18+-00ADD8?style=for-the-badge&logo=go)
-![Build Status](https://img.shields.io/badge/Build-Passing-brightgreen?style=for-the-badge)
-![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)
+![Go](https://img.shields.io/badge/Language-Go-blue.svg)
+![License](https://img.shields.io/badge/License-MIT-green.svg)
+![Performance](https://img.shields.io/badge/Engine-High_Performance-red.svg)
+![Status](https://img.shields.io/badge/Status-Stable-brightgreen.svg)
 
-A high-performance, production-ready blocklist aggregator written in Go. It fetches domain lists from multiple sources, deduplicates them, and performs memory-efficient external sorting to handle millions of entries without crashing.
+A high-performance, concurrent, and memory-efficient domain blocklist generator. This tool aggregates domain lists from multiple URLs, performs robust deduplication, validates entries, and utilizes external merge sorting to process massive datasets without consuming excessive system memory.
 
-## 🚀 Features
+## 🚀 Key Features
 
-* **Parallel Fetching**: Uses worker pools and goroutines to fetch sources concurrently.
-* **Intelligent Caching**: Local disk cache with TTL and ETag support to reduce bandwidth and bypass rate limits.
-* **Hybrid Sorting**: 
-    * **In-Memory**: Fast sorting for small datasets (< 500k domains).
-    * **External Sharded Sort**: Multi-way merge sort using disk shards for massive datasets to maintain low memory footprint.
-* **Robust Validation**: Strict domain validation using regex, length checks, and TLD filtering.
-* **Resilience**: Built-in retry logic with exponential backoff and graceful shutdown via OS signals.
-* **Memory Optimized**: Uses `bufio` scanners, `sync.Pool`-like structures, and streaming IO.
+* **High Concurrency:** Uses a worker-pool pattern to fetch multiple sources simultaneously.
+* **External Merge Sort:** Built-in disk-based sorting algorithm for handling datasets exceeding 500k+ domains efficiently.
+* **Disk Caching:** Caches remote responses using GOB encoding to save bandwidth and reduce execution time on subsequent runs.
+* **Memory Optimized:** Built with memory management in mind; streams large files rather than loading them entirely into RAM.
+* **Smart Validation:** Filters out invalid domains, IP addresses, and non-DNS compliant strings using strict regex patterns.
+* **Zero Dependencies:** Built entirely with the Go Standard Library.
 
-## 🛠 Installation
+## 🛠 How it Works
 
-1. Ensure you have **Go 1.18+** installed.
-2. Clone the repository:
+1.  **Fetcher:** Downloads host files with retry logic, Gzip support, and timeout control.
+2.  **Deduplication:** Uses a thread-safe `DomainSet` to ensure unique entries across all sources.
+3.  **Processing:** If the dataset is large, the `Sorter` switches to an **External Merge Sort** strategy, partitioning data into shards on disk before merging them.
+4.  **Cleanup:** Automatically validates domains and removes malformed entries (e.g., `localhost` pointers, invalid characters).
+
+## ⚙️ Configuration
+
+The project is configured via the `Config` struct in the `run()` function. You can tune the following parameters:
+
+| Parameter | Description |
+| :--- | :--- |
+| `Sources` | Slice of URLs to fetch blocklists from. |
+| `WorkerCount` | Number of concurrent downloaders. |
+| `MaxResponseSize` | Protection against oversized files. |
+| `EnableCache` | Toggles disk-based caching. |
+| `ShardCount` | Number of shards used for external sorting. |
+| `CacheTTL` | Time-to-live for cached files. |
+
+## 🏗 Building & Running
+
+Ensure you have [Go](https://golang.org/dl/) installed.
+
+1. Clone the repository:
    ```bash
-   git clone [https://github.com/youruser/blocklist-generator.git](https://github.com/youruser/blocklist-generator.git)
-   cd blocklist-generator
+   git clone <your-repo-url>
+   cd <project-folder>
