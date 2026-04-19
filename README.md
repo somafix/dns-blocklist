@@ -1,46 +1,63 @@
-# Blocklist Generator v5.0
+# Blocklist Generator
 
-![Go](https://img.shields.io/badge/Language-Go-blue.svg)
-![License](https://img.shields.io/badge/License-MIT-green.svg)
-![Performance](https://img.shields.io/badge/Engine-High_Performance-red.svg)
-![Status](https://img.shields.io/badge/Status-Stable-brightgreen.svg)
+[![Go Version](https://img.shields.io/badge/go-1.21+-blue.svg)](https://go.dev/dl/)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Status](https://img.shields.io/badge/status-stable-brightgreen.svg)]()
 
-A high-performance, concurrent, and memory-efficient domain blocklist generator. This tool aggregates domain lists from multiple URLs, performs robust deduplication, validates entries, and utilizes external merge sorting to process massive datasets without consuming excessive system memory.
+A high-performance, memory-efficient blocklist generator written in Go. This tool fetches, parses, cleans, and merges domain lists from multiple sources into a single, sorted output file. 
+
+Designed for scalability, it handles large datasets using **external merge sort** and ensures reliability through robust error handling and concurrent processing.
+
+---
 
 ## 🚀 Key Features
 
-* **High Concurrency:** Uses a worker-pool pattern to fetch multiple sources simultaneously.
-* **External Merge Sort:** Built-in disk-based sorting algorithm for handling datasets exceeding 500k+ domains efficiently.
-* **Disk Caching:** Caches remote responses using GOB encoding to save bandwidth and reduce execution time on subsequent runs.
-* **Memory Optimized:** Built with memory management in mind; streams large files rather than loading them entirely into RAM.
-* **Smart Validation:** Filters out invalid domains, IP addresses, and non-DNS compliant strings using strict regex patterns.
-* **Zero Dependencies:** Built entirely with the Go Standard Library.
+* **Concurrent Processing:** Fetches multiple remote blocklists simultaneously using worker pools.
+* **Memory Efficiency:** * Implements **External Merge Sort** to handle datasets exceeding system RAM.
+    * Uses `bufio` with custom buffer sizes for optimized I/O operations.
+* **Security Focused:**
+    * **SSRF Protection:** Validates URLs to prevent server-side request forgery by blocking private IP ranges.
+    * **Zip-Bomb Protection:** Limits decompression ratios for GZIP streams and enforces response size limits.
+* **Caching Mechanism:** Disk-based caching (using `gob`) to reduce bandwidth consumption and improve subsequent run times.
+* **Robustness:**
+    * Graceful shutdown handling for safe termination.
+    * Retry logic with exponential backoff for network stability.
+    * Detailed logging via `slog` and observability interfaces.
 
-## 🛠 How it Works
+## 🛠 Architecture Highlights
 
-1.  **Fetcher:** Downloads host files with retry logic, Gzip support, and timeout control.
-2.  **Deduplication:** Uses a thread-safe `DomainSet` to ensure unique entries across all sources.
-3.  **Processing:** If the dataset is large, the `Sorter` switches to an **External Merge Sort** strategy, partitioning data into shards on disk before merging them.
-4.  **Cleanup:** Automatically validates domains and removes malformed entries (e.g., `localhost` pointers, invalid characters).
+### Fetching Pipeline
+The `Fetcher` component ensures that incoming data is sanitized:
+1.  **Validation:** Checks schemes and resolves IPs to prevent SSRF.
+2.  **Streaming:** Uses `io.LimitReader` and `gzip.Reader` with safe limits to prevent memory exhaustion.
+3.  **Filtering:** Extracts domains using robust regex and checks against known unsafe patterns (e.g., local IPs, invalid formats).
+
+### Sorting Strategy
+The application dynamically selects a sorting strategy:
+* **In-Memory Sort:** Used for smaller lists.
+* **External Merge Sort:** Triggered when the domain count exceeds `externalSortThreshold` (default: 500,000). It splits the data into shards, sorts them individually, and merges them using a min-heap to ensure an $O(n \log n)$ performance.
 
 ## ⚙️ Configuration
 
-The project is configured via the `Config` struct in the `run()` function. You can tune the following parameters:
+The application is configured via the `Config` struct. Key parameters include:
 
-| Parameter | Description |
-| :--- | :--- |
-| `Sources` | Slice of URLs to fetch blocklists from. |
-| `WorkerCount` | Number of concurrent downloaders. |
-| `MaxResponseSize` | Protection against oversized files. |
-| `EnableCache` | Toggles disk-based caching. |
-| `ShardCount` | Number of shards used for external sorting. |
-| `CacheTTL` | Time-to-live for cached files. |
+| Parameter | Default | Description |
+| :--- | :--- | :--- |
+| `WorkerCount` | 4 | Concurrent fetchers |
+| `ShardCount` | 100 | Number of shards for external sort |
+| `CacheTTL` | 24h | How long to keep cached data |
+| `MaxResponseSize` | 50MB | Max allowed size per downloaded file |
+| `MaxRetries` | 3 | Retries for failed requests |
 
-## 🏗 Building & Running
+## 📦 Getting Started
 
-Ensure you have [Go](https://golang.org/dl/) installed.
+### Prerequisites
+* Go 1.21 or higher
 
-1. Clone the repository:
-   ```bash
-   git clone <your-repo-url>
-   cd <project-folder>
+### Installation
+Clone the repository and build:
+
+```bash
+git clone <your-repo-url>
+cd blocklist-generator
+go build -o blocklist-gen main.go
