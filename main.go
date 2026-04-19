@@ -13,6 +13,7 @@ import (
     "fmt"
     "io"
     "log/slog"
+    "math/rand"
     "net"
     "net/http"
     "net/url"
@@ -21,6 +22,7 @@ import (
     "path/filepath"
     "regexp"
     "sort"
+    "strconv"
     "strings"
     "sync"
     "sync/atomic"
@@ -28,7 +30,6 @@ import (
     "time"
 )
 
-// FIXED: вынесены магические числа в константы
 const (
     defaultBufferSize          = 256 * 1024
     externalSortThreshold      = 500000
@@ -45,9 +46,17 @@ const (
     defaultRetryBackoffBase    = 2 * time.Second
     defaultWorkerCount         = 4
     defaultCacheTTL            = 24 * time.Hour
+    defaultMaxIdleConns        = 100
+    defaultMaxConnsPerHost     = 10
+    defaultIdleConnTimeout     = 90 * time.Second
+    defaultTempDirPattern      = "blocklist_*"
+    defaultSortTempPattern     = "sort_*"
+    defaultShardPattern        = "shard_%d_*.tmp"
+    defaultEmptyShardPattern   = "empty_%d.tmp"
+    defaultSortedShardPattern  = "sorted_%d.tmp"
+    defaultDomainsTempPattern  = "domains_*.txt"
 )
 
-// FIXED: интерфейсы для наблюдаемости
 type Logger interface {
     Debug(ctx context.Context, msg string, args ...any)
     Info(ctx context.Context, msg string, args ...any)
@@ -162,14 +171,14 @@ func (c *DiskCache) Get(key string) (*CacheEntry, error) {
     defer c.mu.Unlock()
 
     path := c.keyPath(key)
-    f, err := os.Open(path)
+    file, err := os.Open(path)
     if err != nil {
         return nil, err
     }
-    defer f.Close()
+    defer file.Close()
 
     var entry CacheEntry
-    if err := gob.NewDecoder(f).Decode(&entry); err != nil {
+    if err := gob.NewDecoder(file).Decode(&entry); err != nil {
         return nil, err
     }
 
@@ -186,20 +195,20 @@ func (c *DiskCache) Set(key string, entry *CacheEntry) error {
     defer c.mu.Unlock()
 
     path := c.keyPath(key)
-    f, err := os.Create(path)
+    file, err := os.Create(path)
     if err != nil {
         return err
     }
-    defer f.Close()
+    defer file.Close()
 
-    return gob.NewEncoder(f).Encode(entry)
+    return gob.NewEncoder(file).Encode(entry)
 }
 
-// FIXED: правильный heap для сортировки
 type mergeItem struct {
     domain string
-    idx    int
+    source int
 }
+
 type mergeHeap []mergeItem
 
 func (h mergeHeap) Len() int           { return len(h) }
@@ -214,19 +223,30 @@ func (h *mergeHeap) Pop() interface{} {
     return item
 }
 
-type domainHeap struct {
-    items []string
+type sortedChunk struct {
+    items   []string
+    indices []int
 }
 
-func (h domainHeap) Len() int           { return len(h.items) }
-func (h domainHeap) Less(i, j int) bool { return h.items[i] < h.items[j] }
-func (h domainHeap) Swap(i, j int)      { h.items[i], h.items[j] = h.items[j], h.items[i] }
-func (h *domainHeap) Push(x interface{}) { h.items = append(h.items, x.(string)) }
-func (h *domainHeap) Pop() interface{} {
-    old := h.items
+type chunkHeap []sortedChunk
+
+func (h chunkHeap) Len() int      { return len(h) }
+func (h chunkHeap) Less(i, j int) bool {
+    if len(h[i].items) == 0 {
+        return false
+    }
+    if len(h[j].items) == 0 {
+        return true
+    }
+    return h[i].items[h[i].indices[i]] < h[j].items[h[j].indices[j]]
+}
+func (h chunkHeap) Swap(i, j int) { h[i], h[j] = h[j], h[i] }
+func (h *chunkHeap) Push(x interface{}) { *h = append(*h, x.(sortedChunk)) }
+func (h *chunkHeap) Pop() interface{} {
+    old := *h
     n := len(old)
     item := old[n-1]
-    h.items = old[:n-1]
+    *h = old[:n-1]
     return item
 }
 
@@ -245,12 +265,11 @@ type Fetcher struct {
 }
 
 func NewFetcher(config Config, cache *DiskCache, logger Logger, metrics Metrics) *Fetcher {
-    // FIXED: правильное поле для TLS
     transport := &http.Transport{
-        MaxIdleConns:        100,
-        MaxConnsPerHost:     10,
-        MaxIdleConnsPerHost: 5,
-        IdleConnTimeout:     90 * time.Second,
+        MaxIdleConns:        defaultMaxIdleConns,
+        MaxConnsPerHost:     defaultMaxConnsPerHost,
+        MaxIdleConnsPerHost: defaultMaxConnsPerHost / 2,
+        IdleConnTimeout:     defaultIdleConnTimeout,
         TLSClientConfig: &tls.Config{
             MinVersion: tls.VersionTLS12,
         },
@@ -267,7 +286,6 @@ func NewFetcher(config Config, cache *DiskCache, logger Logger, metrics Metrics)
     }
 }
 
-// FIXED: защита от SSRF
 func isPrivateIP(ip net.IP) bool {
     return ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsUnspecified()
 }
@@ -280,6 +298,7 @@ func isSafeURL(rawURL string) error {
     if parsed.Scheme != "http" && parsed.Scheme != "https" {
         return fmt.Errorf("unsupported scheme: %s", parsed.Scheme)
     }
+    
     host := parsed.Hostname()
     ips, err := net.LookupIP(host)
     if err != nil {
@@ -313,7 +332,11 @@ func (f *Fetcher) Fetch(ctx context.Context, sourceURL string) ([]string, error)
                 return nil, ctx.Err()
             default:
             }
+            
             backoff := f.config.RetryBackoffBase * time.Duration(attempt*attempt)
+            jitter := time.Duration(rand.Int63n(int64(backoff / 2)))
+            backoff += jitter
+            
             timer := time.NewTimer(backoff)
             select {
             case <-ctx.Done():
@@ -340,7 +363,7 @@ func (f *Fetcher) Fetch(ctx context.Context, sourceURL string) ([]string, error)
             return domains, nil
         }
         lastErr = err
-        f.metrics.RecordCounter("fetch_errors", 1, "url", sourceURL, "attempt", fmt.Sprintf("%d", attempt))
+        f.metrics.RecordCounter("fetch_errors", 1, "url", sourceURL, "attempt", strconv.Itoa(attempt))
         f.logger.Error(ctx, "fetch attempt failed", err, "url", sourceURL, "attempt", attempt)
     }
 
@@ -368,16 +391,15 @@ func (f *Fetcher) fetchSource(ctx context.Context, sourceURL string) ([]string, 
         return nil, "", fmt.Errorf("HTTP %d", resp.StatusCode)
     }
 
-    reader := io.Reader(resp.Body)
+    var reader io.Reader = resp.Body
     if f.config.EnableGZIP && resp.Header.Get("Content-Encoding") == "gzip" {
-        // FIXED: защита от zip-bomb
         limitReader := io.LimitReader(resp.Body, f.config.MaxResponseSize)
         gzReader, err := gzip.NewReader(limitReader)
         if err != nil {
             return nil, "", err
         }
         defer gzReader.Close()
-        // FIXED: лимит на распакованный поток
+        
         maxDecompressed := f.config.MaxResponseSize * maxDecompressedRatio
         reader = io.LimitReader(gzReader, maxDecompressed)
     } else {
@@ -385,11 +407,11 @@ func (f *Fetcher) fetchSource(ctx context.Context, sourceURL string) ([]string, 
     }
 
     scanner := bufio.NewScanner(reader)
-    buf := make([]byte, f.config.BufferSize)
-    scanner.Buffer(buf, f.config.BufferSize)
+    buffer := make([]byte, f.config.BufferSize)
+    scanner.Buffer(buffer, f.config.BufferSize)
 
     domains := make([]string, 0, 10000)
-    seen := make(map[string]struct{})
+    seen := make(map[string]struct{}, 10000)
 
     for scanner.Scan() {
         select {
@@ -425,7 +447,6 @@ func (f *Fetcher) fetchSource(ctx context.Context, sourceURL string) ([]string, 
     return domains, resp.Header.Get("ETag"), nil
 }
 
-// extractDomain извлекает домен из строки hosts-файла или plain списка
 func extractDomain(line string) string {
     fields := strings.Fields(line)
     if len(fields) == 0 {
@@ -449,8 +470,8 @@ func extractDomain(line string) string {
     return domain
 }
 
-func isValidDomain(domain string, maxLen int) bool {
-    if len(domain) == 0 || len(domain) > maxLen {
+func isValidDomain(domain string, maxLength int) bool {
+    if len(domain) == 0 || len(domain) > maxLength {
         return false
     }
 
@@ -462,13 +483,13 @@ func isValidDomain(domain string, maxLen int) bool {
         return false
     }
 
-    ipRegex := regexp.MustCompile(`^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$`)
-    if ipRegex.MatchString(domain) {
+    ipPattern := regexp.MustCompile(`^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$`)
+    if ipPattern.MatchString(domain) {
         return false
     }
 
-    domainRegex := regexp.MustCompile(`^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$`)
-    return domainRegex.MatchString(domain)
+    domainPattern := regexp.MustCompile(`^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$`)
+    return domainPattern.MatchString(domain)
 }
 
 type Sorter struct {
@@ -488,7 +509,7 @@ func (s *Sorter) Sort(domains []string, outputPath string) error {
 
     start := time.Now()
     defer func() {
-        s.metrics.RecordDuration("sort", time.Since(start), "domains", fmt.Sprintf("%d", len(domains)))
+        s.metrics.RecordDuration("sort", time.Since(start), "domains", strconv.Itoa(len(domains)))
     }()
 
     if len(domains) > externalSortThreshold {
@@ -502,67 +523,65 @@ func (s *Sorter) Sort(domains []string, outputPath string) error {
 func (s *Sorter) inMemorySort(domains []string, outputPath string) error {
     sort.Strings(domains)
 
-    out, err := os.Create(outputPath)
+    outputFile, err := os.Create(outputPath)
     if err != nil {
         return err
     }
-    defer out.Close()
+    defer outputFile.Close()
 
-    writer := bufio.NewWriterSize(out, s.config.BufferSize)
+    writer := bufio.NewWriterSize(outputFile, s.config.BufferSize)
     defer writer.Flush()
 
-    var last string
+    var previousDomain string
     for _, domain := range domains {
-        if domain != last {
+        if domain != previousDomain {
             if _, err := writer.WriteString(domain); err != nil {
                 return err
             }
             if err := writer.WriteByte('\n'); err != nil {
                 return err
             }
-            last = domain
+            previousDomain = domain
         }
     }
 
     return nil
 }
 
-// FIXED: устранена утечка файлов
 func (s *Sorter) externalSort(domains []string, outputPath string) error {
-    tempDir, err := os.MkdirTemp("", "sort_*")
+    tempDirectory, err := os.MkdirTemp("", defaultSortTempPattern)
     if err != nil {
         return err
     }
-    defer os.RemoveAll(tempDir)
+    defer os.RemoveAll(tempDirectory)
 
     shardFiles := make([]*os.File, 0, s.config.ShardCount)
     shardWriters := make([]*bufio.Writer, s.config.ShardCount)
     shardPaths := make([]string, s.config.ShardCount)
 
     defer func() {
-        for _, f := range shardFiles {
-            if f != nil {
-                f.Close()
+        for _, file := range shardFiles {
+            if file != nil {
+                file.Close()
             }
         }
     }()
 
     for i := 0; i < s.config.ShardCount; i++ {
-        f, err := os.CreateTemp(tempDir, fmt.Sprintf("shard_%d_*.tmp", i))
+        file, err := os.CreateTemp(tempDirectory, fmt.Sprintf(defaultShardPattern, i))
         if err != nil {
             return fmt.Errorf("create shard %d: %w", i, err)
         }
-        shardFiles = append(shardFiles, f)
-        shardPaths[i] = f.Name()
-        shardWriters[i] = bufio.NewWriterSize(f, s.config.BufferSize)
+        shardFiles = append(shardFiles, file)
+        shardPaths[i] = file.Name()
+        shardWriters[i] = bufio.NewWriterSize(file, s.config.BufferSize)
     }
 
-    // FIXED: правильный хеш для шардирования
     for _, domain := range domains {
         hash := sha256.Sum256([]byte(domain))
-        idx := int(binary.LittleEndian.Uint32(hash[:4])) % s.config.ShardCount
-        shardWriters[idx].WriteString(domain)
-        shardWriters[idx].WriteByte('\n')
+        shardIndex := int(binary.LittleEndian.Uint32(hash[:4])) % s.config.ShardCount
+        shardWriters[shardIndex].WriteString(domain)
+        shardWriters[shardIndex].WriteByte('\n')
     }
 
     for i := 0; i < s.config.ShardCount; i++ {
@@ -572,26 +591,26 @@ func (s *Sorter) externalSort(domains []string, outputPath string) error {
     shardFiles = nil
 
     sortedShards := make([]string, s.config.ShardCount)
-    var wg sync.WaitGroup
-    errChan := make(chan error, s.config.ShardCount)
+    var waitGroup sync.WaitGroup
+    errorChannel := make(chan error, s.config.ShardCount)
 
     for i := 0; i < s.config.ShardCount; i++ {
-        wg.Add(1)
-        go func(idx int) {
-            defer wg.Done()
-            sorted, err := s.sortShard(shardPaths[idx], tempDir, idx)
+        waitGroup.Add(1)
+        go func(shardIndex int) {
+            defer waitGroup.Done()
+            sortedPath, err := s.sortShard(shardPaths[shardIndex], tempDirectory, shardIndex)
             if err != nil {
-                errChan <- err
+                errorChannel <- err
                 return
             }
-            sortedShards[idx] = sorted
+            sortedShards[shardIndex] = sortedPath
         }(i)
     }
 
-    wg.Wait()
-    close(errChan)
+    waitGroup.Wait()
+    close(errorChannel)
 
-    for err := range errChan {
+    for err := range errorChannel {
         if err != nil {
             return err
         }
@@ -600,39 +619,39 @@ func (s *Sorter) externalSort(domains []string, outputPath string) error {
     return s.mergeShards(sortedShards, outputPath)
 }
 
-func (s *Sorter) sortShard(inputPath, tempDir string, shardIdx int) (string, error) {
-    f, err := os.Open(inputPath)
+func (s *Sorter) sortShard(inputPath, tempDirectory string, shardIndex int) (string, error) {
+    inputFile, err := os.Open(inputPath)
     if err != nil {
         return "", err
     }
-    defer f.Close()
+    defer inputFile.Close()
     defer os.Remove(inputPath)
 
-    chunks := make([][]string, 0)
-    scanner := bufio.NewScanner(f)
-    chunk := make([]string, 0, s.config.ChunkSize)
+    var chunks [][]string
+    scanner := bufio.NewScanner(inputFile)
+    currentChunk := make([]string, 0, s.config.ChunkSize)
 
     for scanner.Scan() {
         domain := scanner.Text()
         if domain == "" {
             continue
         }
-        chunk = append(chunk, domain)
+        currentChunk = append(currentChunk, domain)
 
-        if len(chunk) >= s.config.ChunkSize {
-            sort.Strings(chunk)
-            chunks = append(chunks, chunk)
-            chunk = make([]string, 0, s.config.ChunkSize)
+        if len(currentChunk) >= s.config.ChunkSize {
+            sort.Strings(currentChunk)
+            chunks = append(chunks, currentChunk)
+            currentChunk = make([]string, 0, s.config.ChunkSize)
         }
     }
 
-    if len(chunk) > 0 {
-        sort.Strings(chunk)
-        chunks = append(chunks, chunk)
+    if len(currentChunk) > 0 {
+        sort.Strings(currentChunk)
+        chunks = append(chunks, currentChunk)
     }
 
     if len(chunks) == 0 {
-        outputPath := filepath.Join(tempDir, fmt.Sprintf("empty_%d.tmp", shardIdx))
+        outputPath := filepath.Join(tempDirectory, fmt.Sprintf(defaultEmptyShardPattern, shardIndex))
         if err := os.WriteFile(outputPath, []byte{}, 0644); err != nil {
             return "", err
         }
@@ -640,7 +659,7 @@ func (s *Sorter) sortShard(inputPath, tempDir string, shardIdx int) (string, err
     }
 
     if len(chunks) == 1 {
-        outputPath := filepath.Join(tempDir, fmt.Sprintf("sorted_%d.tmp", shardIdx))
+        outputPath := filepath.Join(tempDirectory, fmt.Sprintf(defaultSortedShardPattern, shardIndex))
         data := strings.Join(chunks[0], "\n")
         if err := os.WriteFile(outputPath, []byte(data), 0644); err != nil {
             return "", err
@@ -648,56 +667,51 @@ func (s *Sorter) sortShard(inputPath, tempDir string, shardIdx int) (string, err
         return outputPath, nil
     }
 
-    outputPath := filepath.Join(tempDir, fmt.Sprintf("sorted_%d.tmp", shardIdx))
-    out, err := os.Create(outputPath)
+    outputPath := filepath.Join(tempDirectory, fmt.Sprintf(defaultSortedShardPattern, shardIndex))
+    outputFile, err := os.Create(outputPath)
     if err != nil {
         return "", err
     }
-    defer out.Close()
+    defer outputFile.Close()
 
-    writer := bufio.NewWriterSize(out, s.config.BufferSize)
+    writer := bufio.NewWriterSize(outputFile, s.config.BufferSize)
     defer writer.Flush()
 
-    h := &domainHeap{}
-    indices := make([]int, len(chunks))
-
-    for i, c := range chunks {
-        if len(c) > 0 {
-            heap.Push(h, c[0])
-            indices[i] = 1
+    chunkHeap := &chunkHeap{}
+    for _, chunk := range chunks {
+        if len(chunk) > 0 {
+            heap.Push(chunkHeap, sortedChunk{
+                items:   chunk,
+                indices: []int{0},
+            })
         }
     }
 
-    var last string
-    for h.Len() > 0 {
-        current := heap.Pop(h).(string)
+    var previousDomain string
+    for chunkHeap.Len() > 0 {
+        currentChunkData := heap.Pop(chunkHeap).(sortedChunk)
+        currentDomain := currentChunkData.items[currentChunkData.indices[0]]
 
-        if current != last {
-            writer.WriteString(current)
+        if currentDomain != previousDomain {
+            writer.WriteString(currentDomain)
             writer.WriteByte('\n')
-            last = current
+            previousDomain = currentDomain
         }
 
-        for i := 0; i < len(chunks); i++ {
-            if indices[i] < len(chunks[i]) && chunks[i][indices[i]-1] == current {
-                if indices[i] < len(chunks[i]) {
-                    heap.Push(h, chunks[i][indices[i]])
-                    indices[i]++
-                }
-                break
-            }
+        currentChunkData.indices[0]++
+        if currentChunkData.indices[0] < len(currentChunkData.items) {
+            heap.Push(chunkHeap, currentChunkData)
         }
     }
 
     return outputPath, nil
 }
 
-// FIXED: исправлен heap для merge
 func (s *Sorter) mergeShards(shardPaths []string, outputPath string) error {
-    validPaths := make([]string, 0)
+    var validPaths []string
     for _, path := range shardPaths {
-        info, err := os.Stat(path)
-        if err == nil && info.Size() > 0 {
+        fileInfo, err := os.Stat(path)
+        if err == nil && fileInfo.Size() > 0 {
             validPaths = append(validPaths, path)
         }
     }
@@ -708,20 +722,21 @@ func (s *Sorter) mergeShards(shardPaths []string, outputPath string) error {
 
     files := make([]*os.File, len(validPaths))
     scanners := make([]*bufio.Scanner, len(validPaths))
+    var mu sync.Mutex
 
     for i, path := range validPaths {
-        f, err := os.Open(path)
+        file, err := os.Open(path)
         if err != nil {
             return err
         }
-        files[i] = f
-        scanners[i] = bufio.NewScanner(f)
+        files[i] = file
+        scanners[i] = bufio.NewScanner(file)
     }
 
     defer func() {
-        for _, f := range files {
-            if f != nil {
-                f.Close()
+        for _, file := range files {
+            if file != nil {
+                file.Close()
             }
         }
         for _, path := range validPaths {
@@ -729,35 +744,37 @@ func (s *Sorter) mergeShards(shardPaths []string, outputPath string) error {
         }
     }()
 
-    out, err := os.Create(outputPath)
+    outputFile, err := os.Create(outputPath)
     if err != nil {
         return err
     }
-    defer out.Close()
+    defer outputFile.Close()
 
-    writer := bufio.NewWriterSize(out, s.config.BufferSize)
+    writer := bufio.NewWriterSize(outputFile, s.config.BufferSize)
     defer writer.Flush()
 
-    h := &mergeHeap{}
+    mergeHeap := &mergeHeap{}
     for i, scanner := range scanners {
         if scanner.Scan() {
-            heap.Push(h, mergeItem{domain: scanner.Text(), idx: i})
+            heap.Push(mergeHeap, mergeItem{domain: scanner.Text(), source: i})
         }
     }
 
-    var last string
-    for h.Len() > 0 {
-        item := heap.Pop(h).(mergeItem)
+    var previousDomain string
+    for mergeHeap.Len() > 0 {
+        item := heap.Pop(mergeHeap).(mergeItem)
 
-        if item.domain != last {
+        if item.domain != previousDomain {
             writer.WriteString(item.domain)
             writer.WriteByte('\n')
-            last = item.domain
+            previousDomain = item.domain
         }
 
-        if scanners[item.idx].Scan() {
-            heap.Push(h, mergeItem{domain: scanners[item.idx].Text(), idx: item.idx})
+        mu.Lock()
+        if scanners[item.source].Scan() {
+            heap.Push(mergeHeap, mergeItem{domain: scanners[item.source].Text(), source: item.source})
         }
+        mu.Unlock()
     }
 
     return nil
@@ -768,31 +785,24 @@ type ProgressTracker struct {
     completed int64
 }
 
-func (p *ProgressTracker) SetTotal(n int64) {
-    atomic.StoreInt64(&p.total, n)
+func (tracker *ProgressTracker) SetTotal(total int64) {
+    atomic.StoreInt64(&tracker.total, total)
 }
 
-func (p *ProgressTracker) Add(n int64) {
-    atomic.AddInt64(&p.completed, n)
+func (tracker *ProgressTracker) Add(delta int64) {
+    atomic.AddInt64(&tracker.completed, delta)
 }
 
-func (p *ProgressTracker) Percent() float64 {
-    total := atomic.LoadInt64(&p.total)
-    completed := atomic.LoadInt64(&p.completed)
+func (tracker *ProgressTracker) Percent() float64 {
+    total := atomic.LoadInt64(&tracker.total)
+    completed := atomic.LoadInt64(&tracker.completed)
     if total == 0 {
         return 0
     }
     return float64(completed) / float64(total) * 100
 }
 
-// FIXED: graceful shutdown
-func run() error {
-    ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-    defer cancel()
-
-    logger := slogLogger{slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))}
-    metrics := noopMetrics{}
-
+func loadConfigFromEnv() Config {
     config := Config{
         Sources: []string{
             "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts",
@@ -818,12 +828,41 @@ func run() error {
         ChunkSize:        defaultChunkSize,
     }
 
+    if outputFile := os.Getenv("BLOCKLIST_OUTPUT"); outputFile != "" {
+        config.OutputFile = outputFile
+    }
+    if tempDir := os.Getenv("BLOCKLIST_TEMP_DIR"); tempDir != "" {
+        config.TempDir = tempDir
+    }
+    if workerCount := os.Getenv("BLOCKLIST_WORKERS"); workerCount != "" {
+        if count, err := strconv.Atoi(workerCount); err == nil && count > 0 {
+            config.WorkerCount = count
+        }
+    }
+    if shardCount := os.Getenv("BLOCKLIST_SHARDS"); shardCount != "" {
+        if count, err := strconv.Atoi(shardCount); err == nil && count > 0 {
+            config.ShardCount = count
+        }
+    }
+
+    return config
+}
+
+func run() error {
+    ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+    defer cancel()
+
+    logger := slogLogger{slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))}
+    metrics := noopMetrics{}
+
+    config := loadConfigFromEnv()
+
     if config.TempDir == "" {
-        tempDir, err := os.MkdirTemp("", "blocklist_*")
+        tempDirectory, err := os.MkdirTemp("", defaultTempDirPattern)
         if err != nil {
             return err
         }
-        config.TempDir = tempDir
+        config.TempDir = tempDirectory
     }
 
     if err := os.MkdirAll(config.TempDir, 0700); err != nil {
@@ -836,53 +875,53 @@ func run() error {
         cache, _ = NewDiskCache(filepath.Join(config.TempDir, "cache"), config.CacheTTL)
     }
 
-    ctx, cancel = context.WithTimeout(ctx, config.TotalTimeout)
-    defer cancel()
+    ctxWithTimeout, cancelTimeout := context.WithTimeout(ctx, config.TotalTimeout)
+    defer cancelTimeout()
 
-    logger.Info(ctx, "starting blocklist generator", "version", "6.0")
+    logger.Info(ctxWithTimeout, "starting blocklist generator", "version", "6.0")
 
     fetcher := NewFetcher(config, cache, logger, metrics)
     results := make(chan FetchResult, len(config.Sources))
 
-    var wg sync.WaitGroup
-    sem := make(chan struct{}, config.WorkerCount)
+    var waitGroup sync.WaitGroup
+    semaphore := make(chan struct{}, config.WorkerCount)
     progress := &ProgressTracker{}
     progress.SetTotal(int64(len(config.Sources)))
 
-    for _, src := range config.Sources {
-        wg.Add(1)
-        go func(source string) {
-            defer wg.Done()
+    for _, source := range config.Sources {
+        waitGroup.Add(1)
+        go func(sourceURL string) {
+            defer waitGroup.Done()
 
             select {
-            case sem <- struct{}{}:
-                defer func() { <-sem }()
-            case <-ctx.Done():
-                results <- FetchResult{Source: source, Err: ctx.Err()}
+            case semaphore <- struct{}{}:
+                defer func() { <-semaphore }()
+            case <-ctxWithTimeout.Done():
+                results <- FetchResult{Source: sourceURL, Err: ctxWithTimeout.Err()}
                 return
             }
 
-            timer := time.NewTimer(config.RateLimitDelay)
+            rateLimitTimer := time.NewTimer(config.RateLimitDelay)
             select {
-            case <-timer.C:
-            case <-ctx.Done():
-                timer.Stop()
-                results <- FetchResult{Source: source, Err: ctx.Err()}
+            case <-rateLimitTimer.C:
+            case <-ctxWithTimeout.Done():
+                rateLimitTimer.Stop()
+                results <- FetchResult{Source: sourceURL, Err: ctxWithTimeout.Err()}
                 return
             }
 
-            domains, err := fetcher.Fetch(ctx, source)
-            results <- FetchResult{Source: source, Domains: domains, Err: err}
+            domains, err := fetcher.Fetch(ctxWithTimeout, sourceURL)
+            results <- FetchResult{Source: sourceURL, Domains: domains, Err: err}
             progress.Add(1)
-        }(src)
+        }(source)
     }
 
     go func() {
-        wg.Wait()
+        waitGroup.Wait()
         close(results)
     }()
 
-    tempFile, err := os.CreateTemp(config.TempDir, "domains_*.txt")
+    tempFile, err := os.CreateTemp(config.TempDir, defaultDomainsTempPattern)
     if err != nil {
         return err
     }
@@ -892,21 +931,21 @@ func run() error {
     writer := bufio.NewWriterSize(tempFile, config.BufferSize)
     domainSet := NewDomainSet()
 
-    for res := range results {
-        if res.Err != nil {
-            logger.Error(ctx, "source failed", res.Err, "source", filepath.Base(res.Source))
+    for result := range results {
+        if result.Err != nil {
+            logger.Error(ctxWithTimeout, "source failed", result.Err, "source", filepath.Base(result.Source))
             continue
         }
 
-        added := 0
-        for _, domain := range res.Domains {
+        addedCount := 0
+        for _, domain := range result.Domains {
             if domainSet.Add(domain) {
                 writer.WriteString(domain)
                 writer.WriteByte('\n')
-                added++
+                addedCount++
             }
         }
-        logger.Info(ctx, "source processed", "source", filepath.Base(res.Source), "total", len(res.Domains), "new", added)
+        logger.Info(ctxWithTimeout, "source processed", "source", filepath.Base(result.Source), "total", len(result.Domains), "new", addedCount)
     }
 
     if err := writer.Flush(); err != nil {
@@ -918,41 +957,40 @@ func run() error {
         return fmt.Errorf("no domains fetched")
     }
 
-    logger.Info(ctx, "unique domains collected", "count", totalUnique)
+    logger.Info(ctxWithTimeout, "unique domains collected", "count", totalUnique)
 
     sorter := NewSorter(config, logger, metrics)
     if err := sorter.Sort(domainSet.Slice(), config.OutputFile); err != nil {
         return err
     }
 
-    info, err := os.Stat(config.OutputFile)
+    fileInfo, err := os.Stat(config.OutputFile)
     if err != nil {
         return err
     }
 
-    f, err := os.Open(config.OutputFile)
+    outputFile, err := os.Open(config.OutputFile)
     if err != nil {
         return err
     }
-    defer f.Close()
+    defer outputFile.Close()
 
-    hash := sha256.New()
-    if _, err := io.Copy(hash, f); err != nil {
+    hasher := sha256.New()
+    if _, err := io.Copy(hasher, outputFile); err != nil {
         return err
     }
 
-    logger.Info(ctx, "generation complete",
+    logger.Info(ctxWithTimeout, "generation complete",
         "domains", totalUnique,
-        "size_mb", float64(info.Size())/(1024*1024),
-        "sha256", hex.EncodeToString(hash.Sum(nil))[:16])
+        "size_mb", float64(fileInfo.Size())/(1024*1024),
+        "sha256", hex.EncodeToString(hasher.Sum(nil))[:16])
 
     return nil
 }
 
 func main() {
-    start := time.Now()
+    startTime := time.Now()
 
-    // FIXED: graceful shutdown с таймаутом
     done := make(chan error, 1)
     go func() {
         done <- run()
@@ -969,5 +1007,5 @@ func main() {
         os.Exit(1)
     }
 
-    fmt.Printf("Time: %v\n", time.Since(start).Round(time.Millisecond))
+    fmt.Printf("Time: %v\n", time.Since(startTime).Round(time.Millisecond))
 }
