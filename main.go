@@ -6,6 +6,7 @@ import (
     "container/heap"
     "context"
     "crypto/sha256"
+    "crypto/tls"
     "encoding/binary"
     "encoding/hex"
     "encoding/gob"
@@ -19,7 +20,6 @@ import (
     "os/signal"
     "path/filepath"
     "regexp"
-    "runtime"
     "sort"
     "strings"
     "sync"
@@ -68,8 +68,12 @@ func (noopMetrics) RecordGauge(string, int64, ...string)            {}
 
 type slogLogger struct{ *slog.Logger }
 
-func (l slogLogger) Debug(ctx context.Context, msg string, args ...any) { l.Logger.DebugContext(ctx, msg, args...) }
-func (l slogLogger) Info(ctx context.Context, msg string, args ...any)  { l.Logger.InfoContext(ctx, msg, args...) }
+func (l slogLogger) Debug(ctx context.Context, msg string, args ...any) {
+    l.Logger.DebugContext(ctx, msg, args...)
+}
+func (l slogLogger) Info(ctx context.Context, msg string, args ...any) {
+    l.Logger.InfoContext(ctx, msg, args...)
+}
 func (l slogLogger) Error(ctx context.Context, msg string, err error, args ...any) {
     l.Logger.ErrorContext(ctx, msg, append(args, "error", err)...)
 }
@@ -150,7 +154,7 @@ func NewDiskCache(dir string, ttl time.Duration) (*DiskCache, error) {
 
 func (c *DiskCache) keyPath(key string) string {
     hash := sha256.Sum256([]byte(key))
-    return filepath.Join(c.dir, hex.EncodeToString(hash[:]) + ".gob")
+    return filepath.Join(c.dir, hex.EncodeToString(hash[:])+".gob")
 }
 
 func (c *DiskCache) Get(key string) (*CacheEntry, error) {
@@ -241,12 +245,15 @@ type Fetcher struct {
 }
 
 func NewFetcher(config Config, cache *DiskCache, logger Logger, metrics Metrics) *Fetcher {
+    // FIXED: правильное поле для TLS
     transport := &http.Transport{
         MaxIdleConns:        100,
         MaxConnsPerHost:     10,
         MaxIdleConnsPerHost: 5,
         IdleConnTimeout:     90 * time.Second,
-        TLSMinVersion:       tls.VersionTLS12,
+        TLSClientConfig: &tls.Config{
+            MinVersion: tls.VersionTLS12,
+        },
     }
     return &Fetcher{
         config:  config,
@@ -319,7 +326,7 @@ func (f *Fetcher) Fetch(ctx context.Context, sourceURL string) ([]string, error)
         start := time.Now()
         domains, etag, err := f.fetchSource(ctx, sourceURL)
         f.metrics.RecordDuration("fetch", time.Since(start), "url", sourceURL)
-        
+
         if err == nil {
             if f.config.EnableCache && f.cache != nil {
                 f.cache.Set(sourceURL, &CacheEntry{
@@ -944,7 +951,7 @@ func run() error {
 
 func main() {
     start := time.Now()
-    
+
     // FIXED: graceful shutdown с таймаутом
     done := make(chan error, 1)
     go func() {
