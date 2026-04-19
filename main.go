@@ -6,10 +6,13 @@ import (
     "container/heap"
     "context"
     "crypto/sha256"
+    "encoding/binary"
     "encoding/hex"
     "encoding/gob"
     "fmt"
     "io"
+    "log/slog"
+    "net"
     "net/http"
     "net/url"
     "os"
@@ -24,6 +27,52 @@ import (
     "syscall"
     "time"
 )
+
+// FIXED: вынесены магические числа в константы
+const (
+    defaultBufferSize          = 256 * 1024
+    externalSortThreshold      = 500000
+    defaultChunkSize           = 500000
+    maxDecompressedRatio       = 10
+    gracefulShutdownTimeout    = 30 * time.Second
+    defaultShardCount          = 100
+    defaultMaxResponseSize     = 50 * 1024 * 1024
+    defaultMaxDomainLength     = 253
+    defaultRequestTimeout      = 30 * time.Second
+    defaultTotalTimeout        = 5 * time.Minute
+    defaultRateLimitDelay      = 200 * time.Millisecond
+    defaultMaxRetries          = 3
+    defaultRetryBackoffBase    = 2 * time.Second
+    defaultWorkerCount         = 4
+    defaultCacheTTL            = 24 * time.Hour
+)
+
+// FIXED: интерфейсы для наблюдаемости
+type Logger interface {
+    Debug(ctx context.Context, msg string, args ...any)
+    Info(ctx context.Context, msg string, args ...any)
+    Error(ctx context.Context, msg string, err error, args ...any)
+}
+
+type Metrics interface {
+    RecordDuration(name string, duration time.Duration, labels ...string)
+    RecordCounter(name string, value int64, labels ...string)
+    RecordGauge(name string, value int64, labels ...string)
+}
+
+type noopMetrics struct{}
+
+func (noopMetrics) RecordDuration(string, time.Duration, ...string) {}
+func (noopMetrics) RecordCounter(string, int64, ...string)          {}
+func (noopMetrics) RecordGauge(string, int64, ...string)            {}
+
+type slogLogger struct{ *slog.Logger }
+
+func (l slogLogger) Debug(ctx context.Context, msg string, args ...any) { l.Logger.DebugContext(ctx, msg, args...) }
+func (l slogLogger) Info(ctx context.Context, msg string, args ...any)  { l.Logger.InfoContext(ctx, msg, args...) }
+func (l slogLogger) Error(ctx context.Context, msg string, err error, args ...any) {
+    l.Logger.ErrorContext(ctx, msg, append(args, "error", err)...)
+}
 
 type Config struct {
     Sources          []string
@@ -101,7 +150,7 @@ func NewDiskCache(dir string, ttl time.Duration) (*DiskCache, error) {
 
 func (c *DiskCache) keyPath(key string) string {
     hash := sha256.Sum256([]byte(key))
-    return filepath.Join(c.dir, hex.EncodeToString(hash[:])+".gob")
+    return filepath.Join(c.dir, hex.EncodeToString(hash[:]) + ".gob")
 }
 
 func (c *DiskCache) Get(key string) (*CacheEntry, error) {
@@ -142,6 +191,25 @@ func (c *DiskCache) Set(key string, entry *CacheEntry) error {
     return gob.NewEncoder(f).Encode(entry)
 }
 
+// FIXED: правильный heap для сортировки
+type mergeItem struct {
+    domain string
+    idx    int
+}
+type mergeHeap []mergeItem
+
+func (h mergeHeap) Len() int           { return len(h) }
+func (h mergeHeap) Less(i, j int) bool { return h[i].domain < h[j].domain }
+func (h mergeHeap) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
+func (h *mergeHeap) Push(x interface{}) { *h = append(*h, x.(mergeItem)) }
+func (h *mergeHeap) Pop() interface{} {
+    old := *h
+    n := len(old)
+    item := old[n-1]
+    *h = old[:n-1]
+    return item
+}
+
 type domainHeap struct {
     items []string
 }
@@ -165,28 +233,67 @@ type FetchResult struct {
 }
 
 type Fetcher struct {
-    config Config
-    cache  *DiskCache
-    client *http.Client
+    config  Config
+    cache   *DiskCache
+    client  *http.Client
+    logger  Logger
+    metrics Metrics
 }
 
-func NewFetcher(config Config, cache *DiskCache) *Fetcher {
+func NewFetcher(config Config, cache *DiskCache, logger Logger, metrics Metrics) *Fetcher {
+    transport := &http.Transport{
+        MaxIdleConns:        100,
+        MaxConnsPerHost:     10,
+        MaxIdleConnsPerHost: 5,
+        IdleConnTimeout:     90 * time.Second,
+        TLSMinVersion:       tls.VersionTLS12,
+    }
     return &Fetcher{
-        config: config,
-        cache:  cache,
+        config:  config,
+        cache:   cache,
+        logger:  logger,
+        metrics: metrics,
         client: &http.Client{
-            Timeout: config.RequestTimeout,
-            Transport: &http.Transport{
-                MaxIdleConns:    100,
-                IdleConnTimeout: 90 * time.Second,
-            },
+            Timeout:   config.RequestTimeout,
+            Transport: transport,
         },
     }
 }
 
+// FIXED: защита от SSRF
+func isPrivateIP(ip net.IP) bool {
+    return ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsUnspecified()
+}
+
+func isSafeURL(rawURL string) error {
+    parsed, err := url.Parse(rawURL)
+    if err != nil {
+        return err
+    }
+    if parsed.Scheme != "http" && parsed.Scheme != "https" {
+        return fmt.Errorf("unsupported scheme: %s", parsed.Scheme)
+    }
+    host := parsed.Hostname()
+    ips, err := net.LookupIP(host)
+    if err != nil {
+        return err
+    }
+    for _, ip := range ips {
+        if isPrivateIP(ip) {
+            return fmt.Errorf("private IP blocked: %s", ip)
+        }
+    }
+    return nil
+}
+
 func (f *Fetcher) Fetch(ctx context.Context, sourceURL string) ([]string, error) {
+    if err := isSafeURL(sourceURL); err != nil {
+        return nil, err
+    }
+
     if f.config.EnableCache && f.cache != nil {
         if entry, err := f.cache.Get(sourceURL); err == nil {
+            f.logger.Debug(ctx, "cache hit", "url", sourceURL)
             return entry.Domains, nil
         }
     }
@@ -199,7 +306,6 @@ func (f *Fetcher) Fetch(ctx context.Context, sourceURL string) ([]string, error)
                 return nil, ctx.Err()
             default:
             }
-
             backoff := f.config.RetryBackoffBase * time.Duration(attempt*attempt)
             timer := time.NewTimer(backoff)
             select {
@@ -210,7 +316,10 @@ func (f *Fetcher) Fetch(ctx context.Context, sourceURL string) ([]string, error)
             }
         }
 
+        start := time.Now()
         domains, etag, err := f.fetchSource(ctx, sourceURL)
+        f.metrics.RecordDuration("fetch", time.Since(start), "url", sourceURL)
+        
         if err == nil {
             if f.config.EnableCache && f.cache != nil {
                 f.cache.Set(sourceURL, &CacheEntry{
@@ -219,30 +328,25 @@ func (f *Fetcher) Fetch(ctx context.Context, sourceURL string) ([]string, error)
                     ETag:      etag,
                 })
             }
+            f.metrics.RecordCounter("fetch_success", 1, "url", sourceURL)
+            f.metrics.RecordGauge("domains_fetched", int64(len(domains)), "url", sourceURL)
             return domains, nil
         }
         lastErr = err
+        f.metrics.RecordCounter("fetch_errors", 1, "url", sourceURL, "attempt", fmt.Sprintf("%d", attempt))
+        f.logger.Error(ctx, "fetch attempt failed", err, "url", sourceURL, "attempt", attempt)
     }
 
     return nil, fmt.Errorf("failed after %d retries: %w", f.config.MaxRetries, lastErr)
 }
 
 func (f *Fetcher) fetchSource(ctx context.Context, sourceURL string) ([]string, string, error) {
-    parsedURL, err := url.Parse(sourceURL)
-    if err != nil {
-        return nil, "", err
-    }
-
-    if parsedURL.Scheme != "http" && parsedURL.Scheme != "https" {
-        return nil, "", fmt.Errorf("unsupported scheme: %s", parsedURL.Scheme)
-    }
-
     req, err := http.NewRequestWithContext(ctx, "GET", sourceURL, nil)
     if err != nil {
         return nil, "", err
     }
 
-    req.Header.Set("User-Agent", "blocklist-generator/5.0")
+    req.Header.Set("User-Agent", "blocklist-generator/6.0")
     if f.config.EnableGZIP {
         req.Header.Set("Accept-Encoding", "gzip")
     }
@@ -259,16 +363,21 @@ func (f *Fetcher) fetchSource(ctx context.Context, sourceURL string) ([]string, 
 
     reader := io.Reader(resp.Body)
     if f.config.EnableGZIP && resp.Header.Get("Content-Encoding") == "gzip" {
-        gzReader, err := gzip.NewReader(resp.Body)
+        // FIXED: защита от zip-bomb
+        limitReader := io.LimitReader(resp.Body, f.config.MaxResponseSize)
+        gzReader, err := gzip.NewReader(limitReader)
         if err != nil {
             return nil, "", err
         }
         defer gzReader.Close()
-        reader = gzReader
+        // FIXED: лимит на распакованный поток
+        maxDecompressed := f.config.MaxResponseSize * maxDecompressedRatio
+        reader = io.LimitReader(gzReader, maxDecompressed)
+    } else {
+        reader = io.LimitReader(reader, f.config.MaxResponseSize)
     }
 
-    limited := io.LimitReader(reader, f.config.MaxResponseSize)
-    scanner := bufio.NewScanner(limited)
+    scanner := bufio.NewScanner(reader)
     buf := make([]byte, f.config.BufferSize)
     scanner.Buffer(buf, f.config.BufferSize)
 
@@ -309,6 +418,7 @@ func (f *Fetcher) fetchSource(ctx context.Context, sourceURL string) ([]string, 
     return domains, resp.Header.Get("ETag"), nil
 }
 
+// extractDomain извлекает домен из строки hosts-файла или plain списка
 func extractDomain(line string) string {
     fields := strings.Fields(line)
     if len(fields) == 0 {
@@ -355,11 +465,13 @@ func isValidDomain(domain string, maxLen int) bool {
 }
 
 type Sorter struct {
-    config Config
+    config  Config
+    logger  Logger
+    metrics Metrics
 }
 
-func NewSorter(config Config) *Sorter {
-    return &Sorter{config: config}
+func NewSorter(config Config, logger Logger, metrics Metrics) *Sorter {
+    return &Sorter{config: config, logger: logger, metrics: metrics}
 }
 
 func (s *Sorter) Sort(domains []string, outputPath string) error {
@@ -367,7 +479,13 @@ func (s *Sorter) Sort(domains []string, outputPath string) error {
         return fmt.Errorf("no domains to sort")
     }
 
-    if len(domains) > 500000 {
+    start := time.Now()
+    defer func() {
+        s.metrics.RecordDuration("sort", time.Since(start), "domains", fmt.Sprintf("%d", len(domains)))
+    }()
+
+    if len(domains) > externalSortThreshold {
+        s.logger.Debug(context.Background(), "using external sort", "domains", len(domains))
         return s.externalSort(domains, outputPath)
     }
 
@@ -402,6 +520,7 @@ func (s *Sorter) inMemorySort(domains []string, outputPath string) error {
     return nil
 }
 
+// FIXED: устранена утечка файлов
 func (s *Sorter) externalSort(domains []string, outputPath string) error {
     tempDir, err := os.MkdirTemp("", "sort_*")
     if err != nil {
@@ -409,23 +528,32 @@ func (s *Sorter) externalSort(domains []string, outputPath string) error {
     }
     defer os.RemoveAll(tempDir)
 
-    shards := make([]string, s.config.ShardCount)
+    shardFiles := make([]*os.File, 0, s.config.ShardCount)
     shardWriters := make([]*bufio.Writer, s.config.ShardCount)
-    shardFiles := make([]*os.File, s.config.ShardCount)
+    shardPaths := make([]string, s.config.ShardCount)
+
+    defer func() {
+        for _, f := range shardFiles {
+            if f != nil {
+                f.Close()
+            }
+        }
+    }()
 
     for i := 0; i < s.config.ShardCount; i++ {
         f, err := os.CreateTemp(tempDir, fmt.Sprintf("shard_%d_*.tmp", i))
         if err != nil {
-            return err
+            return fmt.Errorf("create shard %d: %w", i, err)
         }
-        shardFiles[i] = f
-        shards[i] = f.Name()
+        shardFiles = append(shardFiles, f)
+        shardPaths[i] = f.Name()
         shardWriters[i] = bufio.NewWriterSize(f, s.config.BufferSize)
     }
 
+    // FIXED: правильный хеш для шардирования
     for _, domain := range domains {
         hash := sha256.Sum256([]byte(domain))
-        idx := int(hash[0]) % s.config.ShardCount
+        idx := int(binary.LittleEndian.Uint32(hash[:4])) % s.config.ShardCount
         shardWriters[idx].WriteString(domain)
         shardWriters[idx].WriteByte('\n')
     }
@@ -434,6 +562,7 @@ func (s *Sorter) externalSort(domains []string, outputPath string) error {
         shardWriters[i].Flush()
         shardFiles[i].Close()
     }
+    shardFiles = nil
 
     sortedShards := make([]string, s.config.ShardCount)
     var wg sync.WaitGroup
@@ -443,7 +572,7 @@ func (s *Sorter) externalSort(domains []string, outputPath string) error {
         wg.Add(1)
         go func(idx int) {
             defer wg.Done()
-            sorted, err := s.sortShard(shards[idx], tempDir, idx)
+            sorted, err := s.sortShard(shardPaths[idx], tempDir, idx)
             if err != nil {
                 errChan <- err
                 return
@@ -556,6 +685,7 @@ func (s *Sorter) sortShard(inputPath, tempDir string, shardIdx int) (string, err
     return outputPath, nil
 }
 
+// FIXED: исправлен heap для merge
 func (s *Sorter) mergeShards(shardPaths []string, outputPath string) error {
     validPaths := make([]string, 0)
     for _, path := range shardPaths {
@@ -601,22 +731,16 @@ func (s *Sorter) mergeShards(shardPaths []string, outputPath string) error {
     writer := bufio.NewWriterSize(out, s.config.BufferSize)
     defer writer.Flush()
 
-    h := &domainHeap{}
+    h := &mergeHeap{}
     for i, scanner := range scanners {
         if scanner.Scan() {
-            heap.Push(h, struct {
-                domain string
-                idx    int
-            }{scanner.Text(), i})
+            heap.Push(h, mergeItem{domain: scanner.Text(), idx: i})
         }
     }
 
     var last string
     for h.Len() > 0 {
-        item := heap.Pop(h).(struct {
-            domain string
-            idx    int
-        })
+        item := heap.Pop(h).(mergeItem)
 
         if item.domain != last {
             writer.WriteString(item.domain)
@@ -625,10 +749,7 @@ func (s *Sorter) mergeShards(shardPaths []string, outputPath string) error {
         }
 
         if scanners[item.idx].Scan() {
-            heap.Push(h, struct {
-                domain string
-                idx    int
-            }{scanners[item.idx].Text(), item.idx})
+            heap.Push(h, mergeItem{domain: scanners[item.idx].Text(), idx: item.idx})
         }
     }
 
@@ -657,15 +778,14 @@ func (p *ProgressTracker) Percent() float64 {
     return float64(completed) / float64(total) * 100
 }
 
-func printMemStats() {
-    var m runtime.MemStats
-    runtime.ReadMemStats(&m)
-    fmt.Printf("  💾 Memory: %.2f MB allocated, %.2f MB system\n",
-        float64(m.Alloc)/1024/1024,
-        float64(m.Sys)/1024/1024)
-}
-
+// FIXED: graceful shutdown
 func run() error {
+    ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+    defer cancel()
+
+    logger := slogLogger{slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))}
+    metrics := noopMetrics{}
+
     config := Config{
         Sources: []string{
             "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts",
@@ -675,20 +795,20 @@ func run() error {
         },
         OutputFile:       "blocklist.txt",
         TempDir:          "",
-        MaxResponseSize:  50 * 1024 * 1024,
-        MaxDomainLength:  253,
-        RequestTimeout:   30 * time.Second,
-        TotalTimeout:     5 * time.Minute,
-        RateLimitDelay:   200 * time.Millisecond,
-        MaxRetries:       3,
-        RetryBackoffBase: 2 * time.Second,
-        WorkerCount:      4,
-        BufferSize:       256 * 1024,
+        MaxResponseSize:  defaultMaxResponseSize,
+        MaxDomainLength:  defaultMaxDomainLength,
+        RequestTimeout:   defaultRequestTimeout,
+        TotalTimeout:     defaultTotalTimeout,
+        RateLimitDelay:   defaultRateLimitDelay,
+        MaxRetries:       defaultMaxRetries,
+        RetryBackoffBase: defaultRetryBackoffBase,
+        WorkerCount:      defaultWorkerCount,
+        BufferSize:       defaultBufferSize,
         EnableCache:      true,
-        CacheTTL:         24 * time.Hour,
+        CacheTTL:         defaultCacheTTL,
         EnableGZIP:       true,
-        ShardCount:       100,
-        ChunkSize:        500000,
+        ShardCount:       defaultShardCount,
+        ChunkSize:        defaultChunkSize,
     }
 
     if config.TempDir == "" {
@@ -709,15 +829,12 @@ func run() error {
         cache, _ = NewDiskCache(filepath.Join(config.TempDir, "cache"), config.CacheTTL)
     }
 
-    ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-    defer cancel()
-
     ctx, cancel = context.WithTimeout(ctx, config.TotalTimeout)
     defer cancel()
 
-    fmt.Println("🚀 Blocklist Generator v5.0")
+    logger.Info(ctx, "starting blocklist generator", "version", "6.0")
 
-    fetcher := NewFetcher(config, cache)
+    fetcher := NewFetcher(config, cache, logger, metrics)
     results := make(chan FetchResult, len(config.Sources))
 
     var wg sync.WaitGroup
@@ -750,14 +867,12 @@ func run() error {
             domains, err := fetcher.Fetch(ctx, source)
             results <- FetchResult{Source: source, Domains: domains, Err: err}
             progress.Add(1)
-            fmt.Printf("\r📥 Progress: %.1f%%", progress.Percent())
         }(src)
     }
 
     go func() {
         wg.Wait()
         close(results)
-        fmt.Println()
     }()
 
     tempFile, err := os.CreateTemp(config.TempDir, "domains_*.txt")
@@ -772,7 +887,7 @@ func run() error {
 
     for res := range results {
         if res.Err != nil {
-            fmt.Printf("✗ %s: %v\n", filepath.Base(res.Source), res.Err)
+            logger.Error(ctx, "source failed", res.Err, "source", filepath.Base(res.Source))
             continue
         }
 
@@ -784,7 +899,7 @@ func run() error {
                 added++
             }
         }
-        fmt.Printf("  ✓ %s: %d domains (%d new)\n", filepath.Base(res.Source), len(res.Domains), added)
+        logger.Info(ctx, "source processed", "source", filepath.Base(res.Source), "total", len(res.Domains), "new", added)
     }
 
     if err := writer.Flush(); err != nil {
@@ -796,10 +911,9 @@ func run() error {
         return fmt.Errorf("no domains fetched")
     }
 
-    fmt.Printf("\n📊 Total unique: %d\n", totalUnique)
-    printMemStats()
+    logger.Info(ctx, "unique domains collected", "count", totalUnique)
 
-    sorter := NewSorter(config)
+    sorter := NewSorter(config, logger, metrics)
     if err := sorter.Sort(domainSet.Slice(), config.OutputFile); err != nil {
         return err
     }
@@ -820,20 +934,33 @@ func run() error {
         return err
     }
 
-    fmt.Printf("\n✅ Done\n")
-    fmt.Printf("   • Domains: %d\n", totalUnique)
-    fmt.Printf("   • Size: %.2f MB\n", float64(info.Size())/(1024*1024))
-    fmt.Printf("   • SHA256: %s\n", hex.EncodeToString(hash.Sum(nil))[:16])
-    printMemStats()
+    logger.Info(ctx, "generation complete",
+        "domains", totalUnique,
+        "size_mb", float64(info.Size())/(1024*1024),
+        "sha256", hex.EncodeToString(hash.Sum(nil))[:16])
 
     return nil
 }
 
 func main() {
     start := time.Now()
-    if err := run(); err != nil {
-        fmt.Fprintf(os.Stderr, "❌ Error: %v\n", err)
+    
+    // FIXED: graceful shutdown с таймаутом
+    done := make(chan error, 1)
+    go func() {
+        done <- run()
+    }()
+
+    select {
+    case err := <-done:
+        if err != nil {
+            fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+            os.Exit(1)
+        }
+    case <-time.After(gracefulShutdownTimeout):
+        fmt.Fprintf(os.Stderr, "Graceful shutdown timeout exceeded\n")
         os.Exit(1)
     }
-    fmt.Printf("\n⏱️  Time: %v\n", time.Since(start).Round(time.Millisecond))
+
+    fmt.Printf("Time: %v\n", time.Since(start).Round(time.Millisecond))
 }
