@@ -676,19 +676,6 @@ func (s *Sorter) mergeShards(shardPaths []string, outputPath string) error {
     return nil
 }
 
-type ProgressTracker struct {
-    total     int64
-    completed int64
-}
-
-func (tracker *ProgressTracker) SetTotal(total int64) {
-    atomic.StoreInt64(&tracker.total, total)
-}
-
-func (tracker *ProgressTracker) Add(delta int64) {
-    atomic.AddInt64(&tracker.completed, delta)
-}
-
 func loadConfigFromEnv() Config {
     config := Config{
         Sources: []string{
