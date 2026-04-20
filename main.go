@@ -1,3 +1,4 @@
+cat > main.go << 'EOF'
 package main
 
 import (
@@ -761,8 +762,6 @@ func run() error {
     results := make(chan FetchResult, len(config.Sources))
     var waitGroup sync.WaitGroup
     semaphore := make(chan struct{}, config.WorkerCount)
-    progress := &ProgressTracker{}
-    progress.SetTotal(int64(len(config.Sources)))
     for _, source := range config.Sources {
         waitGroup.Add(1)
         go func(sourceURL string) {
@@ -784,7 +783,6 @@ func run() error {
             }
             domains, err := fetcher.Fetch(ctxWithTimeout, sourceURL)
             results <- FetchResult{Source: sourceURL, Domains: domains, Err: err}
-            progress.Add(1)
         }(source)
     }
     go func() {
@@ -804,15 +802,12 @@ func run() error {
             logger.Error("source failed", result.Err, "source", filepath.Base(result.Source))
             continue
         }
-        addedCount := 0
         for _, domain := range result.Domains {
-            if domainSet.Add(domain) {
-                writer.WriteString(domain)
-                writer.WriteByte('\n')
-                addedCount++
-            }
+            domainSet.Add(domain)
+            writer.WriteString(domain)
+            writer.WriteByte('\n')
         }
-        logger.Info("source processed", "source", filepath.Base(result.Source), "total", len(result.Domains), "new", addedCount)
+        logger.Info("source processed", "source", filepath.Base(result.Source), "total", len(result.Domains))
     }
     if err := writer.Flush(); err != nil {
         return err
@@ -864,3 +859,4 @@ func main() {
     }
     fmt.Printf("Time: %v\n", time.Since(startTime).Round(time.Millisecond))
 }
+EOF
