@@ -55,6 +55,56 @@ const (
 
 var domainRegexp = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$`)
 
+func init() {
+    rand.Seed(time.Now().UnixNano())
+}
+
+type Logger interface {
+    Debug(msg string, args ...any)
+    Info(msg string, args ...any)
+    Error(msg string, err error, args ...any)
+}
+
+type Metrics interface {
+    RecordDuration(name string, duration time.Duration, labels ...string)
+    RecordCounter(name string, value int64, labels ...string)
+    RecordGauge(name string, value int64, labels ...string)
+}
+
+type noopMetrics struct{}
+
+func (noopMetrics) RecordDuration(string, time.Duration, ...string) {}
+func (noopMetrics) RecordCounter(string, int64, ...string)          {}
+func (noopMetrics) RecordGauge(string, int64, ...string)            {}
+
+type slogLogger struct{ *slog.Logger }
+
+func (l slogLogger) Debug(msg string, args ...any) { l.Logger.Debug(msg, args...) }
+func (l slogLogger) Info(msg string, args ...any)  { l.Logger.Info(msg, args...) }
+func (l slogLogger) Error(msg string, err error, args ...any) {
+    l.Logger.Error(msg, append(args, "error", err)...)
+}
+
+type Config struct {
+    Sources          []string
+    OutputFile       string
+    TempDir          string
+    MaxResponseSize  int64
+    MaxDomainLength  int
+    RequestTimeout   time.Duration
+    TotalTimeout     time.Duration
+    RateLimitDelay   time.Duration
+    MaxRetries       int
+    RetryBackoffBase time.Duration
+    WorkerCount      int
+    BufferSize       int
+    EnableCache      bool
+    CacheTTL         time.Duration
+    EnableGZIP       bool
+    ShardCount       int
+    ChunkSize        int
+}
+
 type DomainSet struct {
     mu    sync.RWMutex
     items map[string]struct{}
@@ -202,11 +252,11 @@ type Fetcher struct {
     config  Config
     cache   *DiskCache
     client  *http.Client
-    logger  *slog.Logger
+    logger  Logger
     metrics Metrics
 }
 
-func NewFetcher(config Config, cache *DiskCache, logger *slog.Logger, metrics Metrics) *Fetcher {
+func NewFetcher(config Config, cache *DiskCache, logger Logger, metrics Metrics) *Fetcher {
     transport := &http.Transport{
         MaxIdleConns:        defaultMaxIdleConns,
         MaxConnsPerHost:     defaultMaxConnsPerHost,
@@ -245,7 +295,7 @@ func (f *Fetcher) Fetch(ctx context.Context, sourceURL string) ([]string, error)
     }
     if f.config.EnableCache && f.cache != nil {
         if entry, err := f.cache.Get(sourceURL); err == nil {
-            f.logger.DebugContext(ctx, "cache hit", "url", sourceURL)
+            f.logger.Debug("cache hit", "url", sourceURL)
             return entry.Domains, nil
         }
     }
@@ -285,7 +335,7 @@ func (f *Fetcher) Fetch(ctx context.Context, sourceURL string) ([]string, error)
         }
         lastErr = err
         f.metrics.RecordCounter("fetch_errors", 1, "url", sourceURL, "attempt", strconv.Itoa(attempt))
-        f.logger.ErrorContext(ctx, "fetch attempt failed", "error", err, "url", sourceURL, "attempt", attempt)
+        f.logger.Error("fetch attempt failed", err, "url", sourceURL, "attempt", attempt)
     }
     return nil, fmt.Errorf("failed after %d retries: %w", f.config.MaxRetries, lastErr)
 }
@@ -392,11 +442,11 @@ func isValidDomain(domain string, maxLength int) bool {
 
 type Sorter struct {
     config  Config
-    logger  *slog.Logger
+    logger  Logger
     metrics Metrics
 }
 
-func NewSorter(config Config, logger *slog.Logger, metrics Metrics) *Sorter {
+func NewSorter(config Config, logger Logger, metrics Metrics) *Sorter {
     return &Sorter{config: config, logger: logger, metrics: metrics}
 }
 
@@ -409,7 +459,7 @@ func (s *Sorter) Sort(domains []string, outputPath string) error {
         s.metrics.RecordDuration("sort", time.Since(start), "domains", strconv.Itoa(len(domains)))
     }()
     if len(domains) > externalSortThreshold {
-        s.logger.DebugContext(context.Background(), "using external sort", "domains", len(domains))
+        s.logger.Debug("using external sort", "domains", len(domains))
         return s.externalSort(domains, outputPath)
     }
     return s.inMemorySort(domains, outputPath)
@@ -626,37 +676,18 @@ func (s *Sorter) mergeShards(shardPaths []string, outputPath string) error {
     return nil
 }
 
-type Config struct {
-    Sources          []string
-    OutputFile       string
-    TempDir          string
-    MaxResponseSize  int64
-    MaxDomainLength  int
-    RequestTimeout   time.Duration
-    TotalTimeout     time.Duration
-    RateLimitDelay   time.Duration
-    MaxRetries       int
-    RetryBackoffBase time.Duration
-    WorkerCount      int
-    BufferSize       int
-    EnableCache      bool
-    CacheTTL         time.Duration
-    EnableGZIP       bool
-    ShardCount       int
-    ChunkSize        int
+type ProgressTracker struct {
+    total     int64
+    completed int64
 }
 
-type Metrics interface {
-    RecordDuration(name string, duration time.Duration, labels ...string)
-    RecordCounter(name string, value int64, labels ...string)
-    RecordGauge(name string, value int64, labels ...string)
+func (tracker *ProgressTracker) SetTotal(total int64) {
+    atomic.StoreInt64(&tracker.total, total)
 }
 
-type noopMetrics struct{}
-
-func (noopMetrics) RecordDuration(string, time.Duration, ...string) {}
-func (noopMetrics) RecordCounter(string, int64, ...string)          {}
-func (noopMetrics) RecordGauge(string, int64, ...string)            {}
+func (tracker *ProgressTracker) Add(delta int64) {
+    atomic.AddInt64(&tracker.completed, delta)
+}
 
 func loadConfigFromEnv() Config {
     config := Config{
@@ -705,7 +736,7 @@ func loadConfigFromEnv() Config {
 func run() error {
     ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
     defer cancel()
-    logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
+    logger := slogLogger{slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))}
     metrics := noopMetrics{}
     config := loadConfigFromEnv()
     if config.TempDir == "" {
@@ -725,7 +756,7 @@ func run() error {
     }
     ctxWithTimeout, cancelTimeout := context.WithTimeout(ctx, config.TotalTimeout)
     defer cancelTimeout()
-    logger.InfoContext(ctxWithTimeout, "starting blocklist generator", "version", "6.0")
+    logger.Info("starting blocklist generator", "version", "6.0")
     fetcher := NewFetcher(config, cache, logger, metrics)
     results := make(chan FetchResult, len(config.Sources))
     var waitGroup sync.WaitGroup
@@ -767,7 +798,7 @@ func run() error {
     domainSet := NewDomainSet()
     for result := range results {
         if result.Err != nil {
-            logger.ErrorContext(ctxWithTimeout, "source failed", "error", result.Err, "source", filepath.Base(result.Source))
+            logger.Error("source failed", result.Err, "source", filepath.Base(result.Source))
             continue
         }
         for _, domain := range result.Domains {
@@ -775,7 +806,7 @@ func run() error {
             writer.WriteString(domain)
             writer.WriteByte('\n')
         }
-        logger.InfoContext(ctxWithTimeout, "source processed", "source", filepath.Base(result.Source), "total", len(result.Domains))
+        logger.Info("source processed", "source", filepath.Base(result.Source), "total", len(result.Domains))
     }
     if err := writer.Flush(); err != nil {
         return err
@@ -784,7 +815,7 @@ func run() error {
     if totalUnique == 0 {
         return fmt.Errorf("no domains fetched")
     }
-    logger.InfoContext(ctxWithTimeout, "unique domains collected", "count", totalUnique)
+    logger.Info("unique domains collected", "count", totalUnique)
     sorter := NewSorter(config, logger, metrics)
     if err := sorter.Sort(domainSet.Slice(), config.OutputFile); err != nil {
         return err
@@ -802,7 +833,7 @@ func run() error {
     if _, err := io.Copy(hasher, outputFile); err != nil {
         return err
     }
-    logger.InfoContext(ctxWithTimeout, "generation complete",
+    logger.Info("generation complete",
         "domains", totalUnique,
         "size_mb", float64(fileInfo.Size())/(1024*1024),
         "sha256", hex.EncodeToString(hasher.Sum(nil))[:16])
