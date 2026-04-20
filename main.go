@@ -14,7 +14,6 @@ import (
     "fmt"
     "io"
     "log/slog"
-    "net"
     "net/http"
     "net/url"
     "os"
@@ -25,7 +24,6 @@ import (
     "strconv"
     "strings"
     "sync"
-    "sync/atomic"
     "syscall"
     "time"
 )
