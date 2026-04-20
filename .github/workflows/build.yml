@@ -1,8 +1,5 @@
-name: Update Blocklist
-on:
-  schedule:
-    - cron: '0 0 * * *'
-  workflow_dispatch:
+name: Build
+on: [push, pull_request]
 
 jobs:
   build:
@@ -10,18 +7,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Setup Go
-        uses: actions/setup-go@v5
+      - uses: actions/setup-go@v5
         with:
           go-version: '1.21'
+          cache: false  # ОТКЛЮЧАЕМ КЭШ НАХУЙ
       
-      - name: Run updater
-        run: go run main.go
-      
-      - name: Commit and push
+      - name: Clean cache
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add blocklist.txt
-          git diff --quiet && git diff --staged --quiet || git commit -m "auto-update blocklist"
-          git push
+          go clean -cache -modcache
+          rm -rf ~/.cache/go-build
+      
+      - name: Run
+        run: go run main.go
