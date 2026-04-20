@@ -14,7 +14,7 @@ import (
     "fmt"
     "io"
     "log/slog"
-    "math/rand"
+    "math/rand/v2" // Используем новую версию из Go 1.22+
     "net/http"
     "net/url"
     "os"
@@ -56,14 +56,6 @@ const (
 )
 
 var domainRegexp = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$`)
-
-func init() {
-    var seedBytes [8]byte
-    if _, err := rand.Read(seedBytes[:]); err != nil {
-        panic(err)
-    }
-    rand.Seed(int64(binary.LittleEndian.Uint64(seedBytes[:])))
-}
 
 type Logger interface {
     Debug(msg string, args ...any)
@@ -320,7 +312,8 @@ func (f *Fetcher) Fetch(ctx context.Context, sourceURL string) ([]string, error)
             }
 
             backoff := f.config.RetryBackoffBase * time.Duration(attempt*attempt)
-            jitter := time.Duration(rand.Int63n(int64(backoff / 2)))
+            // Используем rand.Int64N из пакета math/rand/v2
+            jitter := time.Duration(rand.Int64N(int64(backoff / 2)))
             backoff += jitter
 
             timer := time.NewTimer(backoff)
