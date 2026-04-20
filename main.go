@@ -1,3 +1,8 @@
+# 1. Удали старый файл
+rm main.go
+
+# 2. Создай новый с правильным кодом
+cat > main.go << 'EOF'
 package main
 
 import (
@@ -983,3 +988,7 @@ func main() {
 
     fmt.Printf("Time: %v\n", time.Since(startTime).Round(time.Millisecond))
 }
+EOF
+
+# 3. Запусти
+go run main.go
