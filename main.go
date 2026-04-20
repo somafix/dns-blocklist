@@ -14,8 +14,7 @@ import (
     "fmt"
     "io"
     "log/slog"
-    "math/big"
-    "net"
+    "math/rand"
     "net/http"
     "net/url"
     "os"
@@ -59,11 +58,11 @@ const (
 var domainRegexp = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$`)
 
 func init() {
-    n, err := rand.Int(rand.Reader, big.NewInt(1<<63-1))
-    if err != nil {
+    var seedBytes [8]byte
+    if _, err := rand.Read(seedBytes[:]); err != nil {
         panic(err)
     }
-    rand.Seed(n.Int64())
+    rand.Seed(int64(binary.LittleEndian.Uint64(seedBytes[:])))
 }
 
 type Logger interface {
@@ -706,7 +705,7 @@ func (s *Sorter) mergeShards(shardPaths []string, outputPath string) error {
         file    *os.File
         scanner *bufio.Scanner
     }
-    
+
     scanners := make([]fileScanner, len(validPaths))
     for i, path := range validPaths {
         file, err := os.Open(path)
