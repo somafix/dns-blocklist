@@ -721,6 +721,33 @@ func (s *Sorter) writeSingleChunk(chunk []string, tempDir string, shardIdx int) 
     return outputPath, nil
 }
 
+type sortedChunk struct {
+    items   []string
+    indices []int
+}
+
+type chunkHeap []sortedChunk
+
+func (h chunkHeap) Len() int { return len(h) }
+func (h chunkHeap) Less(i, j int) bool {
+    if len(h[i].items) == 0 || len(h[i].indices) == 0 || h[i].indices[0] >= len(h[i].items) {
+        return false
+    }
+    if len(h[j].items) == 0 || len(h[j].indices) == 0 || h[j].indices[0] >= len(h[j].items) {
+        return true
+    }
+    return h[i].items[h[i].indices[0]] < h[j].items[h[j].indices[0]]
+}
+func (h chunkHeap) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
+func (h *chunkHeap) Push(x interface{}) { *h = append(*h, x.(sortedChunk)) }
+func (h *chunkHeap) Pop() interface{} {
+    old := *h
+    n := len(old)
+    item := old[n-1]
+    *h = old[:n-1]
+    return item
+}
+
 func (s *Sorter) mergeChunks(ctx context.Context, chunks [][]string, tempDir string, shardIdx int) (string, error) {
     outputPath := filepath.Join(tempDir, fmt.Sprintf(defaultSortedShardPattern, shardIdx))
     outputFile, err := os.Create(outputPath)
@@ -775,33 +802,10 @@ func (s *Sorter) mergeChunks(ctx context.Context, chunks [][]string, tempDir str
     return outputPath, nil
 }
 
-type chunkHeap []sortedChunk
-
-func (h chunkHeap) Len() int { return len(h) }
-func (h chunkHeap) Less(i, j int) bool {
-    if len(h[i].items) == 0 || len(h[i].indices) == 0 || h[i].indices[0] >= len(h[i].items) {
-        return false
-    }
-    if len(h[j].items) == 0 || len(h[j].indices) == 0 || h[j].indices[0] >= len(h[j].items) {
-        return true
-    }
-    return h[i].items[h[i].indices[0]] < h[j].items[h[j].indices[0]]
-}
-func (h chunkHeap) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
-func (h *chunkHeap) Push(x interface{}) { *h = append(*h, x.(sortedChunk)) }
-func (h *chunkHeap) Pop() interface{} {
-    old := *h
-    n := len(old)
-    item := old[n-1]
-    *h = old[:n-1]
-    return item
-}
-
 type shardReader struct {
     file    *os.File
     scanner *bufio.Scanner
     current string
-    index   int
 }
 
 type shardReaderHeap []*shardReader
