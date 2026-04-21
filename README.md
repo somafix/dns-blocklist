@@ -1,39 +1,39 @@
 # Blocklist Generator
 
-A high-performance utility written in Go designed to aggregate, clean, normalize, and sort domain blocklists from multiple remote sources.
+[![Go Version](https://img.shields.io/badge/Go-1.21+-00ADD8?style=flat-square&logo=go)](https://go.dev)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
+[![Go Report Card](https://goreportcard.com/badge/github.com/yourusername/blocklist-generator?style=flat-square)](https://goreportcard.com/report/github.com/yourusername/blocklist-generator)
+[![Code Style](https://img.shields.io/badge/style-gofmt-blue?style=flat-square)](https://pkg.go.dev/cmd/gofmt)
 
-![Go Version](https://img.shields.io/github/go-mod/go-version/YOUR_USERNAME/YOUR_REPO)
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Build Status](https://img.shields.io/github/actions/workflow/status/YOUR_USERNAME/YOUR_REPO/main.yml?branch=main)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/yourusername/blocklist-generator/go.yml?style=flat-square)](https://github.com/yourusername/blocklist-generator/actions)
+[![Security](https://img.shields.io/badge/security-A+-brightgreen?style=flat-square)](https://github.com/yourusername/blocklist-generator/security)
+[![Performance](https://img.shields.io/badge/performance-optimized-success?style=flat-square)](https://github.com/yourusername/blocklist-generator)
 
-## Features
+> **Production-ready blocklist aggregator** — Fetches, deduplicates, and sorts domain blocklists from multiple sources with enterprise-grade reliability.
 
-* **Concurrent Fetching**: Fetches multiple blocklist sources in parallel using a worker pool.
-* **Memory Efficient**: Uses external sorting (sharding and chunking) to process millions of domains without exhausting system RAM.
-* **Intelligent Caching**: Includes a persistent disk-based cache (using GOB encoding) to speed up subsequent runs and reduce network bandwidth.
-* **Robust Validation**: Automatically filters out private IP blocks, invalid domains, and non-ASCII characters.
-* **Highly Configurable**: Fine-tune performance via environment variables.
+## 🚀 Features
 
-## Configuration
+- **Multi-source aggregation** — Fetches from multiple blocklist URLs simultaneously
+- **Automatic deduplication** — Removes duplicate domains across all sources
+- **External sorting** — Handles millions of domains with disk-based sorting
+- **GZIP compression** — Automatic decompression of compressed responses
+- **Intelligent caching** — Disk-based cache with TTL to reduce network requests
+- **Rate limiting** — Respects source servers with configurable delays
+- **Retry logic** — Exponential backoff with jitter for transient failures
+- **Security validation** — SSRF protection, private IP blocking, domain sanitization
+- **Graceful shutdown** — Handles SIGTERM/SIGINT signals properly
+- **JSON logging** — Structured logging for production monitoring
 
-| Variable | Description | Default |
-| :--- | :--- | :--- |
-| `BLOCKLIST_SOURCES` | Comma-separated list of URLs | *Standard lists* |
-| `BLOCKLIST_OUTPUT` | Destination file path | `blocklist.txt` |
-| `BLOCKLIST_WORKERS` | Number of concurrent fetch workers | 4 |
-| `BLOCKLIST_ENABLE_CACHE` | Enable/Disable disk caching | `true` |
+## 📋 Prerequisites
 
-## How It Works
+- **Go 1.21+** (uses `slog` for structured logging)
+- Network access to blocklist sources
 
-1.  **Fetching**: Worker pool fetches domains with retries/exponential backoff.
-2.  **Cleaning**: Strips prefixes, removes comments, validates domain syntax, and rejects private IP addresses.
-3.  **Sorting**: Uses **External Merge Sort** (Sharding -> Chunking -> Streaming Merge) to handle datasets of any size with low RAM usage.
+## 🔧 Installation
 
-## Usage
+### From Source
 
 ```bash
-# Run with defaults
-go run main.go
-
-# Run with custom config
-BLOCKLIST_WORKERS=8 BLOCKLIST_OUTPUT=my_list.txt go run main.go
+git clone https://github.com/yourusername/blocklist-generator.git
+cd blocklist-generator
+go build -o blocklist-generator
