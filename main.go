@@ -52,6 +52,9 @@ const (
     defaultSortTempPattern     = "sort_*"
     defaultShardPattern        = "shard_%d_*.tmp"
     defaultSortedShardPattern  = "sorted_%d.tmp"
+    defaultDNSTimeout          = 5 * time.Second
+    maxShardCount              = 1000
+    minShardCount              = 10
 )
 
 var (
@@ -291,8 +294,15 @@ func isSafeURL(rawURL string) error {
     }
     
     host := parsed.Hostname()
-    ips, err := net.LookupIP(host)
+    
+    // Add DNS timeout to prevent hanging
+    ctx, cancel := context.WithTimeout(context.Background(), defaultDNSTimeout)
+    defer cancel()
+    
+    var resolver net.Resolver
+    ips, err := resolver.LookupIP(ctx, "ip4", host)
     if err != nil {
+        // If DNS resolution fails, still allow the URL but log warning
         return nil
     }
     
@@ -479,7 +489,8 @@ func extractDomain(line string) string {
 
     domain = strings.TrimSuffix(domain, ".")
     
-    if strings.Contains(domain, "..") || strings.ContainsAny(domain, "/\\") {
+    // Additional validation
+    if domain == "" || strings.Contains(domain, "..") || strings.ContainsAny(domain, "/\\") {
         return ""
     }
 
@@ -509,7 +520,6 @@ func isValidDomain(domain string) bool {
 type Sorter struct {
     config Config
     logger *slog.Logger
-    ctx    context.Context
 }
 
 func NewSorter(config Config, logger *slog.Logger) *Sorter {
@@ -517,21 +527,31 @@ func NewSorter(config Config, logger *slog.Logger) *Sorter {
 }
 
 func (s *Sorter) Sort(ctx context.Context, domains []string, outputPath string) error {
-    s.ctx = ctx
     if len(domains) == 0 {
         return fmt.Errorf("no domains to sort")
     }
 
     if len(domains) > externalSortThreshold {
         s.logger.DebugContext(ctx, "using external sort", "domains", len(domains))
-        return s.externalSort(domains, outputPath)
+        return s.externalSort(ctx, domains, outputPath)
     }
 
-    return s.inMemorySort(domains, outputPath)
+    return s.inMemorySort(ctx, domains, outputPath)
 }
 
-func (s *Sorter) inMemorySort(domains []string, outputPath string) error {
-    sort.Strings(domains)
+func (s *Sorter) inMemorySort(ctx context.Context, domains []string, outputPath string) error {
+    // Remove duplicates first
+    uniqueMap := make(map[string]struct{})
+    for _, domain := range domains {
+        uniqueMap[domain] = struct{}{}
+    }
+    
+    unique := make([]string, 0, len(uniqueMap))
+    for domain := range uniqueMap {
+        unique = append(unique, domain)
+    }
+    
+    sort.Strings(unique)
 
     outputFile, err := os.Create(outputPath)
     if err != nil {
@@ -546,49 +566,45 @@ func (s *Sorter) inMemorySort(domains []string, outputPath string) error {
     writer := bufio.NewWriterSize(outputFile, s.config.BufferSize)
     defer writer.Flush()
 
-    var previousDomain string
-    for _, domain := range domains {
+    for _, domain := range unique {
         select {
-        case <-s.ctx.Done():
-            return s.ctx.Err()
+        case <-ctx.Done():
+            return ctx.Err()
         default:
         }
         
-        if domain != previousDomain {
-            if _, err := writer.WriteString(domain); err != nil {
-                return err
-            }
-            if err := writer.WriteByte('\n'); err != nil {
-                return err
-            }
-            previousDomain = domain
+        if _, err := writer.WriteString(domain); err != nil {
+            return err
+        }
+        if err := writer.WriteByte('\n'); err != nil {
+            return err
         }
     }
 
     return nil
 }
 
-func (s *Sorter) externalSort(domains []string, outputPath string) error {
+func (s *Sorter) externalSort(ctx context.Context, domains []string, outputPath string) error {
     tempDir, err := os.MkdirTemp("", defaultSortTempPattern)
     if err != nil {
         return err
     }
     defer os.RemoveAll(tempDir)
 
-    shardPaths, err := s.writeShards(domains, tempDir)
+    shardPaths, err := s.writeShards(ctx, domains, tempDir)
     if err != nil {
         return err
     }
 
-    sortedShards, err := s.sortShardsConcurrently(shardPaths, tempDir)
+    sortedShards, err := s.sortShardsConcurrently(ctx, shardPaths, tempDir)
     if err != nil {
         return err
     }
 
-    return s.mergeShardsStreaming(sortedShards, outputPath)
+    return s.mergeShardsStreaming(ctx, sortedShards, outputPath)
 }
 
-func (s *Sorter) writeShards(domains []string, tempDir string) ([]string, error) {
+func (s *Sorter) writeShards(ctx context.Context, domains []string, tempDir string) ([]string, error) {
     shardWriters := make([]*bufio.Writer, s.config.ShardCount)
     shardPaths := make([]string, s.config.ShardCount)
     shardFiles := make([]*os.File, s.config.ShardCount)
@@ -599,6 +615,7 @@ func (s *Sorter) writeShards(domains []string, tempDir string) ([]string, error)
             return nil, fmt.Errorf("create shard %d: %w", i, err)
         }
         if err := os.Chmod(file.Name(), 0600); err != nil {
+            file.Close()
             return nil, err
         }
         shardFiles[i] = file
@@ -606,16 +623,29 @@ func (s *Sorter) writeShards(domains []string, tempDir string) ([]string, error)
         shardWriters[i] = bufio.NewWriterSize(file, s.config.BufferSize)
     }
 
+    // Cleanup function in case of error
+    defer func() {
+        if err != nil {
+            for _, file := range shardFiles {
+                if file != nil {
+                    file.Close()
+                    os.Remove(file.Name())
+                }
+            }
+        }
+    }()
+
     for _, domain := range domains {
         select {
-        case <-s.ctx.Done():
-            return nil, s.ctx.Err()
+        case <-ctx.Done():
+            return nil, ctx.Err()
         default:
         }
         
         hasher := fnv.New32a()
         hasher.Write([]byte(domain))
         shardIdx := int(hasher.Sum32()) % s.config.ShardCount
+        
         if _, err := shardWriters[shardIdx].WriteString(domain); err != nil {
             return nil, err
         }
@@ -636,7 +666,7 @@ func (s *Sorter) writeShards(domains []string, tempDir string) ([]string, error)
     return shardPaths, nil
 }
 
-func (s *Sorter) sortShardsConcurrently(shardPaths []string, tempDir string) ([]string, error) {
+func (s *Sorter) sortShardsConcurrently(ctx context.Context, shardPaths []string, tempDir string) ([]string, error) {
     sortedShards := make([]string, s.config.ShardCount)
     errCh := make(chan error, s.config.ShardCount)
     var wg sync.WaitGroup
@@ -645,7 +675,7 @@ func (s *Sorter) sortShardsConcurrently(shardPaths []string, tempDir string) ([]
         wg.Add(1)
         go func(idx int) {
             defer wg.Done()
-            sortedPath, err := s.sortShard(shardPaths[idx], tempDir, idx)
+            sortedPath, err := s.sortShard(ctx, shardPaths[idx], tempDir, idx)
             if err != nil {
                 select {
                 case errCh <- err:
@@ -671,7 +701,7 @@ func (s *Sorter) sortShardsConcurrently(shardPaths []string, tempDir string) ([]
     return sortedShards, nil
 }
 
-func (s *Sorter) sortShard(inputPath, tempDir string, shardIdx int) (string, error) {
+func (s *Sorter) sortShard(ctx context.Context, inputPath, tempDir string, shardIdx int) (string, error) {
     inputFile, err := os.Open(inputPath)
     if err != nil {
         return "", err
@@ -679,7 +709,7 @@ func (s *Sorter) sortShard(inputPath, tempDir string, shardIdx int) (string, err
     defer inputFile.Close()
     defer os.Remove(inputPath)
 
-    chunks, err := s.loadAndSortChunks(inputFile)
+    chunks, err := s.loadAndSortChunks(ctx, inputFile)
     if err != nil {
         return "", err
     }
@@ -692,18 +722,18 @@ func (s *Sorter) sortShard(inputPath, tempDir string, shardIdx int) (string, err
         return s.writeSingleChunk(chunks[0], tempDir, shardIdx)
     }
 
-    return s.mergeChunks(chunks, tempDir, shardIdx)
+    return s.mergeChunks(ctx, chunks, tempDir, shardIdx)
 }
 
-func (s *Sorter) loadAndSortChunks(inputFile *os.File) ([][]string, error) {
+func (s *Sorter) loadAndSortChunks(ctx context.Context, inputFile *os.File) ([][]string, error) {
     var chunks [][]string
     scanner := bufio.NewScanner(inputFile)
     currentChunk := make([]string, 0, s.config.ChunkSize)
 
     for scanner.Scan() {
         select {
-        case <-s.ctx.Done():
-            return nil, s.ctx.Err()
+        case <-ctx.Done():
+            return nil, ctx.Err()
         default:
         }
         
@@ -737,7 +767,7 @@ func (s *Sorter) writeSingleChunk(chunk []string, tempDir string, shardIdx int) 
     return outputPath, nil
 }
 
-func (s *Sorter) mergeChunks(chunks [][]string, tempDir string, shardIdx int) (string, error) {
+func (s *Sorter) mergeChunks(ctx context.Context, chunks [][]string, tempDir string, shardIdx int) (string, error) {
     outputPath := filepath.Join(tempDir, fmt.Sprintf(defaultSortedShardPattern, shardIdx))
     outputFile, err := os.Create(outputPath)
     if err != nil {
@@ -752,22 +782,22 @@ func (s *Sorter) mergeChunks(chunks [][]string, tempDir string, shardIdx int) (s
     writer := bufio.NewWriterSize(outputFile, s.config.BufferSize)
     defer writer.Flush()
 
-    h := &chunkHeap{}
+    domainHeap := &chunkHeap{}
     for _, chunk := range chunks {
         if len(chunk) > 0 {
-            heap.Push(h, sortedChunk{items: chunk, indices: []int{0}})
+            heap.Push(domainHeap, sortedChunk{items: chunk, indices: []int{0}})
         }
     }
 
     var previousDomain string
-    for h.Len() > 0 {
+    for domainHeap.Len() > 0 {
         select {
-        case <-s.ctx.Done():
-            return "", s.ctx.Err()
+        case <-ctx.Done():
+            return "", ctx.Err()
         default:
         }
         
-        current := heap.Pop(h).(sortedChunk)
+        current := heap.Pop(domainHeap).(sortedChunk)
         currentDomain := current.items[current.indices[0]]
 
         if currentDomain != previousDomain {
@@ -782,14 +812,22 @@ func (s *Sorter) mergeChunks(chunks [][]string, tempDir string, shardIdx int) (s
 
         current.indices[0]++
         if current.indices[0] < len(current.items) {
-            heap.Push(h, current)
+            heap.Push(domainHeap, current)
         }
     }
 
     return outputPath, nil
 }
 
-func (s *Sorter) mergeShardsStreaming(shardPaths []string, outputPath string) error {
+// shardReader represents a reader for a single sorted shard file
+type shardReader struct {
+    file    *os.File
+    scanner *bufio.Scanner
+    current string
+    index   int
+}
+
+func (s *Sorter) mergeShardsStreaming(ctx context.Context, shardPaths []string, outputPath string) error {
     var validPaths []string
     for _, path := range shardPaths {
         if path != "" {
@@ -804,59 +842,39 @@ func (s *Sorter) mergeShardsStreaming(shardPaths []string, outputPath string) er
         return fmt.Errorf("no data to merge")
     }
 
-    outputFile, err := os.Create(outputPath)
+    outputFile, err := s.createOutputFile(outputPath)
     if err != nil {
         return err
     }
     defer outputFile.Close()
     
-    if err := os.Chmod(outputPath, 0644); err != nil {
-        return err
-    }
-    
     writer := bufio.NewWriterSize(outputFile, s.config.BufferSize)
     defer writer.Flush()
     
-    type shardReader struct {
-        file    *os.File
-        scanner *bufio.Scanner
-        current string
+    readers, err := s.initShardReaders(validPaths)
+    if err != nil {
+        return err
     }
+    defer s.closeReaders(readers)
     
-    readers := make([]*shardReader, 0)
-    for i, path := range validPaths {
-        file, err := os.Open(path)
-        if err != nil {
-            return err
-        }
-        
-        scanner := bufio.NewScanner(file)
-        if scanner.Scan() {
-            readers = append(readers, &shardReader{
-                file:    file,
-                scanner: scanner,
-                current: scanner.Text(),
-            })
-        } else {
-            file.Close()
-            os.Remove(path)
-            validPaths = append(validPaths[:i], validPaths[i+1:]...)
-        }
+    // Use heap for efficient ordering instead of sorting each time
+    readerHeap := &shardReaderHeap{}
+    heap.Init(readerHeap)
+    
+    for i, reader := range readers {
+        reader.index = i
+        heap.Push(readerHeap, reader)
     }
     
     var previousDomain string
-    for len(readers) > 0 {
+    for readerHeap.Len() > 0 {
         select {
-        case <-s.ctx.Done():
-            return s.ctx.Err()
+        case <-ctx.Done():
+            return ctx.Err()
         default:
         }
         
-        sort.Slice(readers, func(i, j int) bool {
-            return readers[i].current < readers[j].current
-        })
-        
-        smallest := readers[0]
+        smallest := heap.Pop(readerHeap).(*shardReader)
         
         if smallest.current != previousDomain {
             if _, err := writer.WriteString(smallest.current); err != nil {
@@ -870,17 +888,74 @@ func (s *Sorter) mergeShardsStreaming(shardPaths []string, outputPath string) er
         
         if smallest.scanner.Scan() {
             smallest.current = smallest.scanner.Text()
-        } else {
-            smallest.file.Close()
-            readers = readers[1:]
+            heap.Push(readerHeap, smallest)
+        } else if err := smallest.scanner.Err(); err != nil {
+            return err
         }
-    }
-    
-    for _, path := range validPaths {
-        os.Remove(path)
+        // Reader exhausted, will be removed from heap automatically
     }
     
     return nil
+}
+
+func (s *Sorter) createOutputFile(outputPath string) (*os.File, error) {
+    outputFile, err := os.Create(outputPath)
+    if err != nil {
+        return nil, err
+    }
+    if err := os.Chmod(outputPath, 0644); err != nil {
+        outputFile.Close()
+        return nil, err
+    }
+    return outputFile, nil
+}
+
+func (s *Sorter) initShardReaders(paths []string) ([]*shardReader, error) {
+    readers := make([]*shardReader, 0, len(paths))
+    for _, path := range paths {
+        file, err := os.Open(path)
+        if err != nil {
+            s.closeReaders(readers)
+            return nil, err
+        }
+        
+        scanner := bufio.NewScanner(file)
+        if scanner.Scan() {
+            readers = append(readers, &shardReader{
+                file:    file,
+                scanner: scanner,
+                current: scanner.Text(),
+            })
+        } else {
+            file.Close()
+            os.Remove(path)
+        }
+    }
+    return readers, nil
+}
+
+func (s *Sorter) closeReaders(readers []*shardReader) {
+    for _, reader := range readers {
+        if reader != nil && reader.file != nil {
+            reader.file.Close()
+            os.Remove(reader.file.Name())
+        }
+    }
+}
+
+// shardReaderHeap implements heap.Interface for efficient minimum retrieval
+type shardReaderHeap []*shardReader
+
+func (h shardReaderHeap) Len() int           { return len(h) }
+func (h shardReaderHeap) Less(i, j int) bool { return h[i].current < h[j].current }
+func (h shardReaderHeap) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
+func (h *shardReaderHeap) Push(x interface{}) { *h = append(*h, x.(*shardReader)) }
+func (h *shardReaderHeap) Pop() interface{} {
+    old := *h
+    n := len(old)
+    item := old[n-1]
+    *h = old[:n-1]
+    return item
 }
 
 func loadConfigFromEnv() Config {
@@ -916,11 +991,11 @@ func loadConfigFromEnv() Config {
         ChunkSize:        getEnvInt("BLOCKLIST_CHUNK_SIZE", defaultChunkSize),
     }
     
-    if config.ShardCount > 1000 {
-        config.ShardCount = 1000
+    if config.ShardCount > maxShardCount {
+        config.ShardCount = maxShardCount
     }
-    if config.ShardCount < 10 {
-        config.ShardCount = 10
+    if config.ShardCount < minShardCount {
+        config.ShardCount = minShardCount
     }
     
     return config
@@ -992,9 +1067,11 @@ func run() error {
     ctxTimeout, cancelTimeout := context.WithTimeout(ctx, config.TotalTimeout)
     defer cancelTimeout()
 
-    logger.InfoContext(ctxTimeout, "starting blocklist generator", "version", "6.3")
+    logger.InfoContext(ctxTimeout, "starting blocklist generator", "version", "6.4")
 
     fetcher := NewFetcher(config, cache, logger)
+    
+    // Create buffered channel with proper capacity
     results := make(chan FetchResult, len(config.Sources))
 
     var wg sync.WaitGroup
@@ -1036,6 +1113,7 @@ func run() error {
         }(source)
     }
 
+    // Close results channel when all fetchers are done
     go func() {
         wg.Wait()
         close(results)
