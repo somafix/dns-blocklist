@@ -7,7 +7,6 @@ import (
     "context"
     "crypto/sha256"
     "crypto/tls"
-    "encoding/binary"
     "encoding/hex"
     "encoding/gob"
     "fmt"
