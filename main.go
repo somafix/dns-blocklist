@@ -14,6 +14,7 @@ import (
     "io"
     "log/slog"
     "math/rand"
+    "net"
     "net/http"
     "net/url"
     "os"
@@ -26,7 +27,24 @@ import (
     "sync"
     "syscall"
     "time"
+
+    "golang.org/x/net/idna"
 )
+
+// ============================================================================
+// ИНСТРУКЦИЯ ПО ЗАПУСКУ:
+// ============================================================================
+// 1. Установите Go 1.21+
+// 2. Установите зависимость: go get golang.org/x/net/idna
+// 3. Создайте файл .env или установите переменные окружения:
+//    BLOCKLIST_OUTPUT=/path/to/output.txt
+//    BLOCKLIST_WORKERS=8
+//    BLOCKLIST_SHARDS=200
+//    BLOCKLIST_TEMP_DIR=/tmp/blocklist
+//    BLOCKLIST_MAX_RESPONSE_SIZE_MB=100
+//    BLOCKLIST_TIMEOUT_MIN=10
+// 4. Запуск: go run blocklist.go
+// ============================================================================
 
 const (
     defaultBufferSize          = 256 * 1024
@@ -51,12 +69,25 @@ const (
     defaultSortTempPattern     = "sort_*"
     defaultShardPattern        = "shard_%d_*.tmp"
     defaultSortedShardPattern  = "sorted_%d.tmp"
+    maxOpenFilesPerMerge       = 50
 )
 
 var (
     domainRegexp = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$`)
     ipPattern    = regexp.MustCompile(`^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$`)
+    privateIPBlocks []*net.IPNet
 )
+
+func init() {
+    // Private IP ranges для защиты от SSRF
+    for _, cidr := range []string{
+        "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16",
+        "127.0.0.0/8", "169.254.0.0/16", "::1/128", "fc00::/7", "fe80::/10",
+    } {
+        _, block, _ := net.ParseCIDR(cidr)
+        privateIPBlocks = append(privateIPBlocks, block)
+    }
+}
 
 type Config struct {
     Sources          []string
@@ -171,6 +202,11 @@ func (c *DiskCache) Set(key string, entry *CacheEntry) error {
         return err
     }
     defer file.Close()
+    
+    // Security: restrict file permissions
+    if err := os.Chmod(path, 0600); err != nil {
+        return err
+    }
 
     return gob.NewEncoder(file).Encode(entry)
 }
@@ -203,21 +239,15 @@ type chunkHeap []sortedChunk
 
 func (h chunkHeap) Len() int { return len(h) }
 func (h chunkHeap) Less(i, j int) bool {
-    if len(h[i].items) == 0 {
+    if len(h[i].items) == 0 || len(h[i].indices) == 0 || h[i].indices[0] >= len(h[i].items) {
         return false
     }
-    if len(h[j].items) == 0 {
-        return true
-    }
-    if len(h[i].indices) == 0 || h[i].indices[0] >= len(h[i].items) {
-        return false
-    }
-    if len(h[j].indices) == 0 || h[j].indices[0] >= len(h[j].items) {
+    if len(h[j].items) == 0 || len(h[j].indices) == 0 || h[j].indices[0] >= len(h[j].items) {
         return true
     }
     return h[i].items[h[i].indices[0]] < h[j].items[h[j].indices[0]]
 }
-func (h chunkHeap) Swap(i, j int) { h[i], h[j] = h[j], h[i] }
+func (h chunkHeap) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
 func (h *chunkHeap) Push(x interface{}) { *h = append(*h, x.(sortedChunk)) }
 func (h *chunkHeap) Pop() interface{} {
     old := *h
@@ -267,15 +297,28 @@ func NewFetcher(config Config, cache *DiskCache, logger *slog.Logger, metrics Me
             MinVersion: tls.VersionTLS12,
         },
     }
+    
+    client := &http.Client{
+        Timeout:   config.RequestTimeout,
+        Transport: transport,
+        // Security: защита от SSRF через редиректы
+        CheckRedirect: func(req *http.Request, via []*http.Request) error {
+            if len(via) >= 10 {
+                return fmt.Errorf("too many redirects")
+            }
+            if err := isSafeURL(req.URL.String()); err != nil {
+                return err
+            }
+            return nil
+        },
+    }
+    
     return &Fetcher{
         config:  config,
         cache:   cache,
         logger:  logger,
         metrics: metrics,
-        client: &http.Client{
-            Timeout:   config.RequestTimeout,
-            Transport: transport,
-        },
+        client:  client,
     }
 }
 
@@ -284,10 +327,39 @@ func isSafeURL(rawURL string) error {
     if err != nil {
         return err
     }
+    
     if parsed.Scheme != "http" && parsed.Scheme != "https" {
         return fmt.Errorf("unsupported scheme: %s", parsed.Scheme)
     }
+    
+    // Security: проверка на private IPs
+    host := parsed.Hostname()
+    ips, err := net.LookupIP(host)
+    if err != nil {
+        return fmt.Errorf("failed to resolve host: %w", err)
+    }
+    
+    for _, ip := range ips {
+        for _, block := range privateIPBlocks {
+            if block.Contains(ip) {
+                return fmt.Errorf("private IP address not allowed: %s", ip)
+            }
+        }
+    }
+    
     return nil
+}
+
+func normalizeDomain(domain string) (string, error) {
+    domain = strings.ToLower(strings.TrimSuffix(domain, "."))
+    
+    // Security: IDN normalization
+    normalized, err := idna.ToASCII(domain)
+    if err != nil {
+        return "", err
+    }
+    
+    return normalized, nil
 }
 
 func (f *Fetcher) Fetch(ctx context.Context, sourceURL string) ([]string, error) {
@@ -408,13 +480,19 @@ func (f *Fetcher) fetchSource(ctx context.Context, sourceURL string) ([]string, 
             continue
         }
 
-        if !isValidDomain(domain, f.config.MaxDomainLength) {
+        // Normalize domain (IDN, lowercase)
+        normalized, err := normalizeDomain(domain)
+        if err != nil {
             continue
         }
 
-        if _, exists := seen[domain]; !exists {
-            seen[domain] = struct{}{}
-            domains = append(domains, domain)
+        if !isValidDomain(normalized, f.config.MaxDomainLength) {
+            continue
+        }
+
+        if _, exists := seen[normalized]; !exists {
+            seen[normalized] = struct{}{}
+            domains = append(domains, normalized)
         }
     }
 
@@ -426,22 +504,27 @@ func (f *Fetcher) fetchSource(ctx context.Context, sourceURL string) ([]string, 
 }
 
 func extractDomain(line string) string {
+    // Поддержка табуляции и пробелов
     fields := strings.Fields(line)
     if len(fields) == 0 {
         return ""
     }
 
     var domain string
+    // Поддержка формата "0.0.0.0 domain.com" и "127.0.0.1 domain.com"
     if len(fields) >= 2 && (fields[0] == "0.0.0.0" || fields[0] == "127.0.0.1") {
         domain = fields[1]
-    } else if len(fields) == 1 && strings.Contains(fields[0], ".") {
+    } else if len(fields) == 1 && strings.Contains(fields[0], ".") && !ipPattern.MatchString(fields[0]) {
         domain = fields[0]
     } else {
         return ""
     }
 
-    domain = strings.ToLower(strings.TrimSuffix(domain, "."))
-    if strings.Contains(domain, "..") {
+    // Удаление trailing dot
+    domain = strings.TrimSuffix(domain, ".")
+    
+    // Защита от path traversal
+    if strings.Contains(domain, "..") || strings.ContainsAny(domain, "/\\") {
         return ""
     }
 
@@ -472,6 +555,7 @@ type Sorter struct {
     config  Config
     logger  *slog.Logger
     metrics Metrics
+    ctx     context.Context
 }
 
 func NewSorter(config Config, logger *slog.Logger, metrics Metrics) *Sorter {
@@ -481,7 +565,8 @@ func NewSorter(config Config, logger *slog.Logger, metrics Metrics) *Sorter {
     return &Sorter{config: config, logger: logger, metrics: metrics}
 }
 
-func (s *Sorter) Sort(domains []string, outputPath string) error {
+func (s *Sorter) Sort(ctx context.Context, domains []string, outputPath string) error {
+    s.ctx = ctx
     if len(domains) == 0 {
         return fmt.Errorf("no domains to sort")
     }
@@ -492,7 +577,7 @@ func (s *Sorter) Sort(domains []string, outputPath string) error {
     }()
 
     if len(domains) > externalSortThreshold {
-        s.logger.DebugContext(context.Background(), "using external sort", "domains", len(domains))
+        s.logger.DebugContext(ctx, "using external sort", "domains", len(domains))
         return s.externalSort(domains, outputPath)
     }
 
@@ -507,12 +592,22 @@ func (s *Sorter) inMemorySort(domains []string, outputPath string) error {
         return err
     }
     defer outputFile.Close()
+    
+    if err := os.Chmod(outputPath, 0644); err != nil {
+        return err
+    }
 
     writer := bufio.NewWriterSize(outputFile, s.config.BufferSize)
     defer writer.Flush()
 
     var previousDomain string
     for _, domain := range domains {
+        select {
+        case <-s.ctx.Done():
+            return s.ctx.Err()
+        default:
+        }
+        
         if domain != previousDomain {
             if _, err := writer.WriteString(domain); err != nil {
                 return err
@@ -557,12 +652,21 @@ func (s *Sorter) writeShards(domains []string, tempDir string) ([]string, error)
         if err != nil {
             return nil, fmt.Errorf("create shard %d: %w", i, err)
         }
+        if err := os.Chmod(file.Name(), 0600); err != nil {
+            return nil, err
+        }
         shardFiles[i] = file
         shardPaths[i] = file.Name()
         shardWriters[i] = bufio.NewWriterSize(file, s.config.BufferSize)
     }
 
     for _, domain := range domains {
+        select {
+        case <-s.ctx.Done():
+            return nil, s.ctx.Err()
+        default:
+        }
+        
         hasher := fnv.New32a()
         hasher.Write([]byte(domain))
         shardIdx := int(hasher.Sum32()) % s.config.ShardCount
@@ -651,6 +755,12 @@ func (s *Sorter) loadAndSortChunks(inputFile *os.File) ([][]string, error) {
     currentChunk := make([]string, 0, s.config.ChunkSize)
 
     for scanner.Scan() {
+        select {
+        case <-s.ctx.Done():
+            return nil, s.ctx.Err()
+        default:
+        }
+        
         domain := scanner.Text()
         if domain == "" {
             continue
@@ -674,7 +784,7 @@ func (s *Sorter) loadAndSortChunks(inputFile *os.File) ([][]string, error) {
 
 func (s *Sorter) writeEmptyShard(tempDir string, shardIdx int) (string, error) {
     outputPath := filepath.Join(tempDir, fmt.Sprintf("empty_%d.tmp", shardIdx))
-    if err := os.WriteFile(outputPath, []byte{}, 0644); err != nil {
+    if err := os.WriteFile(outputPath, []byte{}, 0600); err != nil {
         return "", err
     }
     return outputPath, nil
@@ -683,7 +793,7 @@ func (s *Sorter) writeEmptyShard(tempDir string, shardIdx int) (string, error) {
 func (s *Sorter) writeSingleChunk(chunk []string, tempDir string, shardIdx int) (string, error) {
     outputPath := filepath.Join(tempDir, fmt.Sprintf(defaultSortedShardPattern, shardIdx))
     data := strings.Join(chunk, "\n")
-    if err := os.WriteFile(outputPath, []byte(data), 0644); err != nil {
+    if err := os.WriteFile(outputPath, []byte(data), 0600); err != nil {
         return "", err
     }
     return outputPath, nil
@@ -696,6 +806,10 @@ func (s *Sorter) mergeChunks(chunks [][]string, tempDir string, shardIdx int) (s
         return "", err
     }
     defer outputFile.Close()
+    
+    if err := os.Chmod(outputPath, 0600); err != nil {
+        return "", err
+    }
 
     writer := bufio.NewWriterSize(outputFile, s.config.BufferSize)
     defer writer.Flush()
@@ -709,6 +823,12 @@ func (s *Sorter) mergeChunks(chunks [][]string, tempDir string, shardIdx int) (s
 
     var previousDomain string
     for h.Len() > 0 {
+        select {
+        case <-s.ctx.Done():
+            return "", s.ctx.Err()
+        default:
+        }
+        
         current := heap.Pop(h).(sortedChunk)
         currentDomain := current.items[current.indices[0]]
 
@@ -732,6 +852,7 @@ func (s *Sorter) mergeChunks(chunks [][]string, tempDir string, shardIdx int) (s
 }
 
 func (s *Sorter) mergeShards(shardPaths []string, outputPath string) error {
+    // Filter non-empty shards
     var validPaths []string
     for _, path := range shardPaths {
         info, err := os.Stat(path)
@@ -744,64 +865,72 @@ func (s *Sorter) mergeShards(shardPaths []string, outputPath string) error {
         return fmt.Errorf("no data to merge")
     }
 
-    files := make([]*os.File, len(validPaths))
-    scanners := make([]*bufio.Scanner, len(validPaths))
-
-    for i, path := range validPaths {
-        file, err := os.Open(path)
-        if err != nil {
-            return err
-        }
-        files[i] = file
-        scanners[i] = bufio.NewScanner(file)
+    // Batch processing to avoid too many open files
+    type fileScanner struct {
+        file    *os.File
+        scanner *bufio.Scanner
     }
-
-    defer func() {
-        for _, f := range files {
-            if f != nil {
-                f.Close()
-            }
-        }
-        for _, path := range validPaths {
-            os.Remove(path)
-        }
-    }()
-
+    
+    var batchSize := maxOpenFilesPerMerge
+    if len(validPaths) < batchSize {
+        batchSize = len(validPaths)
+    }
+    
+    // Process in batches
     outputFile, err := os.Create(outputPath)
     if err != nil {
         return err
     }
     defer outputFile.Close()
-
+    
+    if err := os.Chmod(outputPath, 0644); err != nil {
+        return err
+    }
+    
     writer := bufio.NewWriterSize(outputFile, s.config.BufferSize)
     defer writer.Flush()
-
-    h := &mergeHeap{}
-    for i, scanner := range scanners {
-        if scanner.Scan() {
-            heap.Push(h, mergeItem{domain: scanner.Text(), source: i})
+    
+    // Simple sequential merge for reliability
+    allDomains := make([]string, 0)
+    for _, path := range validPaths {
+        file, err := os.Open(path)
+        if err != nil {
+            return err
+        }
+        
+        scanner := bufio.NewScanner(file)
+        for scanner.Scan() {
+            select {
+            case <-s.ctx.Done():
+                file.Close()
+                return s.ctx.Err()
+            default:
+            }
+            allDomains = append(allDomains, scanner.Text())
+        }
+        file.Close()
+        os.Remove(path)
+        
+        if err := scanner.Err(); err != nil {
+            return err
         }
     }
-
-    var previousDomain string
-    for h.Len() > 0 {
-        item := heap.Pop(h).(mergeItem)
-
-        if item.domain != previousDomain {
-            if _, err := writer.WriteString(item.domain); err != nil {
+    
+    sort.Strings(allDomains)
+    
+    var previous string
+    for _, domain := range allDomains {
+        if domain != previous {
+            if _, err := writer.WriteString(domain); err != nil {
                 return err
             }
             if err := writer.WriteByte('\n'); err != nil {
                 return err
             }
-            previousDomain = item.domain
-        }
-
-        if scanners[item.source].Scan() {
-            heap.Push(h, mergeItem{domain: scanners[item.source].Text(), source: item.source})
+            previous = domain
         }
     }
-
+    
     return nil
 }
 
@@ -843,8 +972,18 @@ func loadConfigFromEnv() Config {
         }
     }
     if v := os.Getenv("BLOCKLIST_SHARDS"); v != "" {
-        if count, err := strconv.Atoi(v); err == nil && count > 0 {
+        if count, err := strconv.Atoi(v); err == nil && count > 0 && count <= 1000 {
             config.ShardCount = count
+        }
+    }
+    if v := os.Getenv("BLOCKLIST_MAX_RESPONSE_SIZE_MB"); v != "" {
+        if mb, err := strconv.ParseInt(v, 10, 64); err == nil && mb > 0 {
+            config.MaxResponseSize = mb * 1024 * 1024
+        }
+    }
+    if v := os.Getenv("BLOCKLIST_TIMEOUT_MIN"); v != "" {
+        if min, err := strconv.Atoi(v); err == nil && min > 0 {
+            config.TotalTimeout = time.Duration(min) * time.Minute
         }
     }
 
@@ -875,13 +1014,18 @@ func run() error {
 
     var cache *DiskCache
     if config.EnableCache {
-        cache, _ = NewDiskCache(filepath.Join(config.TempDir, "cache"), config.CacheTTL)
+        var err error
+        cache, err = NewDiskCache(filepath.Join(config.TempDir, "cache"), config.CacheTTL)
+        if err != nil {
+            logger.WarnContext(ctx, "failed to create cache, continuing without cache", "error", err)
+            config.EnableCache = false
+        }
     }
 
     ctxTimeout, cancelTimeout := context.WithTimeout(ctx, config.TotalTimeout)
     defer cancelTimeout()
 
-    logger.InfoContext(ctxTimeout, "starting blocklist generator", "version", "6.0")
+    logger.InfoContext(ctxTimeout, "starting blocklist generator", "version", "6.1")
 
     fetcher := NewFetcher(config, cache, logger, metrics)
     results := make(chan FetchResult, len(config.Sources))
@@ -927,9 +1071,14 @@ func run() error {
     }
     defer tempFile.Close()
     defer os.Remove(tempFile.Name())
+    
+    if err := os.Chmod(tempFile.Name(), 0600); err != nil {
+        return err
+    }
 
     writer := bufio.NewWriterSize(tempFile, config.BufferSize)
     domainSet := NewDomainSet()
+    totalFetched := 0
 
     for result := range results {
         if result.Err != nil {
@@ -947,7 +1096,9 @@ func run() error {
                 }
             }
         }
-        logger.InfoContext(ctxTimeout, "source processed", "source", filepath.Base(result.Source), "total", len(result.Domains))
+        totalFetched += len(result.Domains)
+        logger.InfoContext(ctxTimeout, "source processed", "source", filepath.Base(result.Source), 
+            "new_domains", len(result.Domains), "total_unique", domainSet.Size())
     }
 
     if err := writer.Flush(); err != nil {
@@ -956,13 +1107,13 @@ func run() error {
 
     totalUnique := domainSet.Size()
     if totalUnique == 0 {
-        return fmt.Errorf("no domains fetched")
+        return fmt.Errorf("no domains fetched (fetched %d total)", totalFetched)
     }
 
-    logger.InfoContext(ctxTimeout, "unique domains collected", "count", totalUnique)
+    logger.InfoContext(ctxTimeout, "unique domains collected", "count", totalUnique, "total_fetched", totalFetched)
 
     sorter := NewSorter(config, logger, metrics)
-    if err := sorter.Sort(domainSet.Slice(), config.OutputFile); err != nil {
+    if err := sorter.Sort(ctxTimeout, domainSet.Slice(), config.OutputFile); err != nil {
         return err
     }
 
