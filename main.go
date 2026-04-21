@@ -33,7 +33,6 @@ const (
     externalSortLimit = 500000
     chunkSize         = 500000
     maxDecompressed   = 200 * 1024 * 1024
-    shutdownTimeout   = 30 * time.Second
     shardCount        = 100
     maxResponseSize   = 50 * 1024 * 1024
     maxDomainLen      = 253
@@ -117,20 +116,14 @@ type mergeItem struct {
 type PriorityQueue []mergeItem
 
 func (pq PriorityQueue) Len() int { return len(pq) }
-func (pq PriorityQueue) Less(i, j int) bool {
-    return pq[i].domain < pq[j].domain
-}
-func (pq PriorityQueue) Swap(i, j int) {
-    pq[i], pq[j] = pq[j], pq[i]
-}
-func (pq *PriorityQueue) Push(x interface{}) {
-    *pq = append(*pq, x.(mergeItem))
-}
+func (pq PriorityQueue) Less(i, j int) bool { return pq[i].domain < pq[j].domain }
+func (pq PriorityQueue) Swap(i, j int) { pq[i], pq[j] = pq[j], pq[i] }
+func (pq *PriorityQueue) Push(x interface{}) { *pq = append(*pq, x.(mergeItem)) }
 func (pq *PriorityQueue) Pop() interface{} {
     old := *pq
     n := len(old)
     item := old[n-1]
-    *pq = old[0 : n-1]
+    *pq = old[0:n-1]
     return item
 }
 
@@ -655,7 +648,7 @@ func (s *Sorter) sortSingleShard(ctx context.Context, inputPath, tempDir string)
 
     sort.Strings(domains)
 
-    outputPath := filepath.Join(tempDir, fmt.Sprintf("sorted_%d_%d.tmp", rand.Int63(), time.Now().UnixNano()))
+    outputPath := filepath.Join(tempDir, fmt.Sprintf("sorted_%d.tmp", rand.Int63()))
     output, err := os.Create(outputPath)
     if err != nil {
         return "", err
@@ -694,6 +687,7 @@ func (s *Sorter) mergeShards(ctx context.Context, shardPaths []string, outputPat
     files := make([]*os.File, len(validPaths))
     scanners := make([]*bufio.Scanner, len(validPaths))
     pq := make(PriorityQueue, 0)
+    heap.Init(&pq)
 
     for i, path := range validPaths {
         file, err := os.Open(path)
