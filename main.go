@@ -11,6 +11,7 @@ import (
     "encoding/hex"
     "encoding/gob"
     "fmt"
+    "hash/fnv"
     "io"
     "log/slog"
     "math/rand"
@@ -209,6 +210,12 @@ func (h chunkHeap) Less(i, j int) bool {
     if len(h[j].items) == 0 {
         return true
     }
+    if len(h[i].indices) == 0 || h[i].indices[0] >= len(h[i].items) {
+        return false
+    }
+    if len(h[j].indices) == 0 || h[j].indices[0] >= len(h[j].items) {
+        return true
+    }
     return h[i].items[h[i].indices[0]] < h[j].items[h[j].indices[0]]
 }
 func (h chunkHeap) Swap(i, j int) { h[i], h[j] = h[j], h[i] }
@@ -248,6 +255,10 @@ func (noopMetrics) RecordCounter(string, int64, ...string)          {}
 func (noopMetrics) RecordGauge(string, int64, ...string)            {}
 
 func NewFetcher(config Config, cache *DiskCache, logger *slog.Logger, metrics Metrics) *Fetcher {
+    if metrics == nil {
+        metrics = noopMetrics{}
+    }
+    
     transport := &http.Transport{
         MaxIdleConns:        defaultMaxIdleConns,
         MaxConnsPerHost:     defaultMaxConnsPerHost,
@@ -362,18 +373,16 @@ func (f *Fetcher) fetchSource(ctx context.Context, sourceURL string) ([]string, 
         return nil, "", fmt.Errorf("HTTP %d", resp.StatusCode)
     }
 
-    var reader io.Reader = resp.Body
+    var reader io.Reader
+    reader = io.LimitReader(resp.Body, f.config.MaxResponseSize)
+    
     if f.config.EnableGZIP && resp.Header.Get("Content-Encoding") == "gzip" {
-        limitReader := io.LimitReader(resp.Body, f.config.MaxResponseSize)
-        gzReader, err := gzip.NewReader(limitReader)
+        gzReader, err := gzip.NewReader(reader)
         if err != nil {
             return nil, "", err
         }
         defer gzReader.Close()
-
         reader = io.LimitReader(gzReader, maxDecompressedSize)
-    } else {
-        reader = io.LimitReader(reader, f.config.MaxResponseSize)
     }
 
     scanner := bufio.NewScanner(reader)
@@ -467,6 +476,9 @@ type Sorter struct {
 }
 
 func NewSorter(config Config, logger *slog.Logger, metrics Metrics) *Sorter {
+    if metrics == nil {
+        metrics = noopMetrics{}
+    }
     return &Sorter{config: config, logger: logger, metrics: metrics}
 }
 
@@ -552,15 +564,24 @@ func (s *Sorter) writeShards(domains []string, tempDir string) ([]string, error)
     }
 
     for _, domain := range domains {
-        hash := sha256.Sum256([]byte(domain))
-        shardIdx := int(binary.LittleEndian.Uint32(hash[:4])) % s.config.ShardCount
-        shardWriters[shardIdx].WriteString(domain)
-        shardWriters[shardIdx].WriteByte('\n')
+        hasher := fnv.New32a()
+        hasher.Write([]byte(domain))
+        shardIdx := int(hasher.Sum32()) % s.config.ShardCount
+        if _, err := shardWriters[shardIdx].WriteString(domain); err != nil {
+            return nil, err
+        }
+        if err := shardWriters[shardIdx].WriteByte('\n'); err != nil {
+            return nil, err
+        }
     }
 
     for i := 0; i < s.config.ShardCount; i++ {
-        shardWriters[i].Flush()
-        shardFiles[i].Close()
+        if err := shardWriters[i].Flush(); err != nil {
+            return nil, err
+        }
+        if err := shardFiles[i].Close(); err != nil {
+            return nil, err
+        }
     }
 
     return shardPaths, nil
@@ -577,15 +598,20 @@ func (s *Sorter) sortShardsConcurrently(shardPaths []string, tempDir string) ([]
             defer wg.Done()
             sortedPath, err := s.sortShard(shardPaths[idx], tempDir, idx)
             if err != nil {
-                errCh <- err
+                select {
+                case errCh <- err:
+                default:
+                }
                 return
             }
             sortedShards[idx] = sortedPath
         }(i)
     }
 
-    wg.Wait()
-    close(errCh)
+    go func() {
+        wg.Wait()
+        close(errCh)
+    }()
 
     for err := range errCh {
         if err != nil {
@@ -688,8 +714,12 @@ func (s *Sorter) mergeChunks(chunks [][]string, tempDir string, shardIdx int) (s
         currentDomain := current.items[current.indices[0]]
 
         if currentDomain != previousDomain {
-            writer.WriteString(currentDomain)
-            writer.WriteByte('\n')
+            if _, err := writer.WriteString(currentDomain); err != nil {
+                return "", err
+            }
+            if err := writer.WriteByte('\n'); err != nil {
+                return "", err
+            }
             previousDomain = currentDomain
         }
 
@@ -759,8 +789,12 @@ func (s *Sorter) mergeShards(shardPaths []string, outputPath string) error {
         item := heap.Pop(h).(mergeItem)
 
         if item.domain != previousDomain {
-            writer.WriteString(item.domain)
-            writer.WriteByte('\n')
+            if _, err := writer.WriteString(item.domain); err != nil {
+                return err
+            }
+            if err := writer.WriteByte('\n'); err != nil {
+                return err
+            }
             previousDomain = item.domain
         }
 
@@ -906,8 +940,12 @@ func run() error {
 
         for _, domain := range result.Domains {
             if domainSet.Add(domain) {
-                writer.WriteString(domain)
-                writer.WriteByte('\n')
+                if _, err := writer.WriteString(domain); err != nil {
+                    return err
+                }
+                if err := writer.WriteByte('\n'); err != nil {
+                    return err
+                }
             }
         }
         logger.InfoContext(ctxTimeout, "source processed", "source", filepath.Base(result.Source), "total", len(result.Domains))
