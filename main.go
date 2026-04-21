@@ -51,9 +51,6 @@ const (
     defaultSortTempPattern     = "sort_*"
     defaultShardPattern        = "shard_%d_*.tmp"
     defaultSortedShardPattern  = "sorted_%d.tmp"
-    // Добавлены константы для цикла обновления
-    defaultUpdateInterval      = 6 * time.Hour  // Интервал обновления по умолчанию (6 часов)
-    defaultUpdateIntervalEnv   = "BLOCKLIST_UPDATE_INTERVAL"
 )
 
 var (
@@ -79,7 +76,6 @@ type Config struct {
     EnableGZIP       bool
     ShardCount       int
     ChunkSize        int
-    UpdateInterval   time.Duration // Добавлен интервал обновления
 }
 
 type DomainSet struct {
@@ -833,7 +829,6 @@ func loadConfigFromEnv() Config {
         EnableGZIP:       true,
         ShardCount:       defaultShardCount,
         ChunkSize:        defaultChunkSize,
-        UpdateInterval:   defaultUpdateInterval,
     }
 
     if v := os.Getenv("BLOCKLIST_OUTPUT"); v != "" {
@@ -850,11 +845,6 @@ func loadConfigFromEnv() Config {
     if v := os.Getenv("BLOCKLIST_SHARDS"); v != "" {
         if count, err := strconv.Atoi(v); err == nil && count > 0 {
             config.ShardCount = count
-        }
-    }
-    if v := os.Getenv(defaultUpdateIntervalEnv); v != "" {
-        if hours, err := strconv.Atoi(v); err == nil && hours > 0 {
-            config.UpdateInterval = time.Duration(hours) * time.Hour
         }
     }
 
@@ -891,7 +881,7 @@ func run() error {
     ctxTimeout, cancelTimeout := context.WithTimeout(ctx, config.TotalTimeout)
     defer cancelTimeout()
 
-    logger.InfoContext(ctxTimeout, "starting blocklist generator", "version", "6.0", "update_interval", config.UpdateInterval)
+    logger.InfoContext(ctxTimeout, "starting blocklist generator", "version", "6.0")
 
     fetcher := NewFetcher(config, cache, logger, metrics)
     results := make(chan FetchResult, len(config.Sources))
@@ -1000,69 +990,24 @@ func run() error {
     return nil
 }
 
-func runWithScheduler() {
-    config := loadConfigFromEnv()
-    
-    fmt.Printf("========================================\n")
-    fmt.Printf("Blocklist Generator - Continuous Mode\n")
-    fmt.Printf("Update interval: %v\n", config.UpdateInterval)
-    fmt.Printf("Next update: %v\n", time.Now().Add(config.UpdateInterval).Format("2006-01-02 15:04:05"))
-    fmt.Printf("========================================\n\n")
-    
-    // Обработка сигналов для graceful shutdown
-    sigChan := make(chan os.Signal, 1)
-    signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-    
-    // Счетчик успешных обновлений
-    updateCount := 0
-    
-    // Бесконечный цикл обновлений
-    for {
-        updateCount++
-        fmt.Printf("[%s] Starting update #%d\n", time.Now().Format("2006-01-02 15:04:05"), updateCount)
-        
-        startTime := time.Now()
-        if err := run(); err != nil {
-            fmt.Printf("[ERROR] Update #%d failed: %v\n", updateCount, err)
-        } else {
-            duration := time.Since(startTime).Round(time.Second)
-            fmt.Printf("[SUCCESS] Update #%d completed in %v\n", updateCount, duration)
-        }
-        
-        // Проверяем, не пришел ли сигнал завершения
-        select {
-        case <-sigChan:
-            fmt.Printf("\n[INFO] Shutdown signal received, exiting...\n")
-            fmt.Printf("[INFO] Total updates performed: %d\n", updateCount)
-            return
-        default:
-        }
-        
-        // Ожидаем следующий интервал обновления
-        nextUpdate := time.Now().Add(config.UpdateInterval)
-        fmt.Printf("[%s] Next update scheduled at: %s\n", 
-            time.Now().Format("2006-01-02 15:04:05"),
-            nextUpdate.Format("2006-01-02 15:04:05"))
-        
-        // Таймер с возможностью прерывания
-        timer := time.NewTimer(config.UpdateInterval)
-        select {
-        case <-timer.C:
-            // Время вышло, продолжаем цикл
-        case <-sigChan:
-            timer.Stop()
-            fmt.Printf("\n[INFO] Shutdown signal received, exiting...\n")
-            fmt.Printf("[INFO] Total updates performed: %d\n", updateCount)
-            return
-        }
-    }
-}
-
 func main() {
     startTime := time.Now()
 
-    // Запускаем с шедулером (бесконечный цикл)
-    runWithScheduler()
-    
-    fmt.Printf("Total runtime: %v\n", time.Since(startTime).Round(time.Second))
+    done := make(chan error, 1)
+    go func() {
+        done <- run()
+    }()
+
+    select {
+    case err := <-done:
+        if err != nil {
+            fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+            os.Exit(1)
+        }
+    case <-time.After(gracefulShutdownTimeout):
+        fmt.Fprintf(os.Stderr, "Graceful shutdown timeout exceeded\n")
+        os.Exit(1)
+    }
+
+    fmt.Printf("Time: %v\n", time.Since(startTime).Round(time.Millisecond))
 }
