@@ -29,18 +29,6 @@ import (
     "time"
 )
 
-// ============================================================================
-// БЛОКЛИСТ ГЕНЕРАТОР v6.1 - БЕЗ ВНЕШНИХ ЗАВИСИМОСТЕЙ
-// ============================================================================
-// ЗАПУСК:
-//   1. Сохраните код как main.go
-//   2. go build -o blocklist main.go
-//   3. ./blocklist
-//
-// ИЛИ ПРЯМОЙ ЗАПУСК:
-//   go run main.go
-// ============================================================================
-
 const (
     defaultBufferSize          = 256 * 1024
     externalSortThreshold      = 500000
@@ -64,7 +52,6 @@ const (
     defaultSortTempPattern     = "sort_*"
     defaultShardPattern        = "shard_%d_*.tmp"
     defaultSortedShardPattern  = "sorted_%d.tmp"
-    maxOpenFilesPerMerge       = 50
 )
 
 var (
@@ -74,7 +61,6 @@ var (
 )
 
 func init() {
-    // Private IP ranges для защиты от SSRF
     for _, cidr := range []string{
         "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16",
         "127.0.0.0/8", "169.254.0.0/16", "::1/128", "fc00::/7", "fe80::/10",
@@ -262,26 +248,11 @@ type Fetcher struct {
     cache   *DiskCache
     client  *http.Client
     logger  *slog.Logger
-    metrics Metrics
-}
-
-type Metrics interface {
-    RecordDuration(name string, duration time.Duration, labels ...string)
-    RecordCounter(name string, value int64, labels ...string)
-    RecordGauge(name string, value int64, labels ...string)
 }
 
 type noopMetrics struct{}
 
-func (noopMetrics) RecordDuration(string, time.Duration, ...string) {}
-func (noopMetrics) RecordCounter(string, int64, ...string)          {}
-func (noopMetrics) RecordGauge(string, int64, ...string)            {}
-
-func NewFetcher(config Config, cache *DiskCache, logger *slog.Logger, metrics Metrics) *Fetcher {
-    if metrics == nil {
-        metrics = noopMetrics{}
-    }
-    
+func NewFetcher(config Config, cache *DiskCache, logger *slog.Logger) *Fetcher {
     transport := &http.Transport{
         MaxIdleConns:        defaultMaxIdleConns,
         MaxConnsPerHost:     defaultMaxConnsPerHost,
@@ -299,19 +270,15 @@ func NewFetcher(config Config, cache *DiskCache, logger *slog.Logger, metrics Me
             if len(via) >= 10 {
                 return fmt.Errorf("too many redirects")
             }
-            if err := isSafeURL(req.URL.String()); err != nil {
-                return err
-            }
-            return nil
+            return isSafeURL(req.URL.String())
         },
     }
     
     return &Fetcher{
-        config:  config,
-        cache:   cache,
-        logger:  logger,
-        metrics: metrics,
-        client:  client,
+        config: config,
+        cache:  cache,
+        logger: logger,
+        client: client,
     }
 }
 
@@ -328,7 +295,7 @@ func isSafeURL(rawURL string) error {
     host := parsed.Hostname()
     ips, err := net.LookupIP(host)
     if err != nil {
-        return fmt.Errorf("failed to resolve host: %w", err)
+        return nil
     }
     
     for _, ip := range ips {
@@ -345,16 +312,18 @@ func isSafeURL(rawURL string) error {
 func normalizeDomain(domain string) (string, error) {
     domain = strings.ToLower(strings.TrimSuffix(domain, "."))
     
-    // Проверка на не-ASCII символы (IDN protection)
     for _, r := range domain {
         if r > 127 {
             return "", fmt.Errorf("non-ASCII domain rejected: %s", domain)
         }
     }
     
-    // Защита от path traversal
     if strings.Contains(domain, "..") || strings.ContainsAny(domain, "/\\") {
         return "", fmt.Errorf("invalid domain path: %s", domain)
+    }
+    
+    if len(domain) > defaultMaxDomainLength {
+        return "", fmt.Errorf("domain too long: %d", len(domain))
     }
     
     return domain, nil
@@ -394,9 +363,7 @@ func (f *Fetcher) Fetch(ctx context.Context, sourceURL string) ([]string, error)
             }
         }
 
-        start := time.Now()
         domains, etag, err := f.fetchSource(ctx, sourceURL)
-        f.metrics.RecordDuration("fetch", time.Since(start), "url", sourceURL)
 
         if err == nil {
             if f.config.EnableCache && f.cache != nil {
@@ -408,13 +375,10 @@ func (f *Fetcher) Fetch(ctx context.Context, sourceURL string) ([]string, error)
                     f.logger.ErrorContext(ctx, "failed to cache", "error", err, "url", sourceURL)
                 }
             }
-            f.metrics.RecordCounter("fetch_success", 1, "url", sourceURL)
-            f.metrics.RecordGauge("domains_fetched", int64(len(domains)), "url", sourceURL)
             return domains, nil
         }
 
         lastErr = err
-        f.metrics.RecordCounter("fetch_errors", 1, "url", sourceURL, "attempt", strconv.Itoa(attempt))
         f.logger.ErrorContext(ctx, "fetch attempt failed", "error", err, "url", sourceURL, "attempt", attempt)
     }
 
@@ -427,7 +391,7 @@ func (f *Fetcher) fetchSource(ctx context.Context, sourceURL string) ([]string, 
         return nil, "", err
     }
 
-    req.Header.Set("User-Agent", "blocklist-generator/6.1")
+    req.Header.Set("User-Agent", "blocklist-generator/6.3")
     if f.config.EnableGZIP {
         req.Header.Set("Accept-Encoding", "gzip")
     }
@@ -483,7 +447,7 @@ func (f *Fetcher) fetchSource(ctx context.Context, sourceURL string) ([]string, 
             continue
         }
 
-        if !isValidDomain(normalized, f.config.MaxDomainLength) {
+        if !isValidDomain(normalized) {
             continue
         }
 
@@ -524,8 +488,8 @@ func extractDomain(line string) string {
     return domain
 }
 
-func isValidDomain(domain string, maxLength int) bool {
-    if len(domain) == 0 || len(domain) > maxLength {
+func isValidDomain(domain string) bool {
+    if len(domain) == 0 || len(domain) > defaultMaxDomainLength {
         return false
     }
 
@@ -545,17 +509,13 @@ func isValidDomain(domain string, maxLength int) bool {
 }
 
 type Sorter struct {
-    config  Config
-    logger  *slog.Logger
-    metrics Metrics
-    ctx     context.Context
+    config Config
+    logger *slog.Logger
+    ctx    context.Context
 }
 
-func NewSorter(config Config, logger *slog.Logger, metrics Metrics) *Sorter {
-    if metrics == nil {
-        metrics = noopMetrics{}
-    }
-    return &Sorter{config: config, logger: logger, metrics: metrics}
+func NewSorter(config Config, logger *slog.Logger) *Sorter {
+    return &Sorter{config: config, logger: logger}
 }
 
 func (s *Sorter) Sort(ctx context.Context, domains []string, outputPath string) error {
@@ -563,11 +523,6 @@ func (s *Sorter) Sort(ctx context.Context, domains []string, outputPath string) 
     if len(domains) == 0 {
         return fmt.Errorf("no domains to sort")
     }
-
-    start := time.Now()
-    defer func() {
-        s.metrics.RecordDuration("sort", time.Since(start), "domains", strconv.Itoa(len(domains)))
-    }()
 
     if len(domains) > externalSortThreshold {
         s.logger.DebugContext(ctx, "using external sort", "domains", len(domains))
@@ -632,7 +587,7 @@ func (s *Sorter) externalSort(domains []string, outputPath string) error {
         return err
     }
 
-    return s.mergeShards(sortedShards, outputPath)
+    return s.mergeShardsStreaming(sortedShards, outputPath)
 }
 
 func (s *Sorter) writeShards(domains []string, tempDir string) ([]string, error) {
@@ -732,7 +687,7 @@ func (s *Sorter) sortShard(inputPath, tempDir string, shardIdx int) (string, err
     }
 
     if len(chunks) == 0 {
-        return s.writeEmptyShard(tempDir, shardIdx)
+        return "", nil
     }
 
     if len(chunks) == 1 {
@@ -773,14 +728,6 @@ func (s *Sorter) loadAndSortChunks(inputFile *os.File) ([][]string, error) {
     }
 
     return chunks, scanner.Err()
-}
-
-func (s *Sorter) writeEmptyShard(tempDir string, shardIdx int) (string, error) {
-    outputPath := filepath.Join(tempDir, fmt.Sprintf("empty_%d.tmp", shardIdx))
-    if err := os.WriteFile(outputPath, []byte{}, 0600); err != nil {
-        return "", err
-    }
-    return outputPath, nil
 }
 
 func (s *Sorter) writeSingleChunk(chunk []string, tempDir string, shardIdx int) (string, error) {
@@ -844,12 +791,14 @@ func (s *Sorter) mergeChunks(chunks [][]string, tempDir string, shardIdx int) (s
     return outputPath, nil
 }
 
-func (s *Sorter) mergeShards(shardPaths []string, outputPath string) error {
+func (s *Sorter) mergeShardsStreaming(shardPaths []string, outputPath string) error {
     var validPaths []string
     for _, path := range shardPaths {
-        info, err := os.Stat(path)
-        if err == nil && info.Size() > 0 {
-            validPaths = append(validPaths, path)
+        if path != "" {
+            info, err := os.Stat(path)
+            if err == nil && info.Size() > 0 {
+                validPaths = append(validPaths, path)
+            }
         }
     }
 
@@ -870,43 +819,63 @@ func (s *Sorter) mergeShards(shardPaths []string, outputPath string) error {
     writer := bufio.NewWriterSize(outputFile, s.config.BufferSize)
     defer writer.Flush()
     
-    allDomains := make([]string, 0)
+    type shardReader struct {
+        file    *os.File
+        scanner *bufio.Scanner
+        valid   bool
+        current string
+    }
+    
+    readers := make([]*shardReader, 0, len(validPaths))
     for _, path := range validPaths {
         file, err := os.Open(path)
         if err != nil {
             return err
         }
+        defer file.Close()
         
         scanner := bufio.NewScanner(file)
-        for scanner.Scan() {
-            select {
-            case <-s.ctx.Done():
-                file.Close()
-                return s.ctx.Err()
-            default:
-            }
-            allDomains = append(allDomains, scanner.Text())
-        }
-        file.Close()
-        os.Remove(path)
-        
-        if err := scanner.Err(); err != nil {
-            return err
+        sr := &shardReader{file: file, scanner: scanner, valid: true}
+        if scanner.Scan() {
+            sr.current = scanner.Text()
+            readers = append(readers, sr)
+        } else {
+            file.Close()
+            os.Remove(path)
         }
     }
     
-    sort.Strings(allDomains)
-    
-    var previous string
-    for _, domain := range allDomains {
-        if domain != previous {
-            if _, err := writer.WriteString(domain); err != nil {
+    var previousDomain string
+    for len(readers) > 0 {
+        select {
+        case <-s.ctx.Done():
+            return s.ctx.Err()
+        default:
+        }
+        
+        sort.Slice(readers, func(i, j int) bool {
+            return readers[i].current < readers[j].current
+        })
+        
+        smallest := readers[0]
+        
+        if smallest.current != previousDomain {
+            if _, err := writer.WriteString(smallest.current); err != nil {
                 return err
             }
             if err := writer.WriteByte('\n'); err != nil {
                 return err
             }
-            previous = domain
+            previousDomain = smallest.current
+        }
+        
+        if smallest.scanner.Scan() {
+            smallest.current = smallest.scanner.Text()
+        } else {
+            smallest.file.Close()
+            os.Remove(validPaths[0])
+            readers = readers[1:]
+            validPaths = validPaths[1:]
         }
     }
     
@@ -914,59 +883,78 @@ func (s *Sorter) mergeShards(shardPaths []string, outputPath string) error {
 }
 
 func loadConfigFromEnv() Config {
-    config := Config{
-        Sources: []string{
+    sourcesStr := os.Getenv("BLOCKLIST_SOURCES")
+    var sources []string
+    if sourcesStr != "" {
+        sources = strings.Split(sourcesStr, ",")
+    } else {
+        sources = []string{
             "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts",
             "https://someonewhocares.org/hosts/zero/hosts",
             "https://raw.githubusercontent.com/anudeepND/blacklist/master/adservers.txt",
-            "https://raw.githubusercontent.com/PolishFiltersTeam/KADhosts/master/KADhosts.txt",
-        },
-        OutputFile:       "blocklist.txt",
-        TempDir:          "",
-        MaxResponseSize:  defaultMaxResponseSize,
+        }
+    }
+    
+    config := Config{
+        Sources:          sources,
+        OutputFile:       getEnv("BLOCKLIST_OUTPUT", "blocklist.txt"),
+        TempDir:          getEnv("BLOCKLIST_TEMP_DIR", ""),
+        MaxResponseSize:  getEnvInt64("BLOCKLIST_MAX_RESPONSE_SIZE_MB", defaultMaxResponseSize) * 1024 * 1024,
         MaxDomainLength:  defaultMaxDomainLength,
-        RequestTimeout:   defaultRequestTimeout,
-        TotalTimeout:     defaultTotalTimeout,
-        RateLimitDelay:   defaultRateLimitDelay,
-        MaxRetries:       defaultMaxRetries,
-        RetryBackoffBase: defaultRetryBackoffBase,
-        WorkerCount:      defaultWorkerCount,
-        BufferSize:       defaultBufferSize,
-        EnableCache:      true,
-        CacheTTL:         defaultCacheTTL,
-        EnableGZIP:       true,
-        ShardCount:       defaultShardCount,
-        ChunkSize:        defaultChunkSize,
+        RequestTimeout:   time.Duration(getEnvInt("BLOCKLIST_REQUEST_TIMEOUT_SEC", int(defaultRequestTimeout.Seconds()))) * time.Second,
+        TotalTimeout:     time.Duration(getEnvInt("BLOCKLIST_TIMEOUT_MIN", int(defaultTotalTimeout.Minutes()))) * time.Minute,
+        RateLimitDelay:   time.Duration(getEnvInt("BLOCKLIST_RATE_LIMIT_MS", int(defaultRateLimitDelay.Milliseconds()))) * time.Millisecond,
+        MaxRetries:       getEnvInt("BLOCKLIST_MAX_RETRIES", defaultMaxRetries),
+        RetryBackoffBase: time.Duration(getEnvInt("BLOCKLIST_RETRY_BACKOFF_SEC", int(defaultRetryBackoffBase.Seconds()))) * time.Second,
+        WorkerCount:      getEnvInt("BLOCKLIST_WORKERS", defaultWorkerCount),
+        BufferSize:       getEnvInt("BLOCKLIST_BUFFER_SIZE_KB", defaultBufferSize/1024) * 1024,
+        EnableCache:      getEnvBool("BLOCKLIST_ENABLE_CACHE", true),
+        CacheTTL:         time.Duration(getEnvInt("BLOCKLIST_CACHE_TTL_HOURS", int(defaultCacheTTL.Hours()))) * time.Hour,
+        EnableGZIP:       getEnvBool("BLOCKLIST_ENABLE_GZIP", true),
+        ShardCount:       getEnvInt("BLOCKLIST_SHARDS", defaultShardCount),
+        ChunkSize:        getEnvInt("BLOCKLIST_CHUNK_SIZE", defaultChunkSize),
     }
-
-    if v := os.Getenv("BLOCKLIST_OUTPUT"); v != "" {
-        config.OutputFile = v
+    
+    if config.ShardCount > 1000 {
+        config.ShardCount = 1000
     }
-    if v := os.Getenv("BLOCKLIST_TEMP_DIR"); v != "" {
-        config.TempDir = v
+    if config.ShardCount < 10 {
+        config.ShardCount = 10
     }
-    if v := os.Getenv("BLOCKLIST_WORKERS"); v != "" {
-        if count, err := strconv.Atoi(v); err == nil && count > 0 {
-            config.WorkerCount = count
-        }
-    }
-    if v := os.Getenv("BLOCKLIST_SHARDS"); v != "" {
-        if count, err := strconv.Atoi(v); err == nil && count > 0 && count <= 1000 {
-            config.ShardCount = count
-        }
-    }
-    if v := os.Getenv("BLOCKLIST_MAX_RESPONSE_SIZE_MB"); v != "" {
-        if mb, err := strconv.ParseInt(v, 10, 64); err == nil && mb > 0 {
-            config.MaxResponseSize = mb * 1024 * 1024
-        }
-    }
-    if v := os.Getenv("BLOCKLIST_TIMEOUT_MIN"); v != "" {
-        if min, err := strconv.Atoi(v); err == nil && min > 0 {
-            config.TotalTimeout = time.Duration(min) * time.Minute
-        }
-    }
-
+    
     return config
+}
+
+func getEnv(key, defaultValue string) string {
+    if value := os.Getenv(key); value != "" {
+        return value
+    }
+    return defaultValue
+}
+
+func getEnvInt(key string, defaultValue int) int {
+    if value := os.Getenv(key); value != "" {
+        if intValue, err := strconv.Atoi(value); err == nil && intValue > 0 {
+            return intValue
+        }
+    }
+    return defaultValue
+}
+
+func getEnvInt64(key string, defaultValue int64) int64 {
+    if value := os.Getenv(key); value != "" {
+        if intValue, err := strconv.ParseInt(value, 10, 64); err == nil && intValue > 0 {
+            return intValue
+        }
+    }
+    return defaultValue
+}
+
+func getEnvBool(key string, defaultValue bool) bool {
+    if value := os.Getenv(key); value != "" {
+        return strings.ToLower(value) == "true" || value == "1"
+    }
+    return defaultValue
 }
 
 func run() error {
@@ -974,7 +962,6 @@ func run() error {
     defer cancel()
 
     logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
-    metrics := noopMetrics{}
 
     config := loadConfigFromEnv()
 
@@ -1004,15 +991,24 @@ func run() error {
     ctxTimeout, cancelTimeout := context.WithTimeout(ctx, config.TotalTimeout)
     defer cancelTimeout()
 
-    logger.InfoContext(ctxTimeout, "starting blocklist generator", "version", "6.1")
+    logger.InfoContext(ctxTimeout, "starting blocklist generator", "version", "6.3")
 
-    fetcher := NewFetcher(config, cache, logger, metrics)
+    fetcher := NewFetcher(config, cache, logger)
     results := make(chan FetchResult, len(config.Sources))
 
     var wg sync.WaitGroup
     sem := make(chan struct{}, config.WorkerCount)
-
+    
+    sourceSet := make(map[string]bool)
+    uniqueSources := make([]string, 0, len(config.Sources))
     for _, source := range config.Sources {
+        if !sourceSet[source] {
+            sourceSet[source] = true
+            uniqueSources = append(uniqueSources, source)
+        }
+    }
+
+    for _, source := range uniqueSources {
         wg.Add(1)
         go func(url string) {
             defer wg.Done()
@@ -1061,7 +1057,7 @@ func run() error {
 
     for result := range results {
         if result.Err != nil {
-            logger.ErrorContext(ctxTimeout, "source failed", "error", result.Err, "source", filepath.Base(result.Source))
+            logger.ErrorContext(ctxTimeout, "source failed", "error", result.Err, "source", result.Source)
             continue
         }
 
@@ -1076,7 +1072,7 @@ func run() error {
             }
         }
         totalFetched += len(result.Domains)
-        logger.InfoContext(ctxTimeout, "source processed", "source", filepath.Base(result.Source), 
+        logger.InfoContext(ctxTimeout, "source processed", "source", result.Source, 
             "new_domains", len(result.Domains), "total_unique", domainSet.Size())
     }
 
@@ -1091,7 +1087,7 @@ func run() error {
 
     logger.InfoContext(ctxTimeout, "unique domains collected", "count", totalUnique, "total_fetched", totalFetched)
 
-    sorter := NewSorter(config, logger, metrics)
+    sorter := NewSorter(config, logger)
     if err := sorter.Sort(ctxTimeout, domainSet.Slice(), config.OutputFile); err != nil {
         return err
     }
