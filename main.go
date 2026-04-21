@@ -250,8 +250,6 @@ type Fetcher struct {
     logger  *slog.Logger
 }
 
-type noopMetrics struct{}
-
 func NewFetcher(config Config, cache *DiskCache, logger *slog.Logger) *Fetcher {
     transport := &http.Transport{
         MaxIdleConns:        defaultMaxIdleConns,
@@ -822,26 +820,27 @@ func (s *Sorter) mergeShardsStreaming(shardPaths []string, outputPath string) er
     type shardReader struct {
         file    *os.File
         scanner *bufio.Scanner
-        valid   bool
         current string
     }
     
-    readers := make([]*shardReader, 0, len(validPaths))
-    for _, path := range validPaths {
+    readers := make([]*shardReader, 0)
+    for i, path := range validPaths {
         file, err := os.Open(path)
         if err != nil {
             return err
         }
-        defer file.Close()
         
         scanner := bufio.NewScanner(file)
-        sr := &shardReader{file: file, scanner: scanner, valid: true}
         if scanner.Scan() {
-            sr.current = scanner.Text()
-            readers = append(readers, sr)
+            readers = append(readers, &shardReader{
+                file:    file,
+                scanner: scanner,
+                current: scanner.Text(),
+            })
         } else {
             file.Close()
             os.Remove(path)
+            validPaths = append(validPaths[:i], validPaths[i+1:]...)
         }
     }
     
@@ -873,10 +872,12 @@ func (s *Sorter) mergeShardsStreaming(shardPaths []string, outputPath string) er
             smallest.current = smallest.scanner.Text()
         } else {
             smallest.file.Close()
-            os.Remove(validPaths[0])
             readers = readers[1:]
-            validPaths = validPaths[1:]
         }
+    }
+    
+    for _, path := range validPaths {
+        os.Remove(path)
     }
     
     return nil
@@ -899,7 +900,7 @@ func loadConfigFromEnv() Config {
         Sources:          sources,
         OutputFile:       getEnv("BLOCKLIST_OUTPUT", "blocklist.txt"),
         TempDir:          getEnv("BLOCKLIST_TEMP_DIR", ""),
-        MaxResponseSize:  getEnvInt64("BLOCKLIST_MAX_RESPONSE_SIZE_MB", defaultMaxResponseSize) * 1024 * 1024,
+        MaxResponseSize:  getEnvInt64("BLOCKLIST_MAX_RESPONSE_SIZE_MB", defaultMaxResponseSize/1024/1024) * 1024 * 1024,
         MaxDomainLength:  defaultMaxDomainLength,
         RequestTimeout:   time.Duration(getEnvInt("BLOCKLIST_REQUEST_TIMEOUT_SEC", int(defaultRequestTimeout.Seconds()))) * time.Second,
         TotalTimeout:     time.Duration(getEnvInt("BLOCKLIST_TIMEOUT_MIN", int(defaultTotalTimeout.Minutes()))) * time.Minute,
