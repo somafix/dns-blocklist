@@ -27,23 +27,18 @@ import (
     "sync"
     "syscall"
     "time"
-
-    "golang.org/x/net/idna"
 )
 
 // ============================================================================
-// ИНСТРУКЦИЯ ПО ЗАПУСКУ:
+// БЛОКЛИСТ ГЕНЕРАТОР v6.1 - БЕЗ ВНЕШНИХ ЗАВИСИМОСТЕЙ
 // ============================================================================
-// 1. Установите Go 1.21+
-// 2. Установите зависимость: go get golang.org/x/net/idna
-// 3. Создайте файл .env или установите переменные окружения:
-//    BLOCKLIST_OUTPUT=/path/to/output.txt
-//    BLOCKLIST_WORKERS=8
-//    BLOCKLIST_SHARDS=200
-//    BLOCKLIST_TEMP_DIR=/tmp/blocklist
-//    BLOCKLIST_MAX_RESPONSE_SIZE_MB=100
-//    BLOCKLIST_TIMEOUT_MIN=10
-// 4. Запуск: go run blocklist.go
+// ЗАПУСК:
+//   1. Сохраните код как main.go
+//   2. go build -o blocklist main.go
+//   3. ./blocklist
+//
+// ИЛИ ПРЯМОЙ ЗАПУСК:
+//   go run main.go
 // ============================================================================
 
 const (
@@ -165,7 +160,7 @@ func NewDiskCache(dir string, ttl time.Duration) (*DiskCache, error) {
 
 func (c *DiskCache) keyPath(key string) string {
     hash := sha256.Sum256([]byte(key))
-    return filepath.Join(c.dir, hex.EncodeToString(hash[:])+".gob")
+    return filepath.Join(c.dir, hex.EncodeToString(hash[:]) + ".gob")
 }
 
 func (c *DiskCache) Get(key string) (*CacheEntry, error) {
@@ -203,7 +198,6 @@ func (c *DiskCache) Set(key string, entry *CacheEntry) error {
     }
     defer file.Close()
     
-    // Security: restrict file permissions
     if err := os.Chmod(path, 0600); err != nil {
         return err
     }
@@ -301,7 +295,6 @@ func NewFetcher(config Config, cache *DiskCache, logger *slog.Logger, metrics Me
     client := &http.Client{
         Timeout:   config.RequestTimeout,
         Transport: transport,
-        // Security: защита от SSRF через редиректы
         CheckRedirect: func(req *http.Request, via []*http.Request) error {
             if len(via) >= 10 {
                 return fmt.Errorf("too many redirects")
@@ -332,7 +325,6 @@ func isSafeURL(rawURL string) error {
         return fmt.Errorf("unsupported scheme: %s", parsed.Scheme)
     }
     
-    // Security: проверка на private IPs
     host := parsed.Hostname()
     ips, err := net.LookupIP(host)
     if err != nil {
@@ -353,13 +345,19 @@ func isSafeURL(rawURL string) error {
 func normalizeDomain(domain string) (string, error) {
     domain = strings.ToLower(strings.TrimSuffix(domain, "."))
     
-    // Security: IDN normalization
-    normalized, err := idna.ToASCII(domain)
-    if err != nil {
-        return "", err
+    // Проверка на не-ASCII символы (IDN protection)
+    for _, r := range domain {
+        if r > 127 {
+            return "", fmt.Errorf("non-ASCII domain rejected: %s", domain)
+        }
     }
     
-    return normalized, nil
+    // Защита от path traversal
+    if strings.Contains(domain, "..") || strings.ContainsAny(domain, "/\\") {
+        return "", fmt.Errorf("invalid domain path: %s", domain)
+    }
+    
+    return domain, nil
 }
 
 func (f *Fetcher) Fetch(ctx context.Context, sourceURL string) ([]string, error) {
@@ -429,7 +427,7 @@ func (f *Fetcher) fetchSource(ctx context.Context, sourceURL string) ([]string, 
         return nil, "", err
     }
 
-    req.Header.Set("User-Agent", "blocklist-generator/6.0")
+    req.Header.Set("User-Agent", "blocklist-generator/6.1")
     if f.config.EnableGZIP {
         req.Header.Set("Accept-Encoding", "gzip")
     }
@@ -480,7 +478,6 @@ func (f *Fetcher) fetchSource(ctx context.Context, sourceURL string) ([]string, 
             continue
         }
 
-        // Normalize domain (IDN, lowercase)
         normalized, err := normalizeDomain(domain)
         if err != nil {
             continue
@@ -504,14 +501,12 @@ func (f *Fetcher) fetchSource(ctx context.Context, sourceURL string) ([]string, 
 }
 
 func extractDomain(line string) string {
-    // Поддержка табуляции и пробелов
     fields := strings.Fields(line)
     if len(fields) == 0 {
         return ""
     }
 
     var domain string
-    // Поддержка формата "0.0.0.0 domain.com" и "127.0.0.1 domain.com"
     if len(fields) >= 2 && (fields[0] == "0.0.0.0" || fields[0] == "127.0.0.1") {
         domain = fields[1]
     } else if len(fields) == 1 && strings.Contains(fields[0], ".") && !ipPattern.MatchString(fields[0]) {
@@ -520,10 +515,8 @@ func extractDomain(line string) string {
         return ""
     }
 
-    // Удаление trailing dot
     domain = strings.TrimSuffix(domain, ".")
     
-    // Защита от path traversal
     if strings.Contains(domain, "..") || strings.ContainsAny(domain, "/\\") {
         return ""
     }
@@ -852,7 +845,6 @@ func (s *Sorter) mergeChunks(chunks [][]string, tempDir string, shardIdx int) (s
 }
 
 func (s *Sorter) mergeShards(shardPaths []string, outputPath string) error {
-    // Filter non-empty shards
     var validPaths []string
     for _, path := range shardPaths {
         info, err := os.Stat(path)
@@ -865,18 +857,6 @@ func (s *Sorter) mergeShards(shardPaths []string, outputPath string) error {
         return fmt.Errorf("no data to merge")
     }
 
-    // Batch processing to avoid too many open files
-    type fileScanner struct {
-        file    *os.File
-        scanner *bufio.Scanner
-    }
-    
-    var batchSize := maxOpenFilesPerMerge
-    if len(validPaths) < batchSize {
-        batchSize = len(validPaths)
-    }
-    
-    // Process in batches
     outputFile, err := os.Create(outputPath)
     if err != nil {
         return err
@@ -890,7 +870,6 @@ func (s *Sorter) mergeShards(shardPaths []string, outputPath string) error {
     writer := bufio.NewWriterSize(outputFile, s.config.BufferSize)
     defer writer.Flush()
     
-    // Simple sequential merge for reliability
     allDomains := make([]string, 0)
     for _, path := range validPaths {
         file, err := os.Open(path)
