@@ -559,13 +559,27 @@ func (s *Sorter) writeShards(ctx context.Context, domains []string, tempDir stri
     shardPaths := make([]string, s.config.ShardCount)
     shardFiles := make([]*os.File, s.config.ShardCount)
 
+    // Create all shard files
     for i := 0; i < s.config.ShardCount; i++ {
         file, err := os.CreateTemp(tempDir, fmt.Sprintf(defaultShardPattern, i))
         if err != nil {
+            // Clean up already created files on error
+            for j := 0; j < i; j++ {
+                if shardFiles[j] != nil {
+                    shardFiles[j].Close()
+                    os.Remove(shardPaths[j])
+                }
+            }
             return nil, fmt.Errorf("create shard %d: %w", i, err)
         }
         if err := os.Chmod(file.Name(), 0600); err != nil {
             file.Close()
+            for j := 0; j < i; j++ {
+                if shardFiles[j] != nil {
+                    shardFiles[j].Close()
+                    os.Remove(shardPaths[j])
+                }
+            }
             return nil, err
         }
         shardFiles[i] = file
@@ -573,6 +587,7 @@ func (s *Sorter) writeShards(ctx context.Context, domains []string, tempDir stri
         shardWriters[i] = bufio.NewWriterSize(file, s.config.BufferSize)
     }
 
+    // Write domains to appropriate shards
     for _, domain := range domains {
         select {
         case <-ctx.Done():
@@ -592,6 +607,7 @@ func (s *Sorter) writeShards(ctx context.Context, domains []string, tempDir stri
         }
     }
 
+    // Flush and close all shard files
     for i := 0; i < s.config.ShardCount; i++ {
         if err := shardWriters[i].Flush(); err != nil {
             return nil, err
