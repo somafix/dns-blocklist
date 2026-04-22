@@ -1,21 +1,24 @@
-# 🛡️ somafix DNS Blocklist
+# DNS Blocklist Processor
 
-[![GitHub Actions Status](https://github.com/somafix/dns-blocklist/actions/workflows/update.yml/badge.svg)](https://github.com/somafix/dns-blocklist/actions/workflows/update.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![Python 3.11+](https://img.shields.io/badge/Python-3.11+-green.svg)](https://www.python.org/)
-[![Updates: 2x/day](https://img.shields.io/badge/Updates-2x%2Fday-brightgreen)](https://github.com/somafix/dns-blocklist/actions)
+![Python](https://img.shields.io/badge/python-3.x-blue.svg)
+![Requests](https://img.shields.io/badge/dependency-requests-orange.svg)
+![License](https://img.shields.io/badge/license-MIT-green.svg)
 
-## 📋 What is this?
+## Overview
+A lightweight Python utility designed to fetch, filter, and normalize the **HaGeZi Pro++ DNS Blocklist**. This script automates the process of retrieving the raw blocklist, cleaning it by removing duplicates and invalid entries, and generating a local `hosts.txt` file configured for system-wide ad and tracker blocking.
 
-This repository automatically generates and maintains an updated `hosts.txt` file for blocking:
-- 📢 Ads
-- 🕵️ Trackers  
-- 🦠 Malicious domains
-- 📊 Analytics
+## Features
+* **Automated Fetching:** Automatically downloads the latest blocklist from the HaGeZi repository.
+* **Data Cleaning:** Filters out comments, empty lines, and malformed domain entries using Regex.
+* **Deduplication:** Ensures all blocked domains are unique using Python sets.
+* **Ready-to-use Format:** Exports a clean `hosts.txt` file with the standard `0.0.0.0` prefix.
 
-Powered by **HaGeZi Multi PRO++** blocklist.
+## Requirements
+* Python 3.x
+* `requests` library
 
-## 🚀 How to use?
-
-### For AdGuard Home / Pi-hole / uBlock Origin
-Add this URL to your blocker:
+## Installation
+1. Ensure you have Python 3 installed.
+2. Install the required `requests` library via pip:
+   ```bash
+   pip install requests
