@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"crypto/tls"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -31,6 +32,8 @@ const (
 	cacheTTL        = 24 * time.Hour
 	maxResponseSize = 50 * 1024 * 1024
 	maxDecompressed = 200 * 1024 * 1024
+	bufferSize      = 64 * 1024
+	maxBufferSize   = 1024 * 1024
 )
 
 var (
@@ -52,7 +55,9 @@ type DomainSet struct {
 }
 
 func NewDomainSet() *DomainSet {
-	return &DomainSet{items: make(map[string]struct{})}
+	return &DomainSet{
+		items: make(map[string]struct{}),
+	}
 }
 
 func (s *DomainSet) Add(domain string) {
@@ -84,34 +89,38 @@ type DiskCache struct {
 }
 
 func NewDiskCache(dir string, ttl time.Duration) (*DiskCache, error) {
-	if err := os.MkdirAll(dir, 0700); err != nil {
-		return nil, err
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return nil, fmt.Errorf("failed to create cache dir: %w", err)
 	}
-	return &DiskCache{dir: dir, ttl: ttl}, nil
+	return &DiskCache{
+		dir: dir,
+		ttl: ttl,
+	}, nil
 }
 
 func (c *DiskCache) Get(key string) ([]string, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	data, err := os.ReadFile(filepath.Join(c.dir, hashKey(key)))
+	path := filepath.Join(c.dir, hashKey(key))
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
 
 	lines := strings.Split(string(data), "\n")
 	if len(lines) < 2 {
-		return nil, fmt.Errorf("invalid cache")
+		return nil, errors.New("invalid cache format")
 	}
 
-	ts, err := strconv.ParseInt(lines[0], 10, 64)
+	timestamp, err := strconv.ParseInt(lines[0], 10, 64)
 	if err != nil {
 		return nil, err
 	}
 
-	if time.Since(time.Unix(ts, 0)) > c.ttl {
-		os.Remove(filepath.Join(c.dir, hashKey(key)))
-		return nil, fmt.Errorf("expired")
+	if time.Since(time.Unix(timestamp, 0)) > c.ttl {
+		_ = os.Remove(path)
+		return nil, errors.New("cache expired")
 	}
 
 	return lines[1:], nil
@@ -122,7 +131,8 @@ func (c *DiskCache) Set(key string, domains []string) error {
 	defer c.mu.Unlock()
 
 	content := fmt.Sprintf("%d\n%s", time.Now().Unix(), strings.Join(domains, "\n"))
-	return os.WriteFile(filepath.Join(c.dir, hashKey(key)), []byte(content), 0600)
+	path := filepath.Join(c.dir, hashKey(key))
+	return os.WriteFile(path, []byte(content), 0o600)
 }
 
 func hashKey(s string) string {
@@ -154,13 +164,32 @@ func extractDomain(line string) string {
 		return ""
 	}
 
-	fields := strings.Fields(line)
-	if len(fields) >= 2 && (fields[0] == "0.0.0.0" || fields[0] == "127.0.0.1") {
-		return fields[1]
+	line = strings.TrimPrefix(line, "||")
+	line = strings.TrimPrefix(line, "@@||")
+	line = strings.TrimSuffix(line, "^")
+	line = strings.Trim(line, "|")
+
+	if idx := strings.IndexAny(line, "#!"); idx != -1 {
+		line = line[:idx]
 	}
+	line = strings.TrimSpace(line)
+
+	fields := strings.Fields(line)
+	if len(fields) == 0 {
+		return ""
+	}
+
+	if len(fields) >= 2 {
+		first := fields[0]
+		if first == "0.0.0.0" || first == "127.0.0.1" || first == "::1" {
+			return fields[1]
+		}
+	}
+
 	if len(fields) == 1 && strings.Contains(fields[0], ".") {
 		return fields[0]
 	}
+
 	return ""
 }
 
@@ -174,11 +203,14 @@ func fetchSource(ctx context.Context, url string, enableGZIP bool, cache *DiskCa
 	client := &http.Client{
 		Timeout: requestTimeout,
 		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{MinVersion: tls.VersionTLS12},
+			TLSClientConfig: &tls.Config{
+				MinVersion: tls.VersionTLS12,
+			},
+			DisableKeepAlives: true,
 		},
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -199,16 +231,16 @@ func fetchSource(ctx context.Context, url string, enableGZIP bool, cache *DiskCa
 
 	reader := io.LimitReader(resp.Body, maxResponseSize)
 	if enableGZIP && resp.Header.Get("Content-Encoding") == "gzip" {
-		gz, err := gzip.NewReader(reader)
+		gzReader, err := gzip.NewReader(reader)
 		if err != nil {
 			return nil, err
 		}
-		defer gz.Close()
-		reader = io.LimitReader(gz, maxDecompressed)
+		defer gzReader.Close()
+		reader = io.LimitReader(gzReader, maxDecompressed)
 	}
 
 	scanner := bufio.NewScanner(reader)
-	scanner.Buffer(make([]byte, 64*1024), 1024*1024)
+	scanner.Buffer(make([]byte, bufferSize), maxBufferSize)
 
 	seen := make(map[string]bool)
 	domains := make([]string, 0)
@@ -241,10 +273,23 @@ func fetchSource(ctx context.Context, url string, enableGZIP bool, cache *DiskCa
 	}
 
 	if cache != nil {
-		cache.Set(url, domains)
+		_ = cache.Set(url, domains)
 	}
 
 	return domains, nil
+}
+
+func getDefaultSources() []string {
+	return []string{
+		"https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts",
+		"https://raw.githubusercontent.com/AdAway/adaway.github.io/master/hosts.txt",
+		"https://raw.githubusercontent.com/anudeepND/blacklist/master/adservers.txt",
+		"https://raw.githubusercontent.com/lightswitch05/hosts/master/ads-and-tracking-extended.txt",
+		"https://raw.githubusercontent.com/crazy-max/WindowsSpyBlocker/master/data/hosts/spy.txt",
+		"https://urlhaus.abuse.ch/downloads/hostfile/",
+		"https://phishing.army/download/phishing_army_blocklist.txt",
+		"https://raw.githubusercontent.com/ZeroDot1/CoinBlockerLists/master/list.txt",
+	}
 }
 
 func run() error {
@@ -252,25 +297,14 @@ func run() error {
 	defer cancel()
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	slog.SetDefault(logger)
 
 	sourcesEnv := os.Getenv("BLOCKLIST_SOURCES")
 	var sources []string
 	if sourcesEnv != "" {
 		sources = strings.Split(sourcesEnv, ",")
 	} else {
-		// Проверенные рабочие источники блоклистов
-		sources = []string{
-			// StevenBlack - основной hosts файл
-			"https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts",
-			// AdAway - проверенный блоклист
-			"https://raw.githubusercontent.com/AdAway/adaway.github.io/master/hosts.txt",
-			// AdGuard Team - фильтры рекламы
-			"https://raw.githubusercontent.com/AdguardTeam/AdguardFilters/master/BaseFilter/sections/adservers.txt",
-			// PolishFiltersTeam - польские фильтры (KADhosts)
-			"https://raw.githubusercontent.com/PolishFiltersTeam/KADhosts/master/KADhosts.txt",
-			// ZeroDot1 - блоклист криптомайнеров
-			"https://raw.githubusercontent.com/ZeroDot1/CoinBlockerLists/master/list.txt",
-		}
+		sources = getDefaultSources()
 	}
 
 	outputFile := os.Getenv("BLOCKLIST_OUTPUT")
@@ -284,13 +318,13 @@ func run() error {
 		var err error
 		tempDir, err = os.MkdirTemp("", "blocklist_*")
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to create temp dir: %w", err)
 		}
 		ownedTemp = true
 	}
 	defer func() {
 		if ownedTemp {
-			os.RemoveAll(tempDir)
+			_ = os.RemoveAll(tempDir)
 		}
 	}()
 
@@ -350,7 +384,7 @@ func run() error {
 	}
 
 	if domainSet.Size() == 0 {
-		return fmt.Errorf("no domains fetched")
+		return errors.New("no domains fetched")
 	}
 
 	logger.Info("sorting", "domains", domainSet.Size())
@@ -375,8 +409,12 @@ func run() error {
 	}
 
 	hasher := sha256.New()
-	file.Seek(0, 0)
-	io.Copy(hasher, file)
+	if _, err := file.Seek(0, 0); err != nil {
+		return err
+	}
+	if _, err := io.Copy(hasher, file); err != nil {
+		return err
+	}
 
 	logger.Info("complete",
 		"domains", len(domains),
