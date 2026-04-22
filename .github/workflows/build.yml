@@ -1,41 +1,60 @@
-name: Build Blocklist
+name: Generate Blocklist
 
 on:
   schedule:
-    - cron: '0 0 * * *'  # каждый день в 00:00
-  workflow_dispatch:      # можно запустить вручную
+    - cron: '0 0 * * *'
+  workflow_dispatch:
 
 jobs:
-  build:
+  generate:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: main
       
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
+          go-version: '1.21'
       
       - name: Build
         run: go build -o blocklist main.go
       
-      - name: Run
-        run: ./blocklist
-        env:
-          BLOCKLIST_OUTPUT: blocklist.txt
+      - name: Generate blocklist
+        id: generate
+        run: |
+          ./blocklist
+          echo "count=$(wc -l < blocklist.txt)" >> $GITHUB_OUTPUT
+      
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Fetch latest changes
+          git fetch origin main
+          git pull origin main --rebase || true
+          
+          # Check if file has changes
+          if git diff --quiet blocklist.txt; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          
+          # Commit and push
+          git add blocklist.txt
+          git commit -m "Update blocklist [skip ci]"
+          git push origin main
       
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: blocklist
           path: blocklist.txt
-      
-      - name: Commit and push
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add blocklist.txt
-          git diff --quiet && git diff --staged --quiet || git commit -m "Update blocklist [skip ci]"
-          git push
+          retention-days: 7
