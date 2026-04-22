@@ -2,7 +2,7 @@
 
 ![Python](https://img.shields.io/badge/python-3.x-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
-![Status](https://active-brightgreen.svg)
+![Status](https://img.shields.io/badge/status-active-brightgreen.svg)
 
 A lightweight, zero-dependency Python utility that fetches the high-quality **HaGeZi Multi** blocklist, normalizes it, and saves it to a clean `hosts.txt` file ready for system use.
 
