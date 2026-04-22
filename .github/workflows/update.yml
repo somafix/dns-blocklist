@@ -1,43 +1,39 @@
-name: Daily Hosts Update
+name: Daily Update
 
 on:
   schedule:
     - cron: '0 0 * * *'
   workflow_dispatch:
 
-permissions:
-  contents: write
-
 jobs:
   update:
     runs-on: ubuntu-latest
     
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-        token: ${{ secrets.GITHUB_TOKEN }}
-    
-    - name: Setup Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.11'
-    
-    - name: Run update script
-      run: python update.py
-    
-    - name: Commit and push
-      run: |
-        git config user.name "GitHub Actions"
-        git config user.email "actions@github.com"
-        git add hosts.txt
-        
-        if git diff --staged --quiet; then
-          echo "No changes to commit"
-          exit 0
-        fi
-        
-        git commit -m "Daily update $(date '+%Y-%m-%d')"
-        git pull --rebase origin main
-        git push origin main
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Забираем всю историю, включая теги
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Configure git
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+      
+      - name: Твой скрипт обновления
+        run: |
+          # Здесь твои команды, которые генерируют файлы
+          # Например:
+          # python update.py
+          echo "Твои изменения здесь"
+      
+      - name: Commit changes
+        run: |
+          git add .
+          git diff --staged --quiet || git commit -m "Daily update $(date +'%Y-%m-%d')"
+      
+      - name: Push changes 🔥 КЛЮЧЕВОЙ ФИКС 🔥
+        run: |
+          git pull --rebase origin main
+          git push origin main
