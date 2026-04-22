@@ -12,14 +12,6 @@
 > ⚠️ **WARNING! FOR EXPERTS ONLY!**  
 > This is personalDNSfilter configuration! Only edit this file if you are an expert!
 
-## 📋 Table of Contents
-- [Features](#-features)
-- [Quick Start](#-quick-start)
-- [Configuration](#-configuration)
-- [Blocklists](#-blocklists)
-- [Android Specific](#-android-specific)
-- [Remote Control](#-remote-control)
-- [Links](#-links)
 
 ## ✨ Features
 
