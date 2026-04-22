@@ -2,26 +2,29 @@ name: Update HaGeZi Blocklist
 
 on:
   schedule:
-    - cron: '0 */12 * * *'  # каждые 12 часов
-  workflow_dispatch:        # можно запустить руками
+    - cron: '0 */12 * * *'
+  workflow_dispatch:
 
 jobs:
   update:
     runs-on: ubuntu-latest
     permissions:
-      contents: write        # чтобы мог пушить
+      contents: write
     
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          fetch-depth: 1     # только последний коммит, история нахуй не нужна
+          fetch-depth: 1
 
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+
+      - name: Install requests
+        run: pip install requests
 
       - name: Run update script
         run: python update.py
