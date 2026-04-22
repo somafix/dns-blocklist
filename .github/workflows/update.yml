@@ -24,7 +24,7 @@ jobs:
           python-version: '3.11'
 
       - name: Run update script
-        run: python update_hosts.py
+        run: python update.py
 
       - name: Push back to repo
         run: |
