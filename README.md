@@ -1,85 +1,34 @@
-[![Python 3.7+](https://img.shields.io/badge/python-3.7%2B-blue?logo=python&logoColor=white)](https://www.python.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![DNS Blocklist](https://img.shields.io/badge/DNS%20Blocklist-HaGeZi%20PRO%2B%2B-orange)](https://github.com/hagezi/dns-blocklists)
+# HaGeZi DNS Blocklist Downloader
 
-# DNS Blocklist Downloader
+[![Python](https://img.shields.io/badge/Python-3.6%2B-blue.svg)](https://www.python.org/downloads/)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Code Style](https://img.shields.io/badge/code%20style-pep8-orange.svg)](https://www.python.org/dev/peps/pep-0008/)
+[![Status](https://img.shields.io/badge/status-stable-brightgreen.svg)]()
+[![GitHub](https://img.shields.io/badge/GitHub-HaGeZi-181717.svg)](https://github.com/hagezi/dns-blocklists)
 
-> Downloads, parses, and processes HaGeZi Multi PRO++ DNS blocklist with automatic deduplication.
+## 📋 Overview
 
-## 🎯 Features
+A robust Python script to download, validate, and process the **HaGeZi Multi PRO++ DNS Blocklist** from GitHub. The script converts the source blocklist into a clean `hosts` format file with duplicate removal, domain validation, and automatic backup functionality.
 
-- Fetches latest blocklist from HaGeZi GitHub
-- Domain validation with regex filtering
-- Automatic deduplication
-- Hosts file format output (`0.0.0.0 domain`)
-- Timestamped metadata
-- Only requires `requests` library
+## ✨ Features
 
-## 📋 Requirements
+- 🔄 **Automatic download** from official HaGeZi GitHub repository
+- ✅ **RFC-compliant domain validation** (length, characters, segments)
+- 🗑️ **Duplicate removal** using Python sets
+- 📁 **Atomic file writing** with temporary files (prevents corruption)
+- 💾 **Automatic backup** of previous version
+- 🔍 **MD5 hash comparison** to skip identical updates
+- ⏱️ **Timeout handling** (30 seconds)
+- 📏 **File size limit** (50 MB maximum)
+- 🌐 **Proper User-Agent header** (avoids GitHub blocking)
+- 📊 **Detailed statistics** (domains found, invalid lines)
+- 🛡️ **Comprehensive error handling** (network, HTTP, timeout)
 
-- Python 3.7+
-- `requests` library
-
-## 🚀 Quick Start
+## 🚀 Installation
 
 ```bash
-# Install dependencies
+# Clone or download the script
+wget https://raw.githubusercontent.com/your-repo/hagezi-downloader.py
+
+# Install required dependency
 pip install requests
-
-# Run
-python dns_blocklist_downloader.py
-```
-
-Output: `hosts.txt` with 200k+ unique domains
-
-## 📝 How It Works
-
-1. Downloads blocklist from HaGeZi GitHub
-2. Parses and validates domains (regex: `^[a-z0-9\.\-]+$`)
-3. Removes duplicates using Python sets
-4. Generates sorted hosts file with metadata
-
-## 🔧 Configuration
-
-Edit top of script:
-```python
-URL = "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/hosts/pro.plus.txt"
-OUTPUT_FILE = "hosts.txt"
-```
-
-## 📖 Use Cases
-
-- Pi-hole integration
-- AdGuard Home filters
-- Local DNS servers (Windows/macOS/Linux)
-- Network-wide ad blocking
-- Privacy enhancement
-
-## 🔐 Security
-
-- HTTPS-only downloads
-- Regex validation prevents injection
-- No external execution
-- Trusted official source
-
-## 🔄 Automation
-
-**Linux/macOS Cron:**
-```bash
-0 2 * * * /usr/bin/python3 /path/to/dns_blocklist_downloader.py
-```
-
-**Windows Task Scheduler:**
-- Trigger: Daily 2:00 AM
-- Program: `python.exe`
-- Arguments: `C:\path\to\dns_blocklist_downloader.py`
-
-## 📜 License
-
-MIT License
-
-## 🔗 Resources
-
-- [HaGeZi DNS Blocklists](https://github.com/hagezi/dns-blocklists)
-- [Pi-hole](https://pi-hole.net/)
-- [AdGuard Home](https://adguard.com/adguard-home/overview.html)
