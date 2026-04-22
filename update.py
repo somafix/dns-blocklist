@@ -11,10 +11,18 @@ from datetime import datetime
 from typing import Set
 
 SOURCES = [
+    # Оригинальные
     "https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/fakenews-gambling-porn/hosts",
     "https://someonewhocares.org/hosts/zero/hosts",
     "https://raw.githubusercontent.com/PolishFiltersTeam/KADhosts/master/KADhosts.txt",
     "https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/gambling-porn/hosts",
+    
+    # Новые авторитетные источники
+    "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts",  # Основной список StevenBlack ~150k записей[citation:1]
+    "https://raw.githubusercontent.com/anudeepND/blacklist/master/adservers.txt",  # Anudeep ~42k проверенных серверов[citation:3]
+    "https://raw.githubusercontent.com/AdroitAdorKhan/antipopads-re/master/formats/hosts.txt",  # Anti-popads[citation:1]
+    "https://raw.githubusercontent.com/bigdargon/hostsVN/master/source/hosts-VN.txt",  # hostsVN[citation:5]
+    "https://raw.githubusercontent.com/Ultimate-Hosts-Blacklist/The-Big-List-of-Hacked-Malware-Web-Sites/master/domains.list",  # Malware blocklist[citation:5]
 ]
 
 def fetch_url(url: str) -> str:
