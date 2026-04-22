@@ -4,8 +4,6 @@ on:
   schedule:
     - cron: '0 2 * * *'
   workflow_dispatch:
-  push:
-    branches: [ main ]
 
 permissions:
   contents: write
@@ -18,8 +16,8 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
       with:
-        fetch-depth: 0
         token: ${{ secrets.GITHUB_TOKEN }}
+        fetch-depth: 0
     
     - name: Setup Python
       uses: actions/setup-python@v5
@@ -34,13 +32,15 @@ jobs:
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
         
-        git pull origin main --rebase
+        git fetch origin main
+        git reset --soft origin/main
         
         git add blocklist.txt blocklist.backup.txt 2>/dev/null || true
         
         if git diff --cached --quiet; then
           echo "No changes to commit"
-        else
-          git commit -m "Auto-update blocklist $(date +'%Y-%m-%d')"
-          git push origin main
+          exit 0
         fi
+        
+        git commit -m "Auto-update blocklist $(date +'%Y-%m-%d')"
+        git push origin main --force-with-lease
