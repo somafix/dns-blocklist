@@ -81,10 +81,7 @@ func (c *Cache) Get(key string) ([]string, error) {
 	if len(lines) < 2 {
 		return nil, fmt.Errorf("invalid")
 	}
-	ts, err := strconv.ParseInt(lines[0], 10, 64)
-	if err != nil {
-		return nil, err
-	}
+	ts, _ := strconv.ParseInt(lines[0], 10, 64)
 	if time.Since(time.Unix(ts, 0)) > cacheTTL {
 		return nil, fmt.Errorf("expired")
 	}
