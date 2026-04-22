@@ -17,6 +17,7 @@ jobs:
         with:
           fetch-depth: 0
           ref: main
+          token: ${{ secrets.GITHUB_TOKEN }}
       
       - name: Setup Go
         uses: actions/setup-go@v5
@@ -27,34 +28,30 @@ jobs:
         run: go build -o blocklist main.go
       
       - name: Generate blocklist
-        id: generate
-        run: |
-          ./blocklist
-          echo "count=$(wc -l < blocklist.txt)" >> $GITHUB_OUTPUT
+        run: ./blocklist
       
-      - name: Commit and push
+      - name: Commit and push with force
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           
-          # Fetch latest changes
-          git fetch origin main
-          git pull origin main --rebase || true
+          # Stash local changes
+          git stash || true
           
-          # Check if file has changes
-          if git diff --quiet blocklist.txt; then
+          # Pull latest with rebase
+          git pull origin main --rebase
+          
+          # Apply stashed changes
+          git stash pop || true
+          
+          # Add and commit
+          git add blocklist.txt
+          if git diff --staged --quiet; then
             echo "No changes to commit"
             exit 0
           fi
           
-          # Commit and push
-          git add blocklist.txt
           git commit -m "Update blocklist [skip ci]"
-          git push origin main
-      
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: blocklist
-          path: blocklist.txt
-          retention-days: 7
+          
+          # Push with force lease (safer than --force)
+          git push origin main --force-with-lease
