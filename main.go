@@ -6,7 +6,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"crypto/tls"
-	"encoding/hex"
 	"fmt"
 	"io"
 	"net/http"
@@ -15,6 +14,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -81,7 +81,10 @@ func (c *Cache) Get(key string) ([]string, error) {
 	if len(lines) < 2 {
 		return nil, fmt.Errorf("invalid")
 	}
-	ts, _ := strconv.ParseInt(lines[0], 10, 64)
+	ts, err := strconv.ParseInt(lines[0], 10, 64)
+	if err != nil {
+		return nil, err
+	}
 	if time.Since(time.Unix(ts, 0)) > cacheTTL {
 		return nil, fmt.Errorf("expired")
 	}
