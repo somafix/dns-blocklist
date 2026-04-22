@@ -258,9 +258,18 @@ func run() error {
 	if sourcesEnv != "" {
 		sources = strings.Split(sourcesEnv, ",")
 	} else {
+		// Проверенные рабочие источники блоклистов
 		sources = []string{
+			// StevenBlack - основной hosts файл
 			"https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts",
-			"https://someonewhocares.org/hosts/zero/hosts",
+			// AdAway - проверенный блоклист
+			"https://raw.githubusercontent.com/AdAway/adaway.github.io/master/hosts.txt",
+			// AdGuard Team - фильтры рекламы
+			"https://raw.githubusercontent.com/AdguardTeam/AdguardFilters/master/BaseFilter/sections/adservers.txt",
+			// PolishFiltersTeam - польские фильтры (KADhosts)
+			"https://raw.githubusercontent.com/PolishFiltersTeam/KADhosts/master/KADhosts.txt",
+			// ZeroDot1 - блоклист криптомайнеров
+			"https://raw.githubusercontent.com/ZeroDot1/CoinBlockerLists/master/list.txt",
 		}
 	}
 
