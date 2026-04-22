@@ -2,44 +2,48 @@
 
 ![Python](https://img.shields.io/badge/python-3.x-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
+![Sources](https://img.shields.io/badge/sources-9-blueviolet.svg)
 ![Status](https://img.shields.io/badge/status-active-brightgreen.svg)
 
-A lightweight Python utility designed to aggregate, sanitize, and merge multiple community-maintained hosts lists into a single, optimized `hosts.txt` file. This is ideal for system-level blocking of advertisements, tracking scripts, and malicious domains.
+A powerful, zero-dependency Python utility that aggregates multiple high-reputation blocklists into a single, optimized `hosts.txt` file. This script provides robust protection against advertisements, tracking servers, pop-ups, and known malicious/hacked domains.
 
 ## Features
 
-* **Multi-Source Aggregation:** Fetches data from multiple reputable sources (StevenBlack, someonewhocares, KADhosts).
-* **Intelligent Parsing:** Uses Regular Expressions to validate entries and strip out junk comments or malformed lines.
-* **Deduplication:** Automatically removes duplicate domain entries using Python sets.
-* **Optimized Output:** Sorts all entries alphabetically to ensure the file is clean and manageable.
-* **Standard Library Only:** No external dependencies required (no `pip install` needed).
+* **Comprehensive Coverage:** Aggregates feeds from 9 major reputable sources, including StevenBlack, Anudeep, and specialized malware databases.
+* **Intelligent Parsing:** Uses Regular Expressions to validate and normalize entries, ensuring they conform to the standard `0.0.0.0 domain.com` format.
+* **Deduplication:** Automatically handles overlaps between lists, ensuring the generated file is compact and performant.
+* **Zero-Dependency:** Uses standard Python libraries only. No need to install `pip` packages.
+* **Automated Export:** Generates a clean, sorted, and timestamped file ready for system-level use.
 
-## How It Works
+## Included Sources
 
-1.  **Fetch:** The script iterates through the `SOURCES` list, downloading raw content from each URL.
-2.  **Parse:** It filters lines using regex to ensure only valid `0.0.0.0` or `127.0.0.1` formatted domain entries are captured.
-3.  **Merge & Clean:** All entries are placed into a set to enforce uniqueness.
-4.  **Export:** Generates a new `hosts.txt` file with a timestamp and total entry count header.
+The script fetches and merges data from the following authoritative lists:
+
+* **StevenBlack (Base + Variants):** The industry standard for ad/tracking blocking.
+* **Anudeep (Adservers):** Highly curated list of advertising and tracking servers.
+* **Anti-popads:** Specialized blocking for intrusive pop-ups.
+* **hostsVN:** Optimized list for regional threats and ads.
+* **Ultimate Hosts Blacklist:** Focused on active malware, phishing, and hacked websites.
+* **Someonewhocares & KADhosts:** Additional community-verified entries.
 
 ## Usage
 
 1.  Ensure you have **Python 3** installed.
-2.  Save your script as `update_hosts.py`.
-3.  Run the script from your terminal:
+2.  Run the script from your terminal:
 
     ```bash
     python3 update_hosts.py
     ```
 
-4.  Upon completion, you will find a generated `hosts.txt` file in the same directory.
+3.  Upon completion, the script will generate a `hosts.txt` file in the same directory.
 
 ## Configuration
 
-You can add or remove sources by modifying the `SOURCES` list at the top of the script:
+To add or remove specific blocklists, simply modify the `SOURCES` list at the top of the `update_hosts.py` file:
 
 ```python
 SOURCES = [
-    "URL_TO_HOSTS_FILE_1",
-    "URL_TO_HOSTS_FILE_2",
-    # ...
+    "URL_1",
+    "URL_2",
+    # Add or remove URLs here
 ]
