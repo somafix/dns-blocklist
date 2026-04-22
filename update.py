@@ -73,49 +73,65 @@ def save(hosts: Set[str]) -> None:
             f.write(f"{line}\n")
 
 
-def git_safe_push() -> None:
-    """Handle git push with proper merge strategy for CI/CD."""
+def git_safe_commit_and_push() -> None:
+    """Handle git commit and push with proper merge strategy."""
     try:
-        # Stash any local changes
-        subprocess.run(["git", "stash", "--include-untracked"], 
-                      capture_output=True, check=False)
+        # Configure git user if not set
+        if not subprocess.run(["git", "config", "user.name"], capture_output=True, text=True).stdout.strip():
+            subprocess.run(["git", "config", "user.name", "GitHub Actions"], check=False)
+        if not subprocess.run(["git", "config", "user.email"], capture_output=True, text=True).stdout.strip():
+            subprocess.run(["git", "config", "user.email", "actions@github.com"], check=False)
         
-        # Pull with rebase to avoid merge commits
-        subprocess.run(["git", "pull", "--rebase", "--autostash"], 
-                      capture_output=True, check=False)
+        # Fetch latest changes
+        subprocess.run(["git", "fetch", "origin"], capture_output=True, check=False)
+        
+        # Check if we need to merge
+        local_commit = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
+        remote_commit = subprocess.run(["git", "rev-parse", "origin/main"], capture_output=True, text=True).stdout.strip()
+        
+        if local_commit != remote_commit and remote_commit:
+            # Reset to remote and reapply local changes
+            subprocess.run(["git", "reset", "--soft", "origin/main"], check=False)
         
         # Add the modified file
-        subprocess.run(["git", "add", OUTPUT], check=True)
+        add_result = subprocess.run(["git", "add", OUTPUT], capture_output=True, check=False)
+        if add_result.returncode != 0:
+            print(f"Failed to add file: {add_result.stderr}")
+            return
         
         # Check if there are changes to commit
-        result = subprocess.run(["git", "diff", "--cached", "--quiet"], 
-                               capture_output=True, check=False)
+        diff_result = subprocess.run(["git", "diff", "--cached", "--quiet"], capture_output=True, check=False)
         
-        if result.returncode != 0:
+        if diff_result.returncode != 0:
             # Commit changes
             date_str = datetime.now(timezone.utc).strftime('%Y-%m-%d')
-            subprocess.run(["git", "commit", "-m", f"Daily update {date_str}"], 
-                         check=True)
+            commit_result = subprocess.run(["git", "commit", "-m", f"Daily update {date_str}"], 
+                                         capture_output=True, text=True)
             
-            # Pull again before push (in case of race condition)
-            subprocess.run(["git", "pull", "--rebase", "--autostash"], 
-                         capture_output=True, check=False)
+            if commit_result.returncode != 0:
+                print(f"Commit failed: {commit_result.stderr}")
+                return
             
-            # Push changes
-            push_result = subprocess.run(["git", "push"], capture_output=True, text=True)
+            print(f"Committed: {commit_result.stdout}")
+            
+            # Push with force lease to handle race conditions
+            push_result = subprocess.run(["git", "push", "--force-with-lease", "origin", "main"], 
+                                       capture_output=True, text=True)
             
             if push_result.returncode != 0:
                 print(f"Push failed: {push_result.stderr}")
-                # Try force push only if it's a fast-forward issue
-                if "rejected" in push_result.stderr and "fetch first" in push_result.stderr:
-                    print("Attempting force push after rebase...")
-                    subprocess.run(["git", "push", "--force-with-lease"], check=False)
+                # Try regular push as fallback
+                fallback_push = subprocess.run(["git", "push", "origin", "main"], 
+                                            capture_output=True, text=True)
+                if fallback_push.returncode != 0:
+                    print(f"Fallback push also failed: {fallback_push.stderr}")
+            else:
+                print(f"Push successful: {push_result.stdout}")
         else:
             print("No changes to commit")
             
     except subprocess.CalledProcessError as e:
         print(f"Git operation failed: {e}")
-        # Don't exit with error in CI - allow workflow to continue
     except Exception as e:
         print(f"Unexpected git error: {e}")
 
@@ -135,46 +151,41 @@ def main() -> None:
         print("ERROR: No valid hosts extracted")
         sys.exit(1)
         
-    # Save to temporary file first to verify content
-    temp_output = f"{OUTPUT}.tmp"
-    sorted_hosts = sorted(hosts)
-    
-    with open(temp_output, "w", encoding="utf-8") as f:
-        f.write("# HaGeZi Multi Normal\n")
-        f.write(f"# Updated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}\n")
-        f.write(f"# Total: {len(sorted_hosts)}\n")
-        f.write("# \n")
-        f.write("127.0.0.1 localhost\n")
-        f.write("127.0.0.1 localhost.localdomain\n")
-        f.write("::1 localhost\n\n")
-        
-        for line in sorted_hosts:
-            f.write(f"{line}\n")
-    
-    # Check if content actually changed
+    # Check if file changed before writing
     changed = True
     if os.path.exists(OUTPUT):
-        with open(OUTPUT, "r", encoding="utf-8") as old, \
-             open(temp_output, "r", encoding="utf-8") as new:
-            changed = old.read() != new.read()
+        with open(OUTPUT, "r", encoding="utf-8") as old:
+            old_content = old.read()
+            # Create new content in memory for comparison
+            sorted_hosts = sorted(hosts)
+            new_lines = [
+                "# HaGeZi Multi Normal\n",
+                f"# Updated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}\n",
+                f"# Total: {len(sorted_hosts)}\n",
+                "# \n",
+                "127.0.0.1 localhost\n",
+                "127.0.0.1 localhost.localdomain\n",
+                "::1 localhost\n\n"
+            ]
+            new_lines.extend(f"{line}\n" for line in sorted_hosts)
+            new_content = "".join(new_lines)
+            changed = old_content != new_content
     
-    # Replace the file if changed
     if changed:
-        os.replace(temp_output, OUTPUT)
+        save(hosts)
         print(f"> Success: {len(hosts)} entries saved to {OUTPUT}")
         
-        # Handle git operations only if in CI environment or .git exists
-        if os.path.exists(".git") and os.getenv("GITHUB_ACTIONS") == "true":
-            git_safe_push()
+        # Handle git operations if in CI environment
+        if os.getenv("GITHUB_ACTIONS") == "true":
+            git_safe_commit_and_push()
         elif os.path.exists(".git"):
             print("Git repository detected but not in CI - skipping auto-push")
     else:
-        os.remove(temp_output)
         print(f"> No changes detected - {len(hosts)} entries unchanged")
     
-    # Verify output file exists and has content
-    if not os.path.exists(OUTPUT) or os.path.getsize(OUTPUT) == 0:
-        print("ERROR: Output file is missing or empty")
+    # Verify output file exists
+    if not os.path.exists(OUTPUT):
+        print("ERROR: Output file is missing")
         sys.exit(1)
 
 
