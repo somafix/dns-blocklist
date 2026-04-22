@@ -9,14 +9,12 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
-	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"regexp"
 	"sort"
-	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -24,19 +22,13 @@ import (
 )
 
 const (
-	maxDomainLen    = 253
-	requestTimeout  = 30 * time.Second
-	totalTimeout    = 5 * time.Minute
-	workerCount     = 4
-	cacheTTL        = 24 * time.Hour
-	maxResponseSize = 50 * 1024 * 1024
-	maxDecompressed = 200 * 1024 * 1024
+	requestTimeout = 30 * time.Second
+	totalTimeout   = 5 * time.Minute
+	workerCount    = 4
+	cacheTTL       = 24 * time.Hour
 )
 
-var (
-	domainRegex = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$`)
-	ipRegex     = regexp.MustCompile(`^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$`)
-)
+var domainRegex = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$`)
 
 type DomainSet struct {
 	mu    sync.RWMutex
@@ -69,62 +61,44 @@ func (s *DomainSet) Size() int {
 	return len(s.items)
 }
 
-type DiskCache struct {
+type Cache struct {
 	dir string
-	ttl time.Duration
-	mu  sync.Mutex
 }
 
-func NewDiskCache(dir string, ttl time.Duration) (*DiskCache, error) {
+func NewCache(dir string) (*Cache, error) {
 	if err := os.MkdirAll(dir, 0700); err != nil {
 		return nil, err
 	}
-	return &DiskCache{dir: dir, ttl: ttl}, nil
+	return &Cache{dir: dir}, nil
 }
 
-func (c *DiskCache) Get(key string) ([]string, error) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	data, err := os.ReadFile(filepath.Join(c.dir, hashKey(key)))
+func (c *Cache) Get(key string) ([]string, error) {
+	data, err := os.ReadFile(filepath.Join(c.dir, key))
 	if err != nil {
 		return nil, err
 	}
 	lines := strings.Split(string(data), "\n")
 	if len(lines) < 2 {
-		return nil, fmt.Errorf("invalid cache")
+		return nil, fmt.Errorf("invalid")
 	}
-	ts, err := strconv.ParseInt(lines[0], 10, 64)
-	if err != nil {
-		return nil, err
-	}
-	if time.Since(time.Unix(ts, 0)) > c.ttl {
-		os.Remove(filepath.Join(c.dir, hashKey(key)))
+	ts, _ := strconv.ParseInt(lines[0], 10, 64)
+	if time.Since(time.Unix(ts, 0)) > cacheTTL {
 		return nil, fmt.Errorf("expired")
 	}
 	return lines[1:], nil
 }
 
-func (c *DiskCache) Set(key string, domains []string) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
+func (c *Cache) Set(key string, domains []string) error {
 	content := fmt.Sprintf("%d\n%s", time.Now().Unix(), strings.Join(domains, "\n"))
-	return os.WriteFile(filepath.Join(c.dir, hashKey(key)), []byte(content), 0600)
-}
-
-func hashKey(s string) string {
-	h := sha256.Sum256([]byte(s))
-	return hex.EncodeToString(h[:])
+	return os.WriteFile(filepath.Join(c.dir, key), []byte(content), 0600)
 }
 
 func normalizeDomain(domain string) string {
 	domain = strings.ToLower(strings.TrimSuffix(domain, "."))
-	if len(domain) == 0 || len(domain) > maxDomainLen {
+	if len(domain) == 0 || len(domain) > 253 {
 		return ""
 	}
 	if strings.ContainsAny(domain, "/\\*?") || strings.Contains(domain, "..") {
-		return ""
-	}
-	if ipRegex.MatchString(domain) {
 		return ""
 	}
 	if !domainRegex.MatchString(domain) {
@@ -148,12 +122,14 @@ func extractDomain(line string) string {
 	return ""
 }
 
-func fetchSource(ctx context.Context, url string, cache *DiskCache) ([]string, error) {
+func fetchSource(ctx context.Context, url string, cache *Cache) ([]string, error) {
+	key := fmt.Sprintf("%x", sha256.Sum256([]byte(url)))
 	if cache != nil {
-		if domains, err := cache.Get(url); err == nil {
+		if domains, err := cache.Get(key); err == nil {
 			return domains, nil
 		}
 	}
+
 	client := &http.Client{
 		Timeout: requestTimeout,
 		Transport: &http.Transport{
@@ -164,29 +140,34 @@ func fetchSource(ctx context.Context, url string, cache *DiskCache) ([]string, e
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("User-Agent", "blocklist-generator/2.0")
+	req.Header.Set("User-Agent", "blocklist/1.0")
 	req.Header.Set("Accept-Encoding", "gzip")
+
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
+
+	if resp.StatusCode != 200 {
 		return nil, fmt.Errorf("HTTP %d", resp.StatusCode)
 	}
-	reader := io.LimitReader(resp.Body, maxResponseSize)
+
+	reader := io.LimitReader(resp.Body, 50*1024*1024)
 	if resp.Header.Get("Content-Encoding") == "gzip" {
 		gz, err := gzip.NewReader(reader)
 		if err != nil {
 			return nil, err
 		}
 		defer gz.Close()
-		reader = io.LimitReader(gz, maxDecompressed)
+		reader = gz
 	}
+
 	scanner := bufio.NewScanner(reader)
 	scanner.Buffer(make([]byte, 64*1024), 1024*1024)
 	seen := make(map[string]bool)
 	domains := make([]string, 0)
+
 	for scanner.Scan() {
 		select {
 		case <-ctx.Done():
@@ -206,131 +187,70 @@ func fetchSource(ctx context.Context, url string, cache *DiskCache) ([]string, e
 			domains = append(domains, normalized)
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		return domains, err
-	}
+
 	if cache != nil {
-		cache.Set(url, domains)
+		cache.Set(key, domains)
 	}
 	return domains, nil
 }
 
-func run() error {
+func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
-	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stdout, nil)))
-	sourcesEnv := os.Getenv("BLOCKLIST_SOURCES")
-	var sources []string
-	if sourcesEnv != "" {
-		sources = strings.Split(sourcesEnv, ",")
-	} else {
-		sources = []string{
-			"https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts",
-			"https://raw.githubusercontent.com/AdAway/adaway.github.io/master/hosts.txt",
-			"https://raw.githubusercontent.com/anudeepND/blacklist/master/adservers.txt",
-			"https://raw.githubusercontent.com/lightswitch05/hosts/master/ads-and-tracking-extended.txt",
-			"https://raw.githubusercontent.com/crazy-max/WindowsSpyBlocker/master/data/hosts/spy.txt",
-			"https://urlhaus.abuse.ch/downloads/hostfile/",
-			"https://phishing.army/download/phishing_army_blocklist.txt",
-			"https://raw.githubusercontent.com/ZeroDot1/CoinBlockerLists/master/list.txt",
-		}
+
+	sources := []string{
+		"https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts",
+		"https://raw.githubusercontent.com/AdAway/adaway.github.io/master/hosts.txt",
+		"https://raw.githubusercontent.com/anudeepND/blacklist/master/adservers.txt",
+		"https://raw.githubusercontent.com/lightswitch05/hosts/master/ads-and-tracking-extended.txt",
+		"https://urlhaus.abuse.ch/downloads/hostfile/",
+		"https://phishing.army/download/phishing_army_blocklist.txt",
 	}
-	outputFile := os.Getenv("BLOCKLIST_OUTPUT")
-	if outputFile == "" {
-		outputFile = "blocklist.txt"
-	}
-	tempDir := os.Getenv("BLOCKLIST_TEMP_DIR")
-	var ownedTemp bool
-	if tempDir == "" {
-		var err error
-		tempDir, err = os.MkdirTemp("", "blocklist_*")
-		if err != nil {
-			return err
-		}
-		ownedTemp = true
-	}
-	defer func() {
-		if ownedTemp {
-			os.RemoveAll(tempDir)
-		}
-	}()
-	enableCache := os.Getenv("BLOCKLIST_ENABLE_CACHE") != "false"
-	var cache *DiskCache
-	if enableCache {
-		var err error
-		cache, err = NewDiskCache(filepath.Join(tempDir, "cache"), cacheTTL)
-		if err != nil {
-			slog.Warn("cache disabled", "error", err)
-		}
-	}
-	ctxTimeout, cancelTimeout := context.WithTimeout(ctx, totalTimeout)
-	defer cancelTimeout()
-	slog.Info("starting", "sources", len(sources))
-	type result struct {
-		src     string
-		domains []string
-		err     error
-	}
-	results := make(chan result, len(sources))
+
+	outputFile := "blocklist.txt"
+	tempDir, _ := os.MkdirTemp("", "cache")
+	defer os.RemoveAll(tempDir)
+
+	cache, _ := NewCache(tempDir)
+	ctxTimeout, _ := context.WithTimeout(ctx, totalTimeout)
+
+	results := make(chan []string, len(sources))
 	var wg sync.WaitGroup
 	sem := make(chan struct{}, workerCount)
+
 	for _, src := range sources {
 		wg.Add(1)
 		go func(url string) {
 			defer wg.Done()
 			sem <- struct{}{}
 			defer func() { <-sem }()
-			domains, err := fetchSource(ctxTimeout, url, cache)
-			results <- result{src: url, domains: domains, err: err}
+			domains, _ := fetchSource(ctxTimeout, url, cache)
+			results <- domains
 		}(src)
 	}
+
 	go func() {
 		wg.Wait()
 		close(results)
 	}()
-	domainSet := NewDomainSet()
-	for res := range results {
-		if res.err != nil {
-			slog.Error("fetch failed", "source", res.src, "error", res.err)
-			continue
+
+	set := NewDomainSet()
+	for domains := range results {
+		for _, d := range domains {
+			set.Add(d)
 		}
-		for _, d := range res.domains {
-			domainSet.Add(d)
-		}
-		slog.Info("source done", "source", res.src, "count", len(res.domains), "total", domainSet.Size())
 	}
-	if domainSet.Size() == 0 {
-		return fmt.Errorf("no domains fetched")
-	}
-	slog.Info("sorting", "domains", domainSet.Size())
-	domains := domainSet.Slice()
+
+	domains := set.Slice()
 	sort.Strings(domains)
-	file, err := os.Create(outputFile)
-	if err != nil {
-		return err
-	}
+
+	file, _ := os.Create(outputFile)
 	defer file.Close()
 	writer := bufio.NewWriter(file)
 	for _, d := range domains {
-		if _, err := writer.WriteString(d + "\n"); err != nil {
-			return err
-		}
+		writer.WriteString(d + "\n")
 	}
-	if err := writer.Flush(); err != nil {
-		return err
-	}
-	hasher := sha256.New()
-	file.Seek(0, 0)
-	io.Copy(hasher, file)
-	slog.Info("complete", "domains", len(domains), "output", outputFile, "sha256", hex.EncodeToString(hasher.Sum(nil))[:16])
-	return nil
-}
+	writer.Flush()
 
-func main() {
-	start := time.Now()
-	if err := run(); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
-	}
-	fmt.Printf("Time: %v\n", time.Since(start).Round(time.Millisecond))
+	fmt.Printf("Generated %d domains\n", len(domains))
 }
