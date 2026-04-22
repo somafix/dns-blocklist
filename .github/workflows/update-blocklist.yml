@@ -1,4 +1,4 @@
-name: Daily Update
+name: Daily Blocklist Update
 
 on:
   schedule:
@@ -7,13 +7,18 @@ on:
   push:
     branches: [ main ]
 
+permissions:
+  contents: write
+
 jobs:
   update:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout repository
+      uses: actions/checkout@v4
       with:
+        fetch-depth: 0
         token: ${{ secrets.GITHUB_TOKEN }}
     
     - name: Setup Python
@@ -24,10 +29,18 @@ jobs:
     - name: Run updater
       run: python adblock_updater.py
     
-    - name: Commit changes
+    - name: Commit and push changes
       run: |
         git config user.name "github-actions[bot]"
-        git config user.email "bot@github.com"
-        git add blocklist.txt blocklist.backup.txt
-        git diff --cached --quiet || git commit -m "Auto-update blocklist $(date +'%Y-%m-%d')"
-        git push
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        
+        git pull origin main --rebase
+        
+        git add blocklist.txt blocklist.backup.txt 2>/dev/null || true
+        
+        if git diff --cached --quiet; then
+          echo "No changes to commit"
+        else
+          git commit -m "Auto-update blocklist $(date +'%Y-%m-%d')"
+          git push origin main
+        fi
