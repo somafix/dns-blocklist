@@ -1,30 +1,24 @@
-# ADBlock Hosts Updater
+# HaGeZi Hosts Updater
 
 ![Python](https://img.shields.io/badge/python-3.x-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
-![Sources](https://img.shields.io/badge/sources-9-blueviolet.svg)
-![Status](https://img.shields.io/badge/status-active-brightgreen.svg)
+![Status](https://active-brightgreen.svg)
 
-A powerful, zero-dependency Python utility that aggregates multiple high-reputation blocklists into a single, optimized `hosts.txt` file. This script provides robust protection against advertisements, tracking servers, pop-ups, and known malicious/hacked domains.
+A lightweight, zero-dependency Python utility that fetches the high-quality **HaGeZi Multi** blocklist, normalizes it, and saves it to a clean `hosts.txt` file ready for system use.
 
 ## Features
 
-* **Comprehensive Coverage:** Aggregates feeds from 9 major reputable sources, including StevenBlack, Anudeep, and specialized malware databases.
-* **Intelligent Parsing:** Uses Regular Expressions to validate and normalize entries, ensuring they conform to the standard `0.0.0.0 domain.com` format.
-* **Deduplication:** Automatically handles overlaps between lists, ensuring the generated file is compact and performant.
-* **Zero-Dependency:** Uses standard Python libraries only. No need to install `pip` packages.
-* **Automated Export:** Generates a clean, sorted, and timestamped file ready for system-level use.
+* **Focused Blocking:** Specifically fetches the comprehensive HaGeZi Multi list (known for high accuracy and minimal false positives).
+* **Format Normalization:** Automatically converts list entries to the standardized `0.0.0.0 domain.com` format.
+* **Smart Parsing:** Cleans up input, removes comments, and handles standard hosts file formatting requirements.
+* **Zero Dependencies:** Uses only Python's standard library (no `pip install` required).
+* **Ready-to-Use Output:** Generates a formatted file including a timestamp, entry count, and standard local loopback entries.
 
-## Included Sources
+## How It Works
 
-The script fetches and merges data from the following authoritative lists:
-
-* **StevenBlack (Base + Variants):** The industry standard for ad/tracking blocking.
-* **Anudeep (Adservers):** Highly curated list of advertising and tracking servers.
-* **Anti-popads:** Specialized blocking for intrusive pop-ups.
-* **hostsVN:** Optimized list for regional threats and ads.
-* **Ultimate Hosts Blacklist:** Focused on active malware, phishing, and hacked websites.
-* **Someonewhocares & KADhosts:** Additional community-verified entries.
+1.  **Fetch:** The script downloads the latest `multi.txt` from the HaGeZi repository.
+2.  **Parse:** It uses regular expressions to extract unique domains and forces a consistent `0.0.0.0` address.
+3.  **Save:** It sorts the entries alphabetically and generates `hosts.txt` with a helpful header.
 
 ## Usage
 
@@ -32,18 +26,23 @@ The script fetches and merges data from the following authoritative lists:
 2.  Run the script from your terminal:
 
     ```bash
-    python3 update_hosts.py
+    python3 main.py
     ```
 
-3.  Upon completion, the script will generate a `hosts.txt` file in the same directory.
+3.  Upon completion, the `hosts.txt` file will be generated in the same directory.
+
+## System Integration
+
+* **Linux/macOS:** You can update your system blocklist by replacing the content of `/etc/hosts` with the generated file. (Requires `sudo`).
+* **Windows:** You can replace the contents of `C:\Windows\System32\drivers\etc\hosts` (requires Administrator privileges).
+
+*Warning: Always back up your existing hosts file before replacing it to prevent connectivity issues.*
 
 ## Configuration
 
-To add or remove specific blocklists, simply modify the `SOURCES` list at the top of the `update_hosts.py` file:
+The script is configured to fetch the "Multi" list by default. You can modify the `URLS` list in the script if you wish to target a different HaGeZi list variant:
 
 ```python
-SOURCES = [
-    "URL_1",
-    "URL_2",
-    # Add or remove URLs here
+URLS = [
+    "[https://raw.githubusercontent.com/hagezi/dns-blocklists/main/hosts/multi.txt](https://raw.githubusercontent.com/hagezi/dns-blocklists/main/hosts/multi.txt)",
 ]
