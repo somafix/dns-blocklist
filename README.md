@@ -1,24 +1,164 @@
 # DNS Blocklist Processor
 
 ![Python](https://img.shields.io/badge/python-3.x-blue.svg)
-![Requests](https://img.shields.io/badge/dependency-requests-orange.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
+![Status](https://img.shields.io/badge/status-stable-brightgreen.svg)
 
 ## Overview
-A lightweight Python utility designed to fetch, filter, and normalize the **HaGeZi Pro++ DNS Blocklist**. This script automates the process of retrieving the raw blocklist, cleaning it by removing duplicates and invalid entries, and generating a local `hosts.txt` file configured for system-wide ad and tracker blocking.
+A minimal, dependency-free Python utility that fetches, cleans, and normalizes DNS blocklists into a ready-to-use `hosts` format.
+
+Designed for automation pipelines, CI jobs, and local system-wide ad/tracker blocking.
+
+## Key Idea
+Raw blocklists are messy:
+- comments
+- duplicates
+- invalid domains
+- inconsistent formats
+
+This script turns them into a clean, deterministic output.
+
+---
 
 ## Features
-* **Automated Fetching:** Automatically downloads the latest blocklist from the HaGeZi repository.
-* **Data Cleaning:** Filters out comments, empty lines, and malformed domain entries using Regex.
-* **Deduplication:** Ensures all blocked domains are unique using Python sets.
-* **Ready-to-use Format:** Exports a clean `hosts.txt` file with the standard `0.0.0.0` prefix.
 
-## Requirements
-* Python 3.x
-* `requests` library
+- **Zero Dependencies**  
+  Uses only Python standard library (`urllib`, `re`)
+
+- **Deterministic Output**  
+  Same input → same result (important for CI/CD)
+
+- **Strict Filtering**
+  - removes comments
+  - skips invalid domains
+  - ignores malformed lines
+
+- **Deduplication (O(n))**
+  Uses `set` for fast uniqueness
+
+- **Hosts Format Ready**
+  ```
+  0.0.0.0 example.com
+  ```
+
+- **Timeout & Headers Handling**
+  Safe HTTP fetching (no hanging requests)
+
+---
+
+## Data Source
+
+Currently using:
+
+- HaGeZi DNS Blocklist (Pro++)
+
+---
 
 ## Installation
-1. Ensure you have Python 3 installed.
-2. Install the required `requests` library via pip:
-   ```bash
-   pip install requests
+
+```bash
+git clone https://github.com/your-repo/dns-blocklist-processor.git
+cd dns-blocklist-processor
+```
+
+No dependencies required.
+
+---
+
+## Usage
+
+```bash
+python3 script.py
+```
+
+---
+
+## Output
+
+Generates:
+
+```
+hosts.txt
+```
+
+Example:
+
+```
+0.0.0.0 ads.example.com
+0.0.0.0 tracker.example.org
+0.0.0.0 malware.site
+```
+
+---
+
+## How It Works
+
+```
+[ URL ]
+   ↓
+[ Fetch (urllib) ]
+   ↓
+[ Line Parsing ]
+   ↓
+[ Regex Validation ]
+   ↓
+[ Deduplication (set) ]
+   ↓
+[ hosts.txt ]
+```
+
+---
+
+## Configuration
+
+Inside the script:
+
+```python
+URLS = [
+    "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/hosts/multi.txt",
+]
+
+TIMEOUT = 30
+OUTPUT = "hosts.txt"
+```
+
+---
+
+## Performance Notes
+
+- Time complexity: **O(n)**
+- Memory: proportional to number of unique domains
+- No unnecessary allocations
+- No repeated string scanning
+
+---
+
+## Use Cases
+
+- System-wide ad blocking (`/etc/hosts`)
+- DNS filtering pipelines
+- CI/CD automation (GitHub Actions)
+- Embedded / low-resource environments
+
+---
+
+## Example (Linux)
+
+```bash
+sudo cp hosts.txt /etc/hosts
+```
+
+---
+
+## Security Notes
+
+- No external code execution
+- No shell calls
+- Input is strictly validated via regex
+- Network requests are bounded by timeout
+
+---
+
+## License
+
+MIT License
