@@ -5,10 +5,6 @@ on:
     - cron: '0 */6 * * *'
   workflow_dispatch:
 
-concurrency:
-  group: update-main
-  cancel-in-progress: false
-
 jobs:
   update:
     runs-on: ubuntu-latest
@@ -16,20 +12,21 @@ jobs:
       contents: write
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
 
-      - name: Sync with remote
+      - name: Prepare git
         run: |
           git config user.email "bot@github.com"
           git config user.name "bot"
+
+      - name: Sync
+        run: |
           git fetch origin
           git reset --hard origin/main
 
-      - name: Generate file
+      - name: Generate
         run: python script.py
 
       - name: Commit
@@ -38,6 +35,6 @@ jobs:
           git diff --cached --quiet && exit 0
           git commit -m "update $(date -u +%Y-%m-%d)"
 
-      - name: Push
+      - name: Force push (safe)
         run: |
-          git push origin main
+          git push --force-with-lease origin main
