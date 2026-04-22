@@ -39,17 +39,6 @@ Output: `hosts.txt` with 200k+ unique domains
 3. Removes duplicates using Python sets
 4. Generates sorted hosts file with metadata
 
-## 📊 Output Format
-
-```
-# HaGeZi Multi PRO++ DNS Blocklist
-# Обновлено: 2024-01-15 14:30:45
-# Источник: https://github.com/hagezi/dns-blocklists
-
-0.0.0.0 ads.example.com
-0.0.0.0 tracker.example.org
-```
-
 ## 🔧 Configuration
 
 Edit top of script:
