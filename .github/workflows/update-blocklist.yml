@@ -1,48 +1,33 @@
-name: Daily Blocklist Update
+name: Daily Update
 
 on:
   schedule:
-    # Запуск раз в сутки в 02:00 UTC
     - cron: '0 2 * * *'
-  # Возможность запуска вручную из вкладки Actions
   workflow_dispatch:
+  push:
+    branches: [ main ]
 
 jobs:
-  build:
+  update:
     runs-on: ubuntu-latest
     
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      # Важно: нужно push-права, чтобы скрипт мог закоммитить изменения
+    - uses: actions/checkout@v4
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: Set up Python
+    
+    - name: Setup Python
       uses: actions/setup-python@v5
       with:
         python-version: '3.11'
     
-    - name: Run AdBlock Updater
+    - name: Run updater
       run: python adblock_updater.py
     
-    - name: Check for changes
-      id: check_changes
+    - name: Commit changes
       run: |
-        git config --global user.name "github-actions[bot]"
-        git config --global user.email "github-actions[bot]@users.noreply.github.com"
-        git add blocklist.txt
-        # Проверяем, есть ли изменения в индексе
-        if git diff --cached --quiet; then
-          echo "No changes to commit"
-          echo "changed=false" >> $GITHUB_OUTPUT
-        else
-          echo "Changes detected"
-          echo "changed=true" >> $GITHUB_OUTPUT
-        fi
-        
-    - name: Commit and push if changed
-      if: steps.check_changes.outputs.changed == 'true'
-      run: |
-        git commit -m "Auto-update blocklist [skip ci]"
+        git config user.name "github-actions[bot]"
+        git config user.email "bot@github.com"
+        git add blocklist.txt blocklist.backup.txt
+        git diff --cached --quiet || git commit -m "Auto-update blocklist $(date +'%Y-%m-%d')"
         git push
