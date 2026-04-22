@@ -1,39 +1,36 @@
-name: Daily Update
+name: Update HaGeZi Blocklist
 
 on:
   schedule:
-    - cron: '0 0 * * *'
-  workflow_dispatch:
+    - cron: '0 */12 * * *'  # каждые 12 часов
+  workflow_dispatch:        # можно запустить руками
 
 jobs:
   update:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write        # чтобы мог пушить
     
     steps:
-      - name: Checkout code
+      - name: Checkout repo
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Забираем всю историю, включая теги
           token: ${{ secrets.GITHUB_TOKEN }}
-      
-      - name: Configure git
+          fetch-depth: 1     # только последний коммит, история нахуй не нужна
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run update script
+        run: python update_hosts.py
+
+      - name: Push back to repo
         run: |
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
-      
-      - name: Твой скрипт обновления
-        run: |
-          # Здесь твои команды, которые генерируют файлы
-          # Например:
-          # python update.py
-          echo "Твои изменения здесь"
-      
-      - name: Commit changes
-        run: |
-          git add .
-          git diff --staged --quiet || git commit -m "Daily update $(date +'%Y-%m-%d')"
-      
-      - name: Push changes 🔥 КЛЮЧЕВОЙ ФИКС 🔥
-        run: |
-          git pull --rebase origin main
-          git push origin main
+          git add hosts.txt
+          git commit -m "Обновление HaGeZi PRO++ от $(date +'%Y-%m-%d')" || echo "Нет изменений"
+          git push origin main --force
+          exit 0
