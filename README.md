@@ -1,33 +1,31 @@
 # Blocklist Generator
 
-[![Go Version](https://img.shields.io/badge/Go-1.21+-00ADD8?style=flat-square&logo=go)](https://go.dev)
-[![License](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
-[![Go Report Card](https://goreportcard.com/badge/github.com/yourusername/blocklist-generator?style=flat-square)](https://goreportcard.com/report/github.com/yourusername/blocklist-generator)
-[![Code Style](https://img.shields.io/badge/style-gofmt-blue?style=flat-square)](https://pkg.go.dev/cmd/gofmt)
+[![Go Version](https://img.shields.io/badge/go-1.21+-00ADD8?style=flat&logo=go)](https://go.dev)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Status](https://img.shields.io/badge/status-stable-brightgreen.svg)](https://github.com)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](http://makeapullrequest.com)
+[![Concurrency](https://img.shields.io/badge/concurrency-worker--pool-blue.svg)](https://golang.org)
+[![Cache](https://img.shields.io/badge/cache-disk--based-orange.svg)]()
 
-[![Build Status](https://img.shields.io/github/actions/workflow/status/yourusername/blocklist-generator/go.yml?style=flat-square)](https://github.com/yourusername/blocklist-generator/actions)
-[![Security](https://img.shields.io/badge/security-A+-brightgreen?style=flat-square)](https://github.com/yourusername/blocklist-generator/security)
-[![Performance](https://img.shields.io/badge/performance-optimized-success?style=flat-square)](https://github.com/yourusername/blocklist-generator)
-
-> **Production-ready blocklist aggregator** — Fetches, deduplicates, and sorts domain blocklists from multiple sources with enterprise-grade reliability.
+A high-performance, concurrent blocklist generator written in Go that aggregates domain lists from multiple sources, deduplicates them, and produces a clean, sorted list of domains.
 
 ## 🚀 Features
 
-- **Multi-source aggregation** — Fetches from multiple blocklist URLs simultaneously
-- **Automatic deduplication** — Removes duplicate domains across all sources
-- **External sorting** — Handles millions of domains with disk-based sorting
-- **GZIP compression** — Automatic decompression of compressed responses
-- **Intelligent caching** — Disk-based cache with TTL to reduce network requests
-- **Rate limiting** — Respects source servers with configurable delays
-- **Retry logic** — Exponential backoff with jitter for transient failures
-- **Security validation** — SSRF protection, private IP blocking, domain sanitization
-- **Graceful shutdown** — Handles SIGTERM/SIGINT signals properly
-- **JSON logging** — Structured logging for production monitoring
+- **Concurrent Processing** - Fetches multiple blocklist sources simultaneously using worker pools
+- **Disk Caching** - Caches fetched lists locally with TTL (24 hours default)
+- **Automatic Decompression** - Handles gzipped responses automatically
+- **Domain Validation** - Validates and normalizes domain names according to RFC standards
+- **Deduplication** - Removes duplicate domains across all sources
+- **Graceful Shutdown** - Handles SIGINT and SIGTERM signals gracefully
+- **Configurable** - All settings can be controlled via environment variables
+- **Memory Efficient** - Streams large files without loading entire content into memory
+- **IPv4 Filtering** - Automatically filters out IP addresses (only domains allowed)
 
-## 📋 Prerequisites
+## 📋 Requirements
 
-- **Go 1.21+** (uses `slog` for structured logging)
-- Network access to blocklist sources
+- Go 1.21 or higher (for compilation)
+- Internet connection to fetch blocklist sources
+- Sufficient disk space for cache (depends on source sizes)
 
 ## 🔧 Installation
 
