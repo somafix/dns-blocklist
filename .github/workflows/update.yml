@@ -28,14 +28,16 @@ jobs:
         
       - name: Commit and push changes
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
           git add hosts.txt
           
           if git diff --cached --quiet; then
             echo "No changes to commit"
-          else
-            git commit -m "Update hosts: $(date +'%Y-%m-%d %H:%M:%S')"
-            git pull --rebase origin main
-            git push origin main
+            exit 0
           fi
+          
+          git commit -m "Daily update $(date +'%Y-%m-%d')"
+          git fetch origin main
+          git rebase origin/main
+          git push origin main
