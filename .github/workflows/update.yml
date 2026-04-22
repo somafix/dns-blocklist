@@ -20,22 +20,20 @@ O='blocklist.txt'
 D=set()
 for u in S:
   try:
-    r=urllib.request.Request(u,headers={'User-Agent':'Mozilla/5.0'})
-    for l in urllib.request.urlopen(r,timeout=30).read().decode('utf-8','ignore').splitlines():
+    req=urllib.request.Request(u,headers={'User-Agent':'Mozilla/5.0'})
+    for l in urllib.request.urlopen(req,timeout=30).read().decode('utf-8','ignore').splitlines():
       l=l.strip()
-      if not l or l[0] in '#!':continue
-      if '#' in l:l=l.split('#')[0].strip()
+      if not l or l[0] in '#!': continue
+      if '#' in l: l=l.split('#')[0].strip()
       p=l.split()
-      if len(p)>=2 and p[0] in['0.0.0.0','127.0.0.1','::1']:
-        d=p[1].lower()
-      elif len(p)==1:
-        d=p[0].lower()
-      else:continue
-      if d and len(d)<=253 and not re.match(r'^\d+\.\d+\.\d+\.\d+$',d) and d not in['localhost','localhost.localdomain','local','broadcasthost'] and not re.search(r'[^a-zA-Z0-9\.\-_]',d):
+      if len(p)>=2 and p[0] in ('0.0.0.0','127.0.0.1','::1'): d=p[1].lower()
+      elif len(p)==1: d=p[0].lower()
+      else: continue
+      if d and len(d)<=253 and not re.match(r'^\d+\.\d+\.\d+\.\d+$',d) and d not in ('localhost','localhost.localdomain','local','broadcasthost') and not re.search(r'[^a-zA-Z0-9\.\-_]',d):
         D.add(d)
-  except:pass
+  except: pass
 with open(O,'w') as f:
-  f.write(f'# {datetime.now()}\n# {len(D)} domains\n\n')
+  f.write(f'# Updated: {datetime.now()}\n# Total: {len(D)}\n')
   for d in sorted(D):
     f.write(f'0.0.0.0 {d}\n')
 EOF
@@ -43,5 +41,5 @@ EOF
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add blocklist.txt
-          git diff --quiet && git diff --staged --quiet || git commit -m "Update $(date +'%Y-%m-%d')"
+          git diff --quiet && git diff --staged --quiet || git commit -m "Auto-update $(date +'%Y-%m-%d')"
           git push
