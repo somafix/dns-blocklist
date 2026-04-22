@@ -1,45 +1,41 @@
-#!/usr/bin/env python3
-
-import urllib.request
+import requests
 import re
-from datetime import datetime, timezone
 
-URL = "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/hosts/multi.txt"
-OUTPUT = "hosts.txt"
+# Прямая ссылка на HaGeZi Multi PRO++ (формат hosts)
+url = "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/hosts/pro.plus.txt"
 
-print("Downloading...")
-try:
-    req = urllib.request.Request(URL, headers={"User-Agent": "Mozilla/5.0"})
-    with urllib.request.urlopen(req, timeout=60) as resp:
-        hosts = set()
-        total_lines = 0
-        for line in resp:
-            total_lines += 1
-            if total_lines % 100000 == 0:
-                print(f"  Processed {total_lines} lines, found {len(hosts)} hosts...")
-            
-            try:
-                line = line.decode("utf-8", errors="replace").strip()
-            except:
-                continue
-                
-            if not line or line.startswith("#"):
-                continue
-            
-            match = re.match(r"^(?:0\.0\.0\.0|127\.0\.0\.1)\s+([a-zA-Z0-9._-]+\.[a-zA-Z0-9.-]+)$", line)
-            if match:
-                hosts.add(f"0.0.0.0 {match.group(1)}")
-                
-except Exception as e:
-    print(f"Error: {e}")
-    exit(1)
+print(f"Загружаю {url}...")
+response = requests.get(url)
+response.raise_for_status()  # Если ссылка битая — упадёт с ошибкой
 
-print(f"Writing {len(hosts)} entries...")
-with open(OUTPUT, "w", encoding="utf-8") as f:
-    f.write(f"# Updated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}\n")
-    f.write(f"# Total: {len(hosts)}\n\n")
-    f.write("127.0.0.1 localhost\n\n")
-    f.write("\n".join(sorted(hosts)))
-    f.write("\n")
+lines = response.text.splitlines()
 
-print(f"Done: {len(hosts)} entries")
+# Множество для уникальных доменов (автоматически убирает дубли)
+unique_domains = set()
+
+for line in lines:
+    line = line.strip()
+    
+    # Пропускаем пустые строки и комментарии
+    if not line or line.startswith('#'):
+        continue
+    
+    # Формат hosts: "0.0.0.0 domain.com" или "127.0.0.1 domain.com"
+    parts = line.split()
+    if len(parts) >= 2:
+        domain = parts[1].lower()  # Берём домен, приводим к нижнему регистру
+        
+        # Базовая проверка: домен не должен быть мусором
+        if re.match(r'^[a-z0-9\.\-]+$', domain) and len(domain) > 3:
+            unique_domains.add(domain)
+
+# Сортируем и записываем в hosts.txt
+with open("hosts.txt", "w") as f:
+    f.write("# HaGeZi Multi PRO++ DNS Blocklist\n")
+    f.write("# Обновлено: " + __import__('datetime').datetime.now().strftime('%Y-%m-%d %H:%M:%S') + "\n")
+    f.write("# Источник: https://github.com/hagezi/dns-blocklists\n\n")
+    
+    for domain in sorted(unique_domains):
+        f.write(f"0.0.0.0 {domain}\n")
+
+print(f"Готово! Сохранено {len(unique_domains)} уникальных доменов в hosts.txt")
