@@ -1,37 +1,45 @@
-# Blocklist Generator
+# ADBlock Hosts Updater
 
-[![Go Version](https://img.shields.io/badge/go-1.21+-00ADD8?style=flat&logo=go)](https://go.dev)
-[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Status](https://img.shields.io/badge/status-stable-brightgreen.svg)](https://github.com)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](http://makeapullrequest.com)
-[![Concurrency](https://img.shields.io/badge/concurrency-worker--pool-blue.svg)](https://golang.org)
-[![Cache](https://img.shields.io/badge/cache-disk--based-orange.svg)]()
+![Python](https://img.shields.io/badge/python-3.x-blue.svg)
+![License](https://img.shields.io/badge/license-MIT-green.svg)
+![Status](https://img.shields.io/badge/status-active-brightgreen.svg)
 
-A high-performance, concurrent blocklist generator written in Go that aggregates domain lists from multiple sources, deduplicates them, and produces a clean, sorted list of domains.
+A lightweight Python utility designed to aggregate, sanitize, and merge multiple community-maintained hosts lists into a single, optimized `hosts.txt` file. This is ideal for system-level blocking of advertisements, tracking scripts, and malicious domains.
 
-## 🚀 Features
+## Features
 
-- **Concurrent Processing** - Fetches multiple blocklist sources simultaneously using worker pools
-- **Disk Caching** - Caches fetched lists locally with TTL (24 hours default)
-- **Automatic Decompression** - Handles gzipped responses automatically
-- **Domain Validation** - Validates and normalizes domain names according to RFC standards
-- **Deduplication** - Removes duplicate domains across all sources
-- **Graceful Shutdown** - Handles SIGINT and SIGTERM signals gracefully
-- **Configurable** - All settings can be controlled via environment variables
-- **Memory Efficient** - Streams large files without loading entire content into memory
-- **IPv4 Filtering** - Automatically filters out IP addresses (only domains allowed)
+* **Multi-Source Aggregation:** Fetches data from multiple reputable sources (StevenBlack, someonewhocares, KADhosts).
+* **Intelligent Parsing:** Uses Regular Expressions to validate entries and strip out junk comments or malformed lines.
+* **Deduplication:** Automatically removes duplicate domain entries using Python sets.
+* **Optimized Output:** Sorts all entries alphabetically to ensure the file is clean and manageable.
+* **Standard Library Only:** No external dependencies required (no `pip install` needed).
 
-## 📋 Requirements
+## How It Works
 
-- Go 1.21 or higher (for compilation)
-- Internet connection to fetch blocklist sources
-- Sufficient disk space for cache (depends on source sizes)
+1.  **Fetch:** The script iterates through the `SOURCES` list, downloading raw content from each URL.
+2.  **Parse:** It filters lines using regex to ensure only valid `0.0.0.0` or `127.0.0.1` formatted domain entries are captured.
+3.  **Merge & Clean:** All entries are placed into a set to enforce uniqueness.
+4.  **Export:** Generates a new `hosts.txt` file with a timestamp and total entry count header.
 
-## 🔧 Installation
+## Usage
 
-### From Source
+1.  Ensure you have **Python 3** installed.
+2.  Save your script as `update_hosts.py`.
+3.  Run the script from your terminal:
 
-```bash
-git clone https://github.com/yourusername/blocklist-generator.git
-cd blocklist-generator
-go build -o blocklist-generator
+    ```bash
+    python3 update_hosts.py
+    ```
+
+4.  Upon completion, you will find a generated `hosts.txt` file in the same directory.
+
+## Configuration
+
+You can add or remove sources by modifying the `SOURCES` list at the top of the script:
+
+```python
+SOURCES = [
+    "URL_TO_HOSTS_FILE_1",
+    "URL_TO_HOSTS_FILE_2",
+    # ...
+]
