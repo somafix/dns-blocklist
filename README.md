@@ -1,47 +1,31 @@
-# Hosts Update Script
+# 🛡️ ADBlock Hosts Updater
 
-![Python](https://img.shields.io/badge/python-3.x-blue.svg)
-![License](https://img.shields.io/badge/license-MIT-green.svg)
-![Status](https://img.shields.io/badge/status-active-brightgreen.svg)
+[![Daily Update](https://github.com/YOUR_USERNAME/YOUR_REPO/actions/workflows/update.yml/badge.svg)](https://github.com/YOUR_USERNAME/YOUR_REPO/actions/workflows/update.yml)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A lightweight, zero-dependency Python utility that automatically fetches, normalizes, and saves blocklists to a clean `hosts.txt` file ready for system use.
+## 📋 Description
 
-## Features
+Automatically fetches and updates a premium blocklist daily. Converts to standard hosts format (`0.0.0.0 domain`) and removes duplicates.
 
-* **Format Normalization:** Automatically converts entries to the standardized `0.0.0.0 domain.com` format.
-* **Smart Parsing:** Cleans up input, removes comments, and handles standard hosts file formatting requirements.
-* **Zero Dependencies:** Uses only Python's standard library (no `pip install` required).
-* **Ready-to-Use Output:** Generates an alphabetical, sorted file with a header containing a timestamp and the total count of blocked entries.
+Perfect for:
+- Pi-hole
+- AdGuard Home
+- NextDNS
+- Any hosts-based ad blocker
 
-## How It Works
+## 🚀 Features
 
-1. **Fetch:** The script downloads the blocklist from the configured URL.
-2. **Parse:** It uses regular expressions to extract unique domains and forces a consistent `0.0.0.0` address format.
-3. **Save:** It sorts the entries and generates `hosts.txt` with a helpful header.
+- ✅ Single authoritative source
+- ✅ Automatic daily updates via GitHub Actions
+- ✅ Clean `0.0.0.0` format
+- ✅ Duplicate removal
+- ✅ Lightweight and fast
 
-## Usage
+## 📦 Installation
 
-1. Ensure you have **Python 3** installed.
-2. Run the script from your terminal:
+### 1. Clone this repository
 
-    ```bash
-    python3 main.py
-    ```
-
-3. Upon completion, the `hosts.txt` file will be generated in the same directory.
-
-## System Integration
-
-* **Linux/macOS:** You can update your system blocklist by replacing the content of `/etc/hosts` with the generated file (requires `sudo`).
-* **Windows:** You can replace the contents of `C:\Windows\System32\drivers\etc\hosts` (requires Administrator privileges).
-
-*Warning: Always make a backup of your existing hosts file before replacing it to prevent connectivity issues.*
-
-## Configuration
-
-You can change the blocklist source by editing the `URLS` list at the top of the script:
-
-```python
-URLS = [
-    "YOUR_URL_HERE",
-]
+```bash
+git clone https://github.com/YOUR_USERNAME/YOUR_REPO.git
+cd YOUR_REPO
