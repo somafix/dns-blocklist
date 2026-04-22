@@ -123,7 +123,7 @@ func extractDomain(line string) string {
 }
 
 func fetchSource(ctx context.Context, url string, cache *Cache) ([]string, error) {
-	key := fmt.Sprintf("%x", sha256.Sum256([]byte(url)))
+	key := fmt.Sprintf("%x", sha256.Sum256([]byte(url)))[:16]
 	if cache != nil {
 		if domains, err := cache.Get(key); err == nil {
 			return domains, nil
