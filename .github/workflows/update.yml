@@ -17,6 +17,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: main
           
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -38,6 +39,5 @@ jobs:
           fi
           
           git commit -m "Daily update $(date +'%Y-%m-%d')"
-          git fetch origin main
-          git rebase origin/main
-          git push origin main
+          git pull --rebase origin main --autostash
+          git push --force-with-lease origin main
