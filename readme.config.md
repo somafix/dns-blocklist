@@ -1,46 +1,48 @@
-# personalDNSfilter Configuration & Generator
+# 🛡️ personalDNSfilter Configuration
 
-![Status](https://img.shields.io/badge/Status-Active-brightgreen?style=for-the-badge)
-![Platform](https://img.shields.io/badge/Platform-Android%20|%20Windows%20|%20Linux-blue?style=for-the-badge)
-![Security](https://img.shields.io/badge/Security-DoT%20|%20DoH-orange?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-3.x-blue)
+![Platform](https://img.shields.io/badge/platform-Android%20%7C%20Linux%20%7C%20Windows-lightgrey)
+![License](https://img.shields.io/badge/license-Proprietary-green)
+![PRs](https://img.shields.io/badge/PRs-welcome-brightgreen)
 
-A high-performance DNS filtering solution based on the **personalDNSfilter** core, optimized for large-scale blocklists. This repository contains the production configuration and the Go-based engine used to aggregate and shard massive domain lists.
+[![DNS](https://img.shields.io/badge/DNS-over--TLS-1f8acb)](https://www.zenz-solutions.de/personaldnsfilter-wp/)
+[![Ad Blocking](https://img.shields.io/badge/Ad%20Blocking-Active-red)](https://github.com/somafix/dns-blocklist)
+[![Android](https://img.shields.io/badge/Android-VPN%20%7C%20Root-3DDC84)](https://www.zenz-solutions.de/personaldnsfilter-wp/)
 
-## 🛠 DNS Configuration Features
+> ⚠️ **WARNING! FOR EXPERTS ONLY!**  
+> This is personalDNSfilter configuration! Only edit this file if you are an expert!
 
-* **Secure Upstream**: Pre-configured with Cloudflare (Security) and Quad9 via **DNS over TLS (DoT)**.
-* **Dual-Stack Support**: Full IPv4 and IPv6 compatibility (`ipVersionSupport = 46`).
-* **Smart Routing**: Automatic detection of underlying network DNS with VPN-tunneling for Android.
-* **Performance Tuning**: 
-    * 30-second request timeouts for reliable list updates.
-    * 20,000 entry LRU cache for filtered and allowed hosts.
-    * Local resolver enabled for instant IP mapping.
+## 📋 Table of Contents
+- [Features](#-features)
+- [Quick Start](#-quick-start)
+- [Configuration](#-configuration)
+- [Blocklists](#-blocklists)
+- [Android Specific](#-android-specific)
+- [Remote Control](#-remote-control)
+- [Links](#-links)
 
-## 📋 Blocklist Sources
+## ✨ Features
 
-The generator aggregates domains from the following high-authority sources:
+| Feature | Status | Description |
+|---------|--------|-------------|
+| DNS-over-TLS | ✅ | Encrypted DNS with Cloudflare & Quad9 |
+| Ad Blocking | ✅ | Multiple blocklists support |
+| IPv4/IPv6 | ✅ | Dual stack support |
+| Local Resolver | ✅ | Built-in DNS resolver |
+| Traffic Logging | ⚙️ | Optional with rotation |
+| Remote Control | ⚙️ | Configurable via keyphrase |
 
-| ID | Source Name | Category | Status |
-| :--- | :--- | :--- | :--- |
-| `stevenblack` | StevenBlack Hosts | Security | ✅ Active |
-| `someonewhocares` | SomeoneWhoCares | Ads/Zero | ✅ Active |
-| `anudeepnd` | AnudeepND Blacklist | Tracking | ✅ Active |
-| `polishfilters` | KADhosts | Regional | ✅ Active |
-| `adaway` | AdAway | General Ads | ⏹ Optional |
+## 🚀 Quick Start
 
-## 🚀 Engine Specifications (Go v5.0)
+### Basic Configuration
+```ini
+# Enable DNS detection and filtering
+detectDNS = true
+filterActive = true
 
-The underlying generator uses an advanced sharding logic to handle millions of domains without high memory overhead:
+# DNS servers (DoT)
+fallbackDNS = 1.1.1.2::853::DoT::security.cloudflare-dns.com; 9.9.9.9::853::DoT::dns.quad9.net
 
-1.  **Concurrent Fetching**: Uses a worker pool to download multiple sources simultaneously.
-2.  **Disk Sharding**: Splits massive datasets into 100 shards based on SHA256 hashes.
-3.  **External Merge Sort**: Uses a heap-based multi-way merge to produce a perfectly sorted `blocklist.txt`.
-4.  **Automatic TTL**: Disk cache with 24-hour TTL and ETag validation to minimize bandwidth.
-
-## ⚙️ Installation & Usage
-
-### 1. Generate the Blocklist
-If you are using the Go engine, compile and run:
-```bash
-go build -o blockgen main.go
-./blockgen
+# Local resolver
+enableLocalResolver = true
+localResolverTTL = 600
