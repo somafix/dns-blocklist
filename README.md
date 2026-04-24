@@ -1,34 +1,34 @@
-# HaGeZi DNS Blocklist Downloader
+# 🛡️ AI-Powered DNS Blocklist Generator
 
-[![Python](https://img.shields.io/badge/Python-3.6%2B-blue.svg)](https://www.python.org/downloads/)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Code Style](https://img.shields.io/badge/code%20style-pep8-orange.svg)](https://www.python.org/dev/peps/pep-0008/)
-[![Status](https://img.shields.io/badge/status-stable-brightgreen.svg)]()
-[![GitHub](https://img.shields.io/badge/GitHub-HaGeZi-181717.svg)](https://github.com/hagezi/dns-blocklists)
+[![Python Version](https://img.shields.io/badge/python-3.7+-blue.svg)](https://python.org)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Last Commit](https://img.shields.io/github/last-commit/hagezi/dns-blocklists.svg)](https://github.com/hagezi/dns-blocklists)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](http://makeapullrequest.com)
+[![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://github.com/yourusername/yourrepo)
+[![Made with AI](https://img.shields.io/badge/Made%20with-AI%20Learning-purple.svg)](https://github.com/yourusername/yourrepo)
 
 ## 📋 Overview
 
-A robust Python script to download, validate, and process the **HaGeZi Multi PRO++ DNS Blocklist** from GitHub. The script converts the source blocklist into a clean `hosts` format file with duplicate removal, domain validation, and automatic backup functionality.
+An intelligent DNS blocklist generator that combines the powerful **HaGeZi PRO++** blocklist with a self-learning AI module that automatically identifies and blocks tracking domains. The AI continuously learns from patterns and builds its own reputation-based database to enhance privacy protection.
 
 ## ✨ Features
 
-- 🔄 **Automatic download** from official HaGeZi GitHub repository
-- ✅ **RFC-compliant domain validation** (length, characters, segments)
-- 🗑️ **Duplicate removal** using Python sets
-- 📁 **Atomic file writing** with temporary files (prevents corruption)
-- 💾 **Automatic backup** of previous version
-- 🔍 **MD5 hash comparison** to skip identical updates
-- ⏱️ **Timeout handling** (30 seconds)
-- 📏 **File size limit** (50 MB maximum)
-- 🌐 **Proper User-Agent header** (avoids GitHub blocking)
-- 📊 **Detailed statistics** (domains found, invalid lines)
-- 🛡️ **Comprehensive error handling** (network, HTTP, timeout)
+- **🤖 Self-Learning AI**: Automatically detects suspicious tracking domains using multiple heuristics
+- **📊 Reputation System**: Maintains a persistent database of domain reputations
+- **🧠 Pattern Recognition**: Identifies trackers based on:
+  - Domain structure anomalies (length, unusual characters)
+  - Suspicious subdomain depth
+  - Entropy analysis (random-looking strings)
+  - Known tracking keywords
+  - Machine learning-based scoring
+- **💾 Persistent Storage**: Saves learned patterns for future runs
+- **🔄 Incremental Updates**: Only updates when changes are detected
+- **📁 Automatic Backup**: Creates backups before updating the blocklist
+- **⚡ Efficient Processing**: Handles large blocklists with streaming downloads
 
-## 🚀 Installation
+## 🚀 Quick Start
+
+### Prerequisites
 
 ```bash
-# Clone or download the script
-wget https://raw.githubusercontent.com/your-repo/hagezi-downloader.py
-
-# Install required dependency
 pip install requests
