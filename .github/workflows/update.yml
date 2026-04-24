@@ -1,9 +1,9 @@
-name: Обновление DNS-блоклиста с ИИ
+name: Обновление блоклиста
 
 on:
   schedule:
-    - cron: '0 */12 * * *'   # каждые 12 часов
-  workflow_dispatch:         # можно запустить вручную
+    - cron: '0 */12 * * *'
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -11,29 +11,24 @@ permissions:
 jobs:
   update:
     runs-on: ubuntu-latest
-    
     steps:
-      - name: Клонируем репозиторий
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
+      - uses: actions/checkout@v4
       
-      - name: Устанавливаем Python
+      - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
       
-      - name: Устанавливаем зависимости
-        run: |
-          pip install requests
+      - name: Install dependencies
+        run: pip install requests
       
-      - name: Запускаем скрипт обновления
-        run: python update_hosts.py
+      - name: Run update.py
+        run: python update.py
       
-      - name: Коммитим и пушим изменения
+      - name: Commit and push
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add hosts.txt ai_custom_blocklist.txt ai_trackers.json hosts.backup
-          git diff --staged --quiet || git commit -m "🤖 AI auto-update: blocklist $(date -u '+%Y-%m-%d %H:%M:%S') [skip ci]"
+          git diff --staged --quiet || git commit -m "🤖 AI auto-update [skip ci]"
           git push
