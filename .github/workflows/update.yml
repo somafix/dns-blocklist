@@ -1,39 +1,39 @@
-name: Update HaGeZi Blocklist
+name: Обновление DNS-блоклиста с ИИ
 
 on:
   schedule:
-    - cron: '0 */12 * * *'
-  workflow_dispatch:
+    - cron: '0 */12 * * *'   # каждые 12 часов
+  workflow_dispatch:         # можно запустить вручную
+
+permissions:
+  contents: write
 
 jobs:
   update:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     
     steps:
-      - name: Checkout repo
+      - name: Клонируем репозиторий
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 1
-
-      - name: Setup Python
+      
+      - name: Устанавливаем Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-
-      - name: Install requests
-        run: pip install requests
-
-      - name: Run update script
-        run: python update.py
-
-      - name: Push back to repo
+      
+      - name: Устанавливаем зависимости
         run: |
-          git config user.name "GitHub Actions"
-          git config user.email "actions@github.com"
-          git add hosts.txt
-          git commit -m "Обновление HaGeZi PRO++ от $(date +'%Y-%m-%d')" || echo "Нет изменений"
-          git push origin main --force
-          exit 0
+          pip install requests
+      
+      - name: Запускаем скрипт обновления
+        run: python update_hosts.py
+      
+      - name: Коммитим и пушим изменения
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add hosts.txt ai_custom_blocklist.txt ai_trackers.json hosts.backup
+          git diff --staged --quiet || git commit -m "🤖 AI auto-update: blocklist $(date -u '+%Y-%m-%d %H:%M:%S') [skip ci]"
+          git push
