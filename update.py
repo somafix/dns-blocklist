@@ -12,7 +12,7 @@ from collections import defaultdict
 
 # Источники
 URL = "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/hosts/pro.plus.txt"
-AI_BLOCKLIST_FILE = "ai_custom_blocklist.txt"   # сюда ИИ сохраняет свои домены
+AI_BLOCKLIST_FILE = "ai_custom_blocklist.txt"
 OUTPUT_FILE = "hosts.txt"
 BACKUP_FILE = "hosts.backup"
 AI_DB_FILE = "ai_trackers.json"
@@ -27,7 +27,7 @@ class TrackerAI:
         self.db_file = AI_DB_FILE
         self.blocklist_file = AI_BLOCKLIST_FILE
         self.reputation = defaultdict(float)
-        self.ai_custom_domains = set()   # домены, которые ИИ добавил навсегда
+        self.ai_custom_domains = set()
         self.load_db()
         self.load_custom_blocklist()
     
@@ -42,14 +42,12 @@ class TrackerAI:
                 print("🤖 ИИ создаёт новую базу репутаций")
     
     def load_custom_blocklist(self):
-        """Загружает свой собственный блоклист, который ИИ насобирал за всё время"""
         if os.path.exists(self.blocklist_file):
             try:
                 with open(self.blocklist_file, 'r') as f:
                     for line in f:
                         line = line.strip()
                         if line and not line.startswith('#'):
-                            # убираем '0.0.0.0 ' если есть
                             if line.startswith('0.0.0.0 '):
                                 domain = line[8:]
                             else:
@@ -60,12 +58,10 @@ class TrackerAI:
                 print(f"⚠️ Не удалось загрузить ИИ-блоклист: {e}")
     
     def save_custom_blocklist(self):
-        """Сохраняет свой блоклист в файл, чтобы использовать в следующий раз"""
         with open(self.blocklist_file, 'w') as f:
             f.write(f"# AI Self-Learning Blocklist\n")
             f.write(f"# Обновлено: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-            f.write(f"# Всего доменов: {len(self.ai_custom_domains)}\n")
-            f.write(f"# Эти домены ИИ нашёл сам и заблокировал навсегда\n\n")
+            f.write(f"# Всего доменов: {len(self.ai_custom_domains)}\n\n")
             for domain in sorted(self.ai_custom_domains):
                 f.write(f"0.0.0.0 {domain}\n")
     
@@ -94,7 +90,7 @@ class TrackerAI:
             'track', 'analytics', 'metrics', 'stat', 'pixel', 'tag',
             'click', 'adserver', 'doubleclick', 'googlead', 'facebook',
             'criteo', 'taboola', 'outbrain', 'exelator', 'adsrv',
-            'ssp', 'dsp', 'rtb', 'bid', 'impression', 'beacon'
+            'ssp', 'dsp', 'rtb', 'bid', 'impression', 'beacon', 'counter'
         ]
         domain_lower = domain.lower()
         for kw in suspicious_keywords:
@@ -108,9 +104,8 @@ class TrackerAI:
         return score >= 5
     
     def analyze_and_remember(self, domain):
-        """Анализирует домен и если подозрительный - добавляет в персональный блоклист"""
         if domain in self.ai_custom_domains:
-            return True  # уже заблокирован ИИ
+            return True
         
         if domain in self.reputation:
             if self.reputation[domain] <= -3:
@@ -142,7 +137,6 @@ def get_file_hash(filename):
         return hashlib.md5(f.read()).hexdigest()
 
 def download_blocklist(url, description):
-    """Загружает блоклист из URL и возвращает множество доменов"""
     print(f"Загружаю {description} из {url}...")
     domains = set()
     try:
@@ -167,7 +161,6 @@ def download_blocklist(url, description):
             
             domain = parts[1].lower()
             
-            # базовая валидация
             if not domain or len(domain) > 253:
                 continue
             
@@ -202,49 +195,41 @@ print("=" * 50)
 
 ai = TrackerAI()
 
-# 1. Загружаем основной список HaGeZi
 main_domains = download_blocklist(URL, "HaGeZi PRO++")
 
 if len(main_domains) == 0:
-    print("ОШИБКА: Не удалось загрузить основной блоклист. Проверь интернет или URL.")
+    print("ОШИБКА: Не удалось загрузить основной блоклист.")
     sys.exit(1)
 
-# 2. Загружаем ИИ-список (если есть)
 ai_domains = ai.get_custom_blocklist()
 print(f"\n🤖 ИИ уже заблокировал ранее: {len(ai_domains)} доменов")
 
-# 3. Анализируем каждый домен из HaGeZi, чтобы ИИ учился и добавлял новые
-print(f"\n🧠 ИИ анализирует {len(main_domains)} доменов и пополняет свой блоклист...")
+print(f"\n🧠 ИИ анализирует {len(main_domains)} доменов...")
 new_ai_blocks = 0
 for domain in main_domains:
     if ai.analyze_and_remember(domain):
         new_ai_blocks += 1
 
-# 4. Объединяем оба списка
 all_domains = main_domains.union(ai_domains)
 
-# 5. Сохраняем ИИ-блоклист для следующих запусков
 ai.save_all()
 print(f"\n💾 ИИ сохранил свой блоклист: {len(ai.get_custom_blocklist())} доменов")
 if new_ai_blocks > 0:
-    print(f"   ✨ Новых доменов добавлено за этот запуск: {new_ai_blocks}")
+    print(f"   ✨ Новых добавлено: {new_ai_blocks}")
 
-# 6. Записываем итоговый hosts-файл
 print(f"\n📝 Записываю итоговый блоклист...")
 with tempfile.NamedTemporaryFile(mode='w', delete=False, encoding='utf-8') as tmp_file:
     tmp_file.write("# DNS Blocklist: HaGeZi PRO++ + AI Self-Learning\n")
     tmp_file.write(f"# Обновлено: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-    tmp_file.write(f"# Источник HaGeZi: {URL}\n")
     tmp_file.write(f"# Доменов из HaGeZi: {len(main_domains)}\n")
-    tmp_file.write(f"# Доменов от ИИ (самообучение): {len(ai_domains)}\n")
-    tmp_file.write(f"# Всего в блоклисте: {len(all_domains)}\n\n")
+    tmp_file.write(f"# Доменов от ИИ: {len(ai_domains)}\n")
+    tmp_file.write(f"# Всего: {len(all_domains)}\n\n")
     
     for domain in sorted(all_domains):
         tmp_file.write(f"0.0.0.0 {domain}\n")
     
     tmp_path = tmp_file.name
 
-# 7. Заменяем старый файл с бэкапом
 if os.path.exists(OUTPUT_FILE):
     old_hash = get_file_hash(OUTPUT_FILE)
     shutil.copy2(OUTPUT_FILE, BACKUP_FILE)
@@ -252,7 +237,7 @@ if os.path.exists(OUTPUT_FILE):
     new_hash = get_file_hash(OUTPUT_FILE)
     
     if old_hash == new_hash:
-        print(f"⚠️ Новый файл идентичен старому (хеш {old_hash})")
+        print(f"⚠️ Файл не изменился (хеш {old_hash})")
     else:
         print(f"📊 Файл изменён: {old_hash} -> {new_hash}")
 else:
@@ -260,13 +245,8 @@ else:
 
 print(f"\n{'='*50}")
 print(f"✅ ГОТОВО!")
-print(f"📊 Статистика:")
 print(f"   • HaGeZi: {len(main_domains)} доменов")
-print(f"   • ИИ-блоклист (накопленный): {len(ai_domains)} доменов")
-print(f"   • ВСЕГО в {OUTPUT_FILE}: {len(all_domains)} доменов")
-print(f"📁 Сохранено в: {OUTPUT_FILE}")
-if os.path.exists(BACKUP_FILE):
-    print(f"💾 Бэкап: {BACKUP_FILE}")
-print(f"🧠 Файл ИИ-блоклиста: {AI_BLOCKLIST_FILE}")
-print(f"📖 База репутаций ИИ: {AI_DB_FILE}")
+print(f"   • ИИ-блоклист: {len(ai_domains)} доменов")
+print(f"   • ВСЕГО: {len(all_domains)} доменов")
+print(f"📁 {OUTPUT_FILE}")
 print("="*50)
