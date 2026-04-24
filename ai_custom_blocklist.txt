@@ -1,5 +1,5 @@
 # AI Self-Learning Blocklist
-# Обновлено: 2026-04-24 07:04:25
+# Обновлено: 2026-04-24 08:50:17
 # Всего доменов: 10109
 
 0.0.0.0 000283-data-injection.s3.cn-north-1.amazonaws.com.cn
