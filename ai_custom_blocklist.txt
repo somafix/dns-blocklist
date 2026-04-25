@@ -1,6 +1,6 @@
 # AI Self-Learning Blocklist
-# Обновлено: 2026-04-25 01:10:10
-# Всего доменов: 10205
+# Обновлено: 2026-04-25 12:32:47
+# Всего доменов: 10226
 
 0.0.0.0 000283-data-injection.s3.cn-north-1.amazonaws.com.cn
 0.0.0.0 0011f2d3dbb67b5be9c32379edff62f18ae706a4ed0caf3e43aa940220e0e74.us-east-1.prod.service.minerva.devices.a2z.com
@@ -52,6 +52,7 @@
 0.0.0.0 09f6c72f134cc3ce375362de2acf7e945f8be426b38fe7968ceb553054e04f5.us-east-1.prod.service.minerva.devices.a2z.com
 0.0.0.0 09t5axtvx7tzsyz6mvk9tedz83ngi1774982755.darnuid.imrworldwide.com
 0.0.0.0 09unlxa33enl7buwn0j9b8ca98dba1771520931.uaid.vtwenty.com
+0.0.0.0 0a3ll3ioi0xear5fk8rllemf9j0p21777014480.uaid.nmrodam.com
 0.0.0.0 0a9rdbav19xrngpx5e0sxpn1tk18v1765246075.uaid.vtwenty.com
 0.0.0.0 0ade0mfss75n4ui9zp06q4nojvgcx1768933238.uaid.vtwenty.com
 0.0.0.0 0aff4trgg35y8ph4n6negwjas059u1768425063.uaid.nmrodam.com
@@ -186,6 +187,7 @@
 0.0.0.0 1065846--37119411-111-mnews.ms.vk.com
 0.0.0.0 107edbd92340992614447474acac309e9822e47ea1e91a11d8660140fa496e6.us-east-1.prod.service.minerva.devices.a2z.com
 0.0.0.0 10d0abbcbd475c2bb4f93f4f9ae6dd0e5fdbd050e9aca75cf3f6d0fe53561d3.us-east-1.prod.service.minerva.devices.a2z.com
+0.0.0.0 10l839509yp748vwg9numsmvz1al71777005156.uaid.nmrodam.com
 0.0.0.0 10r30hcjf7bz9p8umkmb3e7buvyg41773338062.uaid.nmrodam.com
 0.0.0.0 10rl7lwwlfcqrq3xbz2x5n5ertaks1771111301.nuid.imrworldwide.com
 0.0.0.0 110oqn6orsgbeafdb42o8odjf0okb1771774855.darnuid.imrworldwide.com
@@ -1342,6 +1344,7 @@
 0.0.0.0 4dpven6uq32voohanxsa9jws6hopw1774874806.nuid.nmrodam.com
 0.0.0.0 4dyjsnrox9en9hl3lr23tv5w3x4vf1775740490.nuid.nmrodam.com
 0.0.0.0 4e54r3unbiupb0jat8i79pl1hdtli1769341177.uaid.nmrodam.com
+0.0.0.0 4e7bip0zuojlmjyed7xp5oqx0uoi81777048211.nuid.nmrodam.com
 0.0.0.0 4egxvrebhutd6u01ufxcz4ij7bmfq1769850548.nuid.nmrodam.com
 0.0.0.0 4eiohvt6u19o6hdngfw7s0lp77kc31770161441.uaid.vtwenty.com
 0.0.0.0 4ekr3yrph6npd800y1kfg4cnftbe11771456077.uaid.vtwenty.com
@@ -1403,6 +1406,7 @@
 0.0.0.0 4tnhaor3zel7sz0yaubzk83roadjr1771974480.nuid.imrworldwide.com
 0.0.0.0 4tsky42nrkjylg0cllixnxumn8hzq1771317794.uaid.nmrodam.com
 0.0.0.0 4tymghf2yjbtupof5uqy9iypxdm4p1770896401.uaid.nmrodam.com
+0.0.0.0 4u0zon7kortjn2014x46abh9dkqgc1777053425.uaid.nmrodam.com
 0.0.0.0 4uegnbpz7u31jph0wsz0on0msglac1776923924.uaid.nmrodam.com
 0.0.0.0 4ukwxjkbpjtdxisnmqehmsl1habij1772152450.nuid.imrworldwide.com
 0.0.0.0 4ur4ektakrx7v7urhxnvyai1wh05v1770340664.uaid.vtwenty.com
@@ -1539,6 +1543,7 @@
 0.0.0.0 5f922c02542503bbafa5edf7feaaeef74470773022c658e6676e63b5502d59e.us-east-1.prod.service.minerva.devices.a2z.com
 0.0.0.0 5fbl6ioc5bt3nt7qtfk2mndpglh3l1763838445.uaid.nmrodam.com
 0.0.0.0 5fi1jdmafrjovqhuo98keqouiuywl1771494701.nuid.nmrodam.com
+0.0.0.0 5fjlsd04zenfhbwaztouwnjufc6881777005156.uaid.nmrodam.com
 0.0.0.0 5fka5ydc8rbpq5lnxxlavobquzvqr1773183813.nuid.nmrodam.com
 0.0.0.0 5fuh4nw14wfistt1wlbxkjryfpqpz1775750902.nuid.nmrodam.com
 0.0.0.0 5fzucmm279c44eyaaxnzzoftd1e0t1771454823.uaid.nmrodam.com
@@ -2078,6 +2083,7 @@
 0.0.0.0 75b3e6aaf228e714080c6e6af1b0de8e8af5961fd324f1e311a1abcc6bc7aad.us-east-1.prod.service.minerva.devices.a2z.com
 0.0.0.0 75c7b7a159d3ac68010903999df1dcd571a6cc2498ce1fa09405403ea02487c.us-east-1.prod.service.minerva.devices.a2z.com
 0.0.0.0 75mwwj47ze0k82ajhb4bbufwy2iv31766520352.uaid.nmrodam.com
+0.0.0.0 75n77zcfdlw4e353awz4rge4tjsll1777053399.uaid.nmrodam.com
 0.0.0.0 75qu94jaexeei7c88vae18vemrzxe1776350405.uaid.nmrodam.com
 0.0.0.0 75v0klkv8brfqmd63j5bw2ubxxumi1765902341.uaid.nmrodam.com
 0.0.0.0 75vj0s3cpsm4qpunemrxdxipk9bls1765311505.nuid.nmrodam.com
@@ -3298,6 +3304,7 @@
 0.0.0.0 apiproxy-logging-s4-164762ccd0989fc7.elb.us-east-2.amazonaws.com
 0.0.0.0 apiproxy-logging-s4-4e4dbfdf43752432.elb.eu-west-1.amazonaws.com
 0.0.0.0 apiproxy-logging-s4-a123fa8d414246ea.elb.us-west-2.amazonaws.com
+0.0.0.0 apjbkmnyyq2kyryfq162b7qnclilk1777048106.nuid.nmrodam.com
 0.0.0.0 apse1-ssp-prod-bidder-alb-1413692931.ap-southeast-1.elb.amazonaws.com
 0.0.0.0 apw0vj1dpijv9oormiijw1ebhav1d1775075453.nuid.imrworldwide.com
 0.0.0.0 apxyjpswlgpauqevdtkdcykelggnq1776924668.nuid.nmrodam.com
@@ -3401,6 +3408,7 @@
 0.0.0.0 b69e00cb829f0581c74f7701afc090c9c6ed6fb17e4d634a5dbe47beb188316.us-east-1.prod.service.minerva.devices.a2z.com
 0.0.0.0 b6mesqkim077fje3t4j2gu05rkp1o1763269113.nuid.imrworldwide.com
 0.0.0.0 b6qvjibb9puuncu2ffbqkiswsry0c1763314630.nuid.imrworldwide.com
+0.0.0.0 b78fawoou0yzos6jcr14yivly0rrd1777014480.uaid.nmrodam.com
 0.0.0.0 b79c66077e27a1c100292a6aa5da291cfa7da7ef982a7d0d2708be38d76b31f.us-east-1.prod.service.minerva.devices.a2z.com
 0.0.0.0 b7adnwwvswndrjxozpybrqfvsvhck1764508463.darnuid.imrworldwide.com
 0.0.0.0 b7dpqrbkospiouctrc9o8audfzbrt1763265896.darnuid.imrworldwide.com
@@ -3661,6 +3669,7 @@
 0.0.0.0 c27dy3v8874axzyqb9leyrsnesjh11771838694.uaid.vtwenty.com
 0.0.0.0 c287d8238bc6fcbfa0eb5d31f841ddeba00e911ca0d9d209bea66f5cacd89f9.us-east-1.prod.service.minerva.devices.a2z.com
 0.0.0.0 c2a5fd9f1f5579e7e89f1637990c9cd4a52af4901ac64186033f263ad767a43.us-east-1.prod.service.minerva.devices.a2z.com
+0.0.0.0 c2jd6z44cjbmku328xk6v8og6ysnv1777053399.uaid.nmrodam.com
 0.0.0.0 c2moyrsypikrdmpn6a0g9w49m63vw1776011509.uaid.nmrodam.com
 0.0.0.0 c39be92822e6df07ee67d7a940ef8622a77c049a2e3a066537c8f1c24f01f84.us-east-1.prod.service.minerva.devices.a2z.com
 0.0.0.0 c3a96268970ab637d3675f622ef60e120f998a1f7519f04cabe611a68841a33.us-east-1.prod.service.minerva.devices.a2z.com
@@ -5090,6 +5099,7 @@
 0.0.0.0 dran053l11o4egx3wbe8mg6ranerw1771911668.uaid.vtwenty.com
 0.0.0.0 drgmkrqjdyksfy22pxypf3jfi7rfw1776923438.nuid.imrworldwide.com
 0.0.0.0 drkyldudwhaa5rahozhb8wwbdw5gr1773390223.nuid.imrworldwide.com
+0.0.0.0 dro7e1jrudczehjwtwd2o11avnt961777067054.nuid.nmrodam.com
 0.0.0.0 drrsahvx4vobs0lyoplowvvzgb0tm1771975794.nuid.imrworldwide.com
 0.0.0.0 ds8sdoaifrmzsufxkmhmtl3ehzz2p1774007054.nuid.imrworldwide.com
 0.0.0.0 dsejaeruqi4n8bkupgn9op75barxq1765628868.nuid.imrworldwide.com
@@ -5126,6 +5136,7 @@
 0.0.0.0 dwpxbxud5wc1d8xvavbmavgr8iwxi1775747438.nuid.nmrodam.com
 0.0.0.0 dwws3j5gaxf9axj1amgu7q2poyho61772609796.uaid.nmrodam.com
 0.0.0.0 dwx13d5cmdvmvdzd4uu30s3t3nuhw1771189744.uaid.vtwenty.com
+0.0.0.0 dxa51goyb2alxfbw2y0rhh1hb9fgi1777021815.uaid.nmrodam.com
 0.0.0.0 dxdjtth7lkj5ql1hvjpjxqnsyad1h1771622432.nuid.imrworldwide.com
 0.0.0.0 dxs4yqk7b7bpf97injdh6n2noang61770168365.uaid.nmrodam.com
 0.0.0.0 dxux1sajjjlq05rqefhk3hl7bxc5y1775494771.nuid.nmrodam.com
@@ -5566,6 +5577,7 @@
 0.0.0.0 fite9ehrybmahlesv1k0evhjkefsy1769799724.nuid.imrworldwide.com
 0.0.0.0 fjfpuq9kwtll8gczxc4ipwur5xjt81764912846.nuid.imrworldwide.com
 0.0.0.0 fjwk2kjapgmk5i8wh6wiuvpvak8lf1762613436.uaid.vtwenty.com
+0.0.0.0 fkelaqjf7ja2iwl25fg4hfm5h1qgd1777067052.uaid.nmrodam.com
 0.0.0.0 fkwmpo1d83smhpavlc93vxu44u91f1771796253.uaid.vtwenty.com
 0.0.0.0 fkx9ekabwfq2ekab9ioadx7qmhwb11776029934.uaid.nmrodam.com
 0.0.0.0 fkxp2hx2dcgz50regezdwayc0vhul1773421846.nuid.nmrodam.com
@@ -6813,6 +6825,7 @@
 0.0.0.0 lg9m47phtqhdu7bgibvtsk47gmcdieqzldnppucb2fa26e8f06922dbdam1.e.aa.online-metrix.net
 0.0.0.0 lg9m47phtw52figigzicnblfubha2mxzefcfebbp84b5e66607953a81am1.e.aa.online-metrix.net
 0.0.0.0 lgivefbpfe2kfordcqusj1y64gmdx1771618028.nuid.imrworldwide.com
+0.0.0.0 lgp9kf0yyxbeyheknpmqihsozhfs91777067241.uaid.nmrodam.com
 0.0.0.0 lguvf6ss8g8thpdowo2k5t5fsfpet1775842113.nuid.imrworldwide.com
 0.0.0.0 lh4bhz519r5frdi1tw22zwwnip6w41774892760.uaid.nmrodam.com
 0.0.0.0 lh4e4qfk5ii0ct69avu945ow018pb1771383545.uaid.vtwenty.com
@@ -7833,6 +7846,7 @@
 0.0.0.0 pzpdduupztcecyeehykozx5i3mkyc1776086620.nuid.imrworldwide.com
 0.0.0.0 pzqprimf2h33m4mpxukodslxi0yfc1773317067.nuid.imrworldwide.com
 0.0.0.0 pzu4cfikzxo4vb1gyz10ndrsss2p91761935456.nuid.imrworldwide.com
+0.0.0.0 q0ddcfd98ljvtua7q86c5gxqvg9051777021815.uaid.nmrodam.com
 0.0.0.0 q0lipdezve3xy5jvgrmgm8si0ludl1776887285.uaid.nmrodam.com
 0.0.0.0 q0s7jp6t7lr6bntnc3e11z56lsyw01770150762.uaid.vtwenty.com
 0.0.0.0 q0ui076cxubg0nywla776x4x578em1768835219.uaid.nmrodam.com
@@ -7883,6 +7897,7 @@
 0.0.0.0 qdlf6vhte2o5e7xx7kr9ukvf55s9r1770834774.uaid.nmrodam.com
 0.0.0.0 qdmazsoeychfz9yrm2fnggx4x9tu41766082980.uaid.vtwenty.com
 0.0.0.0 qe1w2yqfjl73kgbc0xohrghu9b9px1772468419.uaid.nmrodam.com
+0.0.0.0 qe8w1mnekusni1qmih5b3ww0ja8yo1777043078.uaid.nmrodam.com
 0.0.0.0 qed7afg3h0gkyailkpw6zpi01fhyi1766183534.uaid.vtwenty.com
 0.0.0.0 qedif04qis419lpjxsuikfxeqvive1773245687.uaid.nmrodam.com
 0.0.0.0 qefte1nqchaprs1zgelav0rbilrii1776872059.nuid.imrworldwide.com
@@ -7912,6 +7927,7 @@
 0.0.0.0 qi7na1khi5apqb1eetn2xskrh5vhp1769169577.nuid.nmrodam.com
 0.0.0.0 qia1o9xu7lv8l71o14926te8ynbmx1770152673.uaid.nmrodam.com
 0.0.0.0 qiagzd30sjrmn553qtk0xn4v10u2v1773684076.uaid.nmrodam.com
+0.0.0.0 qic66cfxa06vscv5x5q9xuirmw9zk1777067052.uaid.nmrodam.com
 0.0.0.0 qicmkpzgnx96zwfaj56gvwmvecplv1773389999.nuid.imrworldwide.com
 0.0.0.0 qiflbla8405kj1ytyjlol2jwgsl991770168490.uaid.nmrodam.com
 0.0.0.0 qik7nne9q0bhmjayhqixierm2vlto1762705642.uaid.vtwenty.com
@@ -7932,6 +7948,7 @@
 0.0.0.0 qkpykbjgdx37zchexbgthujascoma1774087167.nuid.nmrodam.com
 0.0.0.0 qkyqw5in2eqmi12rxob3j9upwztqj1769723598.uaid.nmrodam.com
 0.0.0.0 qkzmvanrgbhtbtjztsgo4kwxdetxx1776872194.nuid.imrworldwide.com
+0.0.0.0 qkzwgnat88ufjkrng271c8afzyc3k1777076916.uaid.nmrodam.com
 0.0.0.0 qlbeb3280bw06ow23aic0pivmgkno1770116063.uaid.nmrodam.com
 0.0.0.0 qldp7lol35dymyzdc5ymazbkxpa1n1772477772.nuid.nmrodam.com
 0.0.0.0 qlf8gz52itqgetfdwcl5nydbfwuda1771577247.nuid.imrworldwide.com
@@ -7973,6 +7990,7 @@
 0.0.0.0 qsdl7un3ipzs7jqkl1p6osnmmrmap1772903384.nuid.imrworldwide.com
 0.0.0.0 qsgkvyvyw3v5vdnbypifa0q421crd1765035739.uaid.vtwenty.com
 0.0.0.0 qskzha40q9formoxebi560v4gsepj1772283445.uaid.nmrodam.com
+0.0.0.0 qsl7agvkffecmli3tfrllb3ia54sp1777023591.nuid.imrworldwide.com
 0.0.0.0 qssxf0ja5qcidpevm1tmq8kvei27w1766142322.uaid.vtwenty.com
 0.0.0.0 qsuengtgyiyfo6vkrkworwbdbagnb1770328333.nuid.imrworldwide.com
 0.0.0.0 qt93t1hfsdpdl3bzxrbopvqzx7cl91774985315.darnuid.imrworldwide.com
@@ -8043,6 +8061,7 @@
 0.0.0.0 r5th65v2fumpq00i5gr4or5ter5381771505989.uaid.nmrodam.com
 0.0.0.0 r5yd6waq3v889asqd3ob13r8owa201768638341.uaid.vtwenty.com
 0.0.0.0 r65wjm7funos7hoqi9sky6sz5jejl1763309952.nuid.imrworldwide.com
+0.0.0.0 r6avwhpcr55qcbv1s0to8tzj58wnx1777051120.nuid.nmrodam.com
 0.0.0.0 r6qmptiq8tcprk7dkt3rlodha2cvd1768411585.uaid.nmrodam.com
 0.0.0.0 r6u7hfjbugahbfmojlyl8j3c1br5o1761597881.uaid.nmrodam.com
 0.0.0.0 r7gllsmrstjv0ur5md8y6zlsbbeo71769682021.uaid.nmrodam.com
@@ -8775,6 +8794,7 @@
 0.0.0.0 sqaajrwioyg9hqdsq1ffkp03xf70q1774099420.nuid.nmrodam.com
 0.0.0.0 sqvdvrmw8xpet09fmztsnxbarko111775564500.uaid.nmrodam.com
 0.0.0.0 srcfzsf2jjqib1x4wbt9bmgnigucu1773390650.nuid.imrworldwide.com
+0.0.0.0 srk0cwxon2azscnuzwstm6zic6k7w1777053380.uaid.nmrodam.com
 0.0.0.0 srpewts9dj5lgj2zadi0loefgsnt31775065987.darnuid.imrworldwide.com
 0.0.0.0 srqpzq58vthogm8bmdr39uh30gb5g1770793985.uaid.vtwenty.com
 0.0.0.0 srrhszf3eqnnhrmv7587q59l4wfrx1761764267.uaid.vtwenty.com
@@ -9986,6 +10006,7 @@
 0.0.0.0 yrlcnveanuiqgckpzygpfhyqajt481771349809.nuid.nmrodam.com
 0.0.0.0 yrplpfrnexlojbkemocejarjpbgqe1776360095.nuid.nmrodam.com
 0.0.0.0 ys8a2ls0fi6ew2womptbxicbmmgm21770392357.uaid.imrworldwide.com
+0.0.0.0 ys8w9zjjjur5ga6zgnmdpeljw97bh1777067719.uaid.nmrodam.com
 0.0.0.0 yscmhvi2xoro1ygnpqfow5unpyg8p1773059298.nuid.nmrodam.com
 0.0.0.0 ysijuk6jyz9wrbi7kcvchuxbmhvur1774189410.darnuid.imrworldwide.com
 0.0.0.0 ysqpkbkg4zvplppsh4jyct0spijea1764513255.darnuid.imrworldwide.com
