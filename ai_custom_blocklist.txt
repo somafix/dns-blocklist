@@ -1,6 +1,6 @@
 # AI Self-Learning Blocklist
-# Обновлено: 2026-04-24 12:51:27
-# Всего доменов: 10198
+# Обновлено: 2026-04-25 01:10:10
+# Всего доменов: 10205
 
 0.0.0.0 000283-data-injection.s3.cn-north-1.amazonaws.com.cn
 0.0.0.0 0011f2d3dbb67b5be9c32379edff62f18ae706a4ed0caf3e43aa940220e0e74.us-east-1.prod.service.minerva.devices.a2z.com
@@ -2045,6 +2045,7 @@
 0.0.0.0 6zrqa85rlkpr35b82f9unt8wwmwpq1769888691.uaid.vtwenty.com
 0.0.0.0 6zuxrzcwek8nn3pid4y21ugyrnh0c1771623146.uaid.vtwenty.com
 0.0.0.0 6zxufeg1yzteskgcgcbf3cl6g8kzw1775820282.nuid.nmrodam.com
+0.0.0.0 700962020345c54c0c5afbb0a62fd0ee1eb162e70dfa58c66dc1c81d5e87a24.us-east-1.prod.service.minerva.devices.a2z.com
 0.0.0.0 70cvj3gr1tvo69375fz4dxxvco3y81771369613.uaid.vtwenty.com
 0.0.0.0 70riygi7ov49afsrf60mz9sqjgasp1771467911.uaid.nmrodam.com
 0.0.0.0 712xhwe05gvwts8cus67tofkq40s31770554217.uaid.vtwenty.com
@@ -2296,6 +2297,7 @@
 0.0.0.0 84ddz8bi5r32s49eoo7kjiea1erqf1769879723.uaid.nmrodam.com
 0.0.0.0 84gqll9v5nb5jpozyknv2zxyw8oo01768835342.uaid.nmrodam.com
 0.0.0.0 84n4ild42pijozjkpnlihlvodeprc1765614815.darnuid.imrworldwide.com
+0.0.0.0 851a34f4cf2ba82709dbb6267080ba0d405230395c038c488406ab30d9cdf4e.us-east-1.prod.service.minerva.devices.a2z.com
 0.0.0.0 858yms4jyjunq609zxadhzc4tba9k1772459849.uaid.nmrodam.com
 0.0.0.0 85owvzl1dvysfnt7ki3p2ft9qqx8e1776417398.uaid.nmrodam.com
 0.0.0.0 8625ce2ac1d4696fa0886b62809cd06eb69d8f53f9eac353e4b683238da1916.us-east-1.prod.service.minerva.devices.a2z.com
@@ -3066,6 +3068,7 @@
 0.0.0.0 ab4j6ofeqjfqimajrjijk6xvmjhye1775917374.nuid.nmrodam.com
 0.0.0.0 ab5sdnnve83cw6yt88beyl1teyoyr1772824529.uaid.nmrodam.com
 0.0.0.0 ab7yvenkf1vkbhz7v4qolodg37epe1776024556.nuid.imrworldwide.com
+0.0.0.0 ab8357d53cc91e55b3d28205f088ebaad24c4c5a98b69fa0728cb85e3e773f5.us-east-1.prod.service.minerva.devices.a2z.com
 0.0.0.0 ab8vavoy0kb2mroojpir9zumaxj4x1767815530.uaid.vtwenty.com
 0.0.0.0 abaqhco7ruvy6bocuzciusrmjkjcd1775754957.uaid.nmrodam.com
 0.0.0.0 abf9a92a132203c964dfab9a7b305fb2e25f0f4c3071f6a68310371bb087118.us-east-1.prod.service.minerva.devices.a2z.com
@@ -3988,6 +3991,7 @@
 0.0.0.0 d54145cdff769515ec94bc2535c419d626ab757b561ed01cf4084205b6066bc.us-east-1.prod.service.minerva.devices.a2z.com
 0.0.0.0 d598b09b57fe8a9fbd3df68b967be568b5d07211074a2bf7073fd6672cedb47.us-east-1.prod.service.minerva.devices.a2z.com
 0.0.0.0 d59b5d8de273bbe57f1a9d28b8ae10abea4208e8dffb9443b5f61bf0d097827.us-east-1.prod.service.minerva.devices.a2z.com
+0.0.0.0 d5f8e469718673228b7b8d851e1fc2d4c88a54d70b894f81180c3ac3fdc6c0a.us-east-1.prod.service.minerva.devices.a2z.com
 0.0.0.0 d5xcbob5jocf4j46pwjihy6x2qcbatjt75wv6g7uef0e5e38545d7857am1.e.aa.online-metrix.net
 0.0.0.0 d5y5f8m6pvc41khbjb1fggwf4ohun1766855253.nuid.imrworldwide.com
 0.0.0.0 d668ff3716a5b400d390c6e2800d05512575542056eeb87f186b44e3cdc88a1.us-east-1.prod.service.minerva.devices.a2z.com
@@ -5895,6 +5899,7 @@
 0.0.0.0 gtm-cloud-image-born-com-ro-q37xisgszq-ey.a.run.app
 0.0.0.0 gtm-cloud-image-born-pl-q37xisgszq-ey.a.run.app
 0.0.0.0 gtm-cloud-image-renee-pl-q37xisgszq-ey.a.run.app
+0.0.0.0 gtm-data-api-181723891614.us-central1.run.app
 0.0.0.0 gtm-discoveryplus-prod-46148028384.us-central1.run.app
 0.0.0.0 gtm-live-848890883027.europe-west1.run.app
 0.0.0.0 gtm-monitor-759108233572.us-east1.run.app
@@ -7565,6 +7570,7 @@
 0.0.0.0 osvpe8ws77pwhy3u602xowqgnhln61770036758.uaid.vtwenty.com
 0.0.0.0 oswql1cftsi72ajf0l5dzzkk71gmh1772218259.uaid.vtwenty.com
 0.0.0.0 otel-collector-123358924663.us-central1.run.app
+0.0.0.0 otel-collector-live-pub-1182353078.us-east-1.elb.amazonaws.com
 0.0.0.0 othrowd9eneonb4pw0kxhl5mpz8gx1769464921.uaid.nmrodam.com
 0.0.0.0 otmuwzdqxuzd9ql54vd2gglqjcv5g1776024019.nuid.imrworldwide.com
 0.0.0.0 otofldpiu36sf556rehymtvh9mqs31771914985.uaid.vtwenty.com
@@ -8480,6 +8486,7 @@
 0.0.0.0 server-side-tagging-hsygj22xxq-uc.a.run.app
 0.0.0.0 server-side-tagging-hwjqjyy3kq-uc.a.run.app
 0.0.0.0 server-side-tagging-hxelzrqmha-uc.a.run.app
+0.0.0.0 server-side-tagging-hxu3mldoya-uc.a.run.app
 0.0.0.0 server-side-tagging-i7ko4tpxtq-uc.a.run.app
 0.0.0.0 server-side-tagging-ibhslm3prq-uc.a.run.app
 0.0.0.0 server-side-tagging-ibxd3455pa-uc.a.run.app
