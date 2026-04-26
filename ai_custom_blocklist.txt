@@ -1,6 +1,6 @@
 # AI Self-Learning Blocklist
-# Обновлено: 2026-04-25 12:32:47
-# Всего доменов: 10226
+# Обновлено: 2026-04-26 01:18:45
+# Всего доменов: 10230
 
 0.0.0.0 000283-data-injection.s3.cn-north-1.amazonaws.com.cn
 0.0.0.0 0011f2d3dbb67b5be9c32379edff62f18ae706a4ed0caf3e43aa940220e0e74.us-east-1.prod.service.minerva.devices.a2z.com
@@ -1110,6 +1110,7 @@
 0.0.0.0 3dsxnb6nnsdgwcbgpy5rvtbfxtjsc1768028764.nuid.imrworldwide.com
 0.0.0.0 3dzwfha1jahfiuw8aldg9mjs8ihg51772649399.nuid.imrworldwide.com
 0.0.0.0 3e1a0ebd0d9f982a8d6fad5e78dddfdd3b23ce35114d6896096095fbd05d749.us-east-1.prod.service.minerva.devices.a2z.com
+0.0.0.0 3e2f94db40bd6726f37cbd5f0c7307cbbb430a60a2ea0575a7a872ac135419f.us-east-1.prod.service.minerva.devices.a2z.com
 0.0.0.0 3e9hgsd9uhgv9jrlj5lp9mltyp9621762791079.nuid.imrworldwide.com
 0.0.0.0 3ec31a5d75c7d4ab4a9ba1eb4eff55bbc75565134ab19620bbe54239166eb46.us-east-1.prod.service.minerva.devices.a2z.com
 0.0.0.0 3edd6ftajuig5t40xc0z3s9y1zwf01775228404.uaid.nmrodam.com
@@ -2494,6 +2495,7 @@
 0.0.0.0 89rq4bjnx8fcwj6cbjaxv2ys4x8zf1769898577.uaid.nmrodam.com
 0.0.0.0 8a3e14edec8e18b9887e5bb831689f45d658c4e96c085483c021ba1e27a8616.us-east-1.prod.service.minerva.devices.a2z.com
 0.0.0.0 8a5a08032fdf8696ab21ac9017f760fbbcf3254b93d00c42396dd55f78fd7e4.us-east-1.prod.service.minerva.devices.a2z.com
+0.0.0.0 8af4275705dc6750b9f3b889db2591a0e28dfa643943e760d918174c38ae1bc.us-east-1.prod.service.minerva.devices.a2z.com
 0.0.0.0 8ahypgfarjomkdc6tkdq11dhwpxqe1775816543.nuid.nmrodam.com
 0.0.0.0 8axz2kpepy7q9djzzo0dn6jg2kzno1771664544.uaid.nmrodam.com
 0.0.0.0 8b145007b7b5170c3427481d6202fb95086821a89868c9f7ccfe550f17c4e61.us-east-1.prod.service.minerva.devices.a2z.com
@@ -3847,6 +3849,7 @@
 0.0.0.0 collector-proxy-alb-1167645830.eu-central-1.elb.amazonaws.com
 0.0.0.0 comgcqj7scdxkyrtfpgqdvjtzlqjd1775444235.nuid.nmrodam.com
 0.0.0.0 consumer-tracking-api.apps-euw3.consumer.production.ibx.dev
+0.0.0.0 consumerinfoline10350155.o18.click
 0.0.0.0 conversionvault10550240.o18.click
 0.0.0.0 cp8h98m0qmp27yc78lq6lfajs7pbl1773948395.uaid.nmrodam.com
 0.0.0.0 cpbfoktpivelv8qecsnrg0e0wvtpz1761946909.nuid.imrworldwide.com
@@ -5574,6 +5577,7 @@
 0.0.0.0 fimmbq068d1eiw59n35r9xlopnoq31771694575.uaid.nmrodam.com
 0.0.0.0 fingerprint-https-balancer-322f16b30651aaab.elb.eu-west-1.amazonaws.com
 0.0.0.0 fishtownanalytics-collector-1340672531.us-east-1.elb.amazonaws.com
+0.0.0.0 fiskarsbrandsproductiond1hh33ez.analytics.org.coveo.com
 0.0.0.0 fite9ehrybmahlesv1k0evhjkefsy1769799724.nuid.imrworldwide.com
 0.0.0.0 fjfpuq9kwtll8gczxc4ipwur5xjt81764912846.nuid.imrworldwide.com
 0.0.0.0 fjwk2kjapgmk5i8wh6wiuvpvak8lf1762613436.uaid.vtwenty.com
