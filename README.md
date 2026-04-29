@@ -1,34 +1,29 @@
-# 🛡️ AI-Powered DNS Blocklist Generator
+# AI-Powered DNS Blocklist Generator
 
-[![Python Version](https://img.shields.io/badge/python-3.7+-blue.svg)](https://python.org)
-[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Last Commit](https://img.shields.io/github/last-commit/hagezi/dns-blocklists.svg)](https://github.com/hagezi/dns-blocklists)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](http://makeapullrequest.com)
-[![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://github.com/yourusername/yourrepo)
-[![Made with AI](https://img.shields.io/badge/Made%20with-AI%20Learning-purple.svg)](https://github.com/yourusername/yourrepo)
+![Python Version](https://img.shields.io/badge/python-3.8%2B-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
+![Status](https://img.shields.io/badge/status-active-brightgreen)
 
-## 📋 Overview
+An intelligent script that combines industry-standard DNS blocklists with a **self-learning AI engine** to detect and block trackers, telemetry, and suspicious domains.
 
-An intelligent DNS blocklist generator that combines the powerful **HaGeZi PRO++** blocklist with a self-learning AI module that automatically identifies and blocks tracking domains. The AI continuously learns from patterns and builds its own reputation-based database to enhance privacy protection.
+## 🚀 Overview
 
-## ✨ Features
+This tool fetches the [HaGeZi PRO++](https://github.com/hagezi/dns-blocklists) blocklist and augments it using a local heuristic "AI" analyzer. It evaluates domains based on entropy, suspicious patterns, and reputation history to create a personalized, evolving `hosts.txt` file.
 
-- **🤖 Self-Learning AI**: Automatically detects suspicious tracking domains using multiple heuristics
-- **📊 Reputation System**: Maintains a persistent database of domain reputations
-- **🧠 Pattern Recognition**: Identifies trackers based on:
-  - Domain structure anomalies (length, unusual characters)
-  - Suspicious subdomain depth
-  - Entropy analysis (random-looking strings)
-  - Known tracking keywords
-  - Machine learning-based scoring
-- **💾 Persistent Storage**: Saves learned patterns for future runs
-- **🔄 Incremental Updates**: Only updates when changes are detected
-- **📁 Automatic Backup**: Creates backups before updating the blocklist
-- **⚡ Efficient Processing**: Handles large blocklists with streaming downloads
+## 🧠 Smart Features
 
-## 🚀 Quick Start
+* **Entropy Analysis**: Detects algorithmically generated domains (DGA) by calculating the information density of domain segments.
+* **Reputation System**: Maintains a local JSON database (`ai_trackers.json`) that tracks domain "behavior" over time.
+* **Heuristic Engine**: Scores domains based on:
+    * Subdomain depth.
+    * Presence of suspicious keywords (analytics, metrics, pixel, etc.).
+    * Abnormal character patterns (excessive digits, underscores, or long strings).
+    * Non-standard TLD structures.
+* **Automated Backups**: Automatically creates a `hosts.backup` before applying updates.
 
-### Prerequisites
+## 🛠 Installation
 
-```bash
-pip install requests
+1. **Clone the repository**:
+   ```bash
+   git clone [https://github.com/yourusername/your-repo-name.git](https://github.com/yourusername/your-repo-name.git)
+   cd your-repo-name
