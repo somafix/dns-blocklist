@@ -1,6 +1,6 @@
 # AI Self-Learning Blocklist
-# Обновлено: 2026-04-28 13:21:38
-# Всего доменов: 12841
+# Обновлено: 2026-04-29 01:29:23
+# Всего доменов: 12845
 
 0.0.0.0 000283-data-injection.s3.cn-north-1.amazonaws.com.cn
 0.0.0.0 0011f2d3dbb67b5be9c32379edff62f18ae706a4ed0caf3e43aa940220e0e74.us-east-1.prod.service.minerva.devices.a2z.com
@@ -206,6 +206,7 @@
 0.0.0.0 11f4bdacaba7d206ac9883354c7dfb8c11066832c6c47e5aed456150a2426ab.us-east-1.prod.service.minerva.devices.a2z.com
 0.0.0.0 11h63g0j6aobveaxgfw9uowzgcngl1775594436.nuid.nmrodam.com
 0.0.0.0 11wrzskabm9vzba5dpoecb6d3yxcd1763303702.nuid.imrworldwide.com
+0.0.0.0 12048cc996c7ef5537844ee52311aed7601ad96b6716417cd1a72a0cc6acdaa.us-east-1.prod.service.minerva.devices.a2z.com
 0.0.0.0 1263b57f9966b0ece6134607d1e3282b43993900829dfc62ffe826723e4d2a0.us-east-1.prod.service.minerva.devices.a2z.com
 0.0.0.0 1270b6262838438f10741b1a9b8d7c36a876b83213d1d275716a1de1adae14e.us-east-1.prod.service.minerva.devices.a2z.com
 0.0.0.0 12771091519825713201--27532693-211-mnews.ms.vk.com
@@ -1341,6 +1342,7 @@
 0.0.0.0 483e85f6fd85dc00b949c64edf57d0476b96d0d4a68c410371abc71afbebc1f.us-east-1.prod.service.minerva.devices.a2z.com
 0.0.0.0 487uouhewy3ydzb3v1micckhvjptt1770795097.uaid.nmrodam.com
 0.0.0.0 48c9kr6pkh8sbzetpvlqjgobt6fkq1774371736.darnuid.imrworldwide.com
+0.0.0.0 48e5a84ed3421fbc1cd3bbdfe312e83ce33c5324acbe4527449239af8e776c0.us-east-1.prod.service.minerva.devices.a2z.com
 0.0.0.0 48ef9eb2386ed0d68536fb53fb8b37187820e3ab11f5a9beb88ccd22209ab37.us-east-1.prod.service.minerva.devices.a2z.com
 0.0.0.0 48f5e405485f2276acac476a835af72619846432da98d4778d6310555b616bf.us-east-1.prod.service.minerva.devices.a2z.com
 0.0.0.0 4959f2e5985a5ae67a694d525aff7261973588ee9280c5d2fe1ea7928e2bc53.us-east-1.prod.service.minerva.devices.a2z.com
@@ -4152,6 +4154,7 @@
 0.0.0.0 dc32q2zs6feavlt652bf7panxbx811776480811.uaid.nmrodam.com
 0.0.0.0 dc4bz0fgtdsbu419byxg7wo26vimy1776930379.nuid.imrworldwide.com
 0.0.0.0 dc6ae44e331268f9b6fd8c1ac7d6b24a5f34d806e2ad2a6e72ce26aebbd78dd.us-east-1.prod.service.minerva.devices.a2z.com
+0.0.0.0 dc70f80c9b07c6bd6be464b001c58824e01ee4bb5d6a174dbf1972019cf4b01.us-east-1.prod.service.minerva.devices.a2z.com
 0.0.0.0 dc79a13279b9f7969f72ab1cff534cd0c3837b17a1974d4f955ed50650d8d02.us-east-1.prod.service.minerva.devices.a2z.com
 0.0.0.0 dc7fkjht124w3ao2xnby1hvlsgjiu1776878947.nuid.imrworldwide.com
 0.0.0.0 dc7zkyf5nytwmyq6355hs3i3xepdn1761259830.uaid.nmrodam.com
@@ -9379,6 +9382,7 @@
 0.0.0.0 server-side-tagging-cjylipknvq-uc.a.run.app
 0.0.0.0 server-side-tagging-ckmu7zhtva-uc.a.run.app
 0.0.0.0 server-side-tagging-ckogm4mbgq-uc.a.run.app
+0.0.0.0 server-side-tagging-cxpi757hva-uc.a.run.app
 0.0.0.0 server-side-tagging-d26olrgsfq-uc.a.run.app
 0.0.0.0 server-side-tagging-dbt3pwb7hq-uc.a.run.app
 0.0.0.0 server-side-tagging-dev-794993802414.europe-west2.run.app
