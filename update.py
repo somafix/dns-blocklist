@@ -3,6 +3,7 @@ import re
 from datetime import datetime
 import hashlib
 import os
+import sys
 import tempfile
 import shutil
 import json
@@ -244,6 +245,7 @@ def main() -> int:
     
     main_domains = download_blocklist(URL)
     if not main_domains:
+        print("ERROR: Failed to download main blocklist")
         return 1
     
     ai_domains = ai.get_custom_domains()
@@ -260,8 +262,10 @@ def main() -> int:
     backup_path = Path(BACKUP_FILE)
     
     if not write_hosts_file(all_domains, output_path, backup_path):
+        print("ERROR: Failed to write hosts file")
         return 1
     
+    print(f"SUCCESS: {len(all_domains)} domains blocked")
     return 0
 
 
