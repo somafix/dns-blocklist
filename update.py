@@ -3,14 +3,14 @@ import re
 from datetime import datetime
 import hashlib
 import os
-import sys
 import tempfile
 import shutil
 import json
 import math
 from collections import defaultdict
+from typing import Set, Dict, Optional
+from pathlib import Path
 
-# Источники
 URL = "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/hosts/pro.plus.txt"
 AI_BLOCKLIST_FILE = "ai_custom_blocklist.txt"
 OUTPUT_FILE = "hosts.txt"
@@ -21,136 +21,174 @@ TIMEOUT = 30
 MAX_FILE_SIZE = 50 * 1024 * 1024
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
 
-# ============ ИИ-МОДУЛЬ ============
+_SUSPICIOUS_KEYWORDS = [
+    'track', 'analytics', 'metrics', 'stat', 'pixel', 'tag',
+    'click', 'adserver', 'doubleclick', 'googlead', 'facebook',
+    'criteo', 'taboola', 'outbrain', 'exelator', 'adsrv',
+    'ssp', 'dsp', 'rtb', 'bid', 'impression', 'beacon', 'counter'
+]
+
+_SHORT_TLDS = {'com', 'net', 'org', 'ru', 'cn'}
+
+
 class TrackerAI:
-    def __init__(self):
-        self.db_file = AI_DB_FILE
-        self.blocklist_file = AI_BLOCKLIST_FILE
-        self.reputation = defaultdict(float)
-        self.ai_custom_domains = set()
-        self.load_db()
-        self.load_custom_blocklist()
-    
-    def load_db(self):
-        if os.path.exists(self.db_file):
-            try:
-                with open(self.db_file, 'r') as f:
-                    data = json.load(f)
-                    self.reputation = defaultdict(float, data.get('reputation', {}))
-                print(f"🤖 ИИ загрузил базу репутаций: {len(self.reputation)} доменов")
-            except:
-                print("🤖 ИИ создаёт новую базу репутаций")
-    
-    def load_custom_blocklist(self):
-        if os.path.exists(self.blocklist_file):
-            try:
-                with open(self.blocklist_file, 'r') as f:
-                    for line in f:
-                        line = line.strip()
-                        if line and not line.startswith('#'):
-                            if line.startswith('0.0.0.0 '):
-                                domain = line[8:]
-                            else:
-                                domain = line
-                            self.ai_custom_domains.add(domain.lower())
-                print(f"🤖 ИИ загрузил свой блоклист: {len(self.ai_custom_domains)} доменов")
-            except Exception as e:
-                print(f"⚠️ Не удалось загрузить ИИ-блоклист: {e}")
-    
-    def save_custom_blocklist(self):
-        with open(self.blocklist_file, 'w') as f:
+    def __init__(self) -> None:
+        self._db_file = Path(AI_DB_FILE)
+        self._blocklist_file = Path(AI_BLOCKLIST_FILE)
+        self._reputation: Dict[str, float] = {}
+        self._custom_domains: Set[str] = set()
+        self._load_db()
+        self._load_custom_blocklist()
+
+    def _load_db(self) -> None:
+        if not self._db_file.exists():
+            return
+        
+        try:
+            with open(self._db_file, 'r') as f:
+                data = json.load(f)
+                self._reputation = data.get('reputation', {})
+        except (json.JSONDecodeError, IOError):
+            pass
+
+    def _load_custom_blocklist(self) -> None:
+        if not self._blocklist_file.exists():
+            return
+        
+        try:
+            with open(self._blocklist_file, 'r') as f:
+                for line in f:
+                    line = line.strip()
+                    if not line or line.startswith('#'):
+                        continue
+                    
+                    if line.startswith('0.0.0.0 '):
+                        domain = line[8:]
+                    else:
+                        domain = line
+                    
+                    self._custom_domains.add(domain.lower())
+        except IOError:
+            pass
+
+    def _save_custom_blocklist(self) -> None:
+        with open(self._blocklist_file, 'w') as f:
             f.write(f"# AI Self-Learning Blocklist\n")
-            f.write(f"# Обновлено: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-            f.write(f"# Всего доменов: {len(self.ai_custom_domains)}\n\n")
-            for domain in sorted(self.ai_custom_domains):
+            f.write(f"# Updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write(f"# Total domains: {len(self._custom_domains)}\n\n")
+            for domain in sorted(self._custom_domains):
                 f.write(f"0.0.0.0 {domain}\n")
-    
-    def calculate_entropy(self, s):
+
+    @staticmethod
+    def _calculate_entropy(s: str) -> float:
         if not s:
-            return 0
-        prob = [float(s.count(c)) / len(s) for c in set(s)]
-        return -sum([p * math.log(p) / math.log(2) for p in prob])
-    
-    def is_suspicious_domain(self, domain):
+            return 0.0
+        
+        length = len(s)
+        prob = [s.count(c) / length for c in set(s)]
+        return -sum(p * math.log(p) / math.log(2) for p in prob)
+
+    def _is_suspicious_domain(self, domain: str) -> bool:
         score = 0
         parts = domain.split('.')
+        
         if len(parts) > 5:
             score += 2
+        
         for part in parts[:-2]:
             if len(part) > 20:
                 score += 1
             if re.search(r'\d{5,}', part):
                 score += 2
-            if self.calculate_entropy(part) > 4.0:
+            if self._calculate_entropy(part) > 4.0:
                 score += 2
-            if re.search(r'[_]', part):
+            if '_' in part:
                 score += 1
         
-        suspicious_keywords = [
-            'track', 'analytics', 'metrics', 'stat', 'pixel', 'tag',
-            'click', 'adserver', 'doubleclick', 'googlead', 'facebook',
-            'criteo', 'taboola', 'outbrain', 'exelator', 'adsrv',
-            'ssp', 'dsp', 'rtb', 'bid', 'impression', 'beacon', 'counter'
-        ]
         domain_lower = domain.lower()
-        for kw in suspicious_keywords:
+        for kw in _SUSPICIOUS_KEYWORDS:
             if kw in domain_lower:
                 score += 1
         
         main_part = parts[-2] if len(parts) >= 2 else parts[0]
-        if len(main_part) <= 3 and main_part not in ['com', 'net', 'org', 'ru', 'cn']:
+        if len(main_part) <= 3 and main_part not in _SHORT_TLDS:
             score += 2
         
         return score >= 5
-    
-    def analyze_and_remember(self, domain):
-        if domain in self.ai_custom_domains:
-            return True
-        
-        if domain in self.reputation:
-            if self.reputation[domain] <= -3:
-                self.ai_custom_domains.add(domain)
-                return True
-        
-        if self.is_suspicious_domain(domain):
-            self.reputation[domain] -= 2
-            self.ai_custom_domains.add(domain)
-            print(f"   🤖 ИИ добавил: {domain}")
-            return True
-        else:
-            self.reputation[domain] += 0.5
-            return False
-    
-    def get_custom_blocklist(self):
-        return self.ai_custom_domains
-    
-    def save_all(self):
-        with open(self.db_file, 'w') as f:
-            json.dump({'reputation': dict(self.reputation)}, f, indent=2)
-        self.save_custom_blocklist()
-# ============ КОНЕЦ ИИ-МОДУЛЯ ============
 
-def get_file_hash(filename):
-    if not os.path.exists(filename):
+    def analyze_and_remember(self, domain: str) -> bool:
+        if domain in self._custom_domains:
+            return True
+        
+        if domain in self._reputation and self._reputation[domain] <= -3:
+            self._custom_domains.add(domain)
+            return True
+        
+        if self._is_suspicious_domain(domain):
+            self._reputation[domain] = self._reputation.get(domain, 0.0) - 2
+            self._custom_domains.add(domain)
+            return True
+        
+        self._reputation[domain] = self._reputation.get(domain, 0.0) + 0.5
+        return False
+
+    def get_custom_domains(self) -> Set[str]:
+        return self._custom_domains.copy()
+
+    def save_all(self) -> None:
+        with open(self._db_file, 'w') as f:
+            json.dump({'reputation': self._reputation}, f, indent=2)
+        self._save_custom_blocklist()
+
+
+def get_file_hash(filepath: Path) -> Optional[str]:
+    if not filepath.exists():
         return None
-    with open(filename, 'rb') as f:
+    
+    with open(filepath, 'rb') as f:
         return hashlib.md5(f.read()).hexdigest()
 
-def download_blocklist(url, description):
-    print(f"Загружаю {description} из {url}...")
+
+def validate_domain(domain: str) -> bool:
+    if not domain or len(domain) > 253:
+        return False
+    
+    segments = domain.lower().split('.')
+    for seg in segments:
+        if not seg or len(seg) > 63:
+            return False
+        if len(seg) == 1:
+            if not seg.isalnum():
+                return False
+        else:
+            if not re.match(r'^[a-z0-9][a-z0-9\-]*[a-z0-9]$', seg):
+                return False
+        if seg.startswith('-') or seg.endswith('-'):
+            return False
+    
+    return True
+
+
+def download_blocklist(url: str) -> Set[str]:
     domains = set()
+    
     try:
         response = requests.get(
-            url, 
+            url,
             timeout=TIMEOUT,
             headers={'User-Agent': USER_AGENT},
             stream=True
         )
         response.raise_for_status()
         
+        content_length = response.headers.get('content-length')
+        if content_length and int(content_length) > MAX_FILE_SIZE:
+            return set()
+        
         for line in response.iter_lines(decode_unicode=True):
-            if line is None:
+            if not line:
                 continue
+            
             line = line.strip()
             if not line or line.startswith('#'):
                 continue
@@ -160,93 +198,72 @@ def download_blocklist(url, description):
                 continue
             
             domain = parts[1].lower()
-            
-            if not domain or len(domain) > 253:
-                continue
-            
-            segments = domain.split('.')
-            valid = True
-            for seg in segments:
-                if not seg or len(seg) > 63:
-                    valid = False
-                    break
-                if not re.match(r'^[a-z0-9][a-z0-9\-]*[a-z0-9]$', seg) and len(seg) > 1:
-                    valid = False
-                    break
-                if seg.startswith('-') or seg.endswith('-'):
-                    valid = False
-                    break
-            if not valid:
-                continue
-                
-            domains.add(domain)
+            if validate_domain(domain):
+                domains.add(domain)
         
-        print(f"   ✅ Загружено {len(domains)} доменов")
         return domains
         
-    except Exception as e:
-        print(f"   ❌ Ошибка загрузки {description}: {e}")
+    except (requests.RequestException, IOError):
         return set()
 
-# ============ ОСНОВНАЯ ЛОГИКА ============
-print("=" * 50)
-print("DNS-блоклист с самообучающимся ИИ")
-print("=" * 50)
 
-ai = TrackerAI()
-
-main_domains = download_blocklist(URL, "HaGeZi PRO++")
-
-if len(main_domains) == 0:
-    print("ОШИБКА: Не удалось загрузить основной блоклист.")
-    sys.exit(1)
-
-ai_domains = ai.get_custom_blocklist()
-print(f"\n🤖 ИИ уже заблокировал ранее: {len(ai_domains)} доменов")
-
-print(f"\n🧠 ИИ анализирует {len(main_domains)} доменов...")
-new_ai_blocks = 0
-for domain in main_domains:
-    if ai.analyze_and_remember(domain):
-        new_ai_blocks += 1
-
-all_domains = main_domains.union(ai_domains)
-
-ai.save_all()
-print(f"\n💾 ИИ сохранил свой блоклист: {len(ai.get_custom_blocklist())} доменов")
-if new_ai_blocks > 0:
-    print(f"   ✨ Новых добавлено: {new_ai_blocks}")
-
-print(f"\n📝 Записываю итоговый блоклист...")
-with tempfile.NamedTemporaryFile(mode='w', delete=False, encoding='utf-8') as tmp_file:
-    tmp_file.write("# DNS Blocklist: HaGeZi PRO++ + AI Self-Learning\n")
-    tmp_file.write(f"# Обновлено: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-    tmp_file.write(f"# Доменов из HaGeZi: {len(main_domains)}\n")
-    tmp_file.write(f"# Доменов от ИИ: {len(ai_domains)}\n")
-    tmp_file.write(f"# Всего: {len(all_domains)}\n\n")
+def write_hosts_file(domains: Set[str], output_path: Path, backup_path: Path) -> bool:
+    temp_file = None
     
-    for domain in sorted(all_domains):
-        tmp_file.write(f"0.0.0.0 {domain}\n")
-    
-    tmp_path = tmp_file.name
+    try:
+        with tempfile.NamedTemporaryFile(mode='w', delete=False, encoding='utf-8') as tmp:
+            temp_file = tmp.name
+            tmp.write("# DNS Blocklist: HaGeZi PRO++ + AI Self-Learning\n")
+            tmp.write(f"# Updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            tmp.write(f"# Total domains: {len(domains)}\n\n")
+            
+            for domain in sorted(domains):
+                tmp.write(f"0.0.0.0 {domain}\n")
+        
+        if output_path.exists():
+            old_hash = get_file_hash(output_path)
+            shutil.copy2(output_path, backup_path)
+            shutil.move(temp_file, output_path)
+            new_hash = get_file_hash(output_path)
+            return old_hash != new_hash
+        else:
+            shutil.move(temp_file, output_path)
+            return True
+            
+    except (IOError, OSError):
+        if temp_file and os.path.exists(temp_file):
+            try:
+                os.unlink(temp_file)
+            except OSError:
+                pass
+        return False
 
-if os.path.exists(OUTPUT_FILE):
-    old_hash = get_file_hash(OUTPUT_FILE)
-    shutil.copy2(OUTPUT_FILE, BACKUP_FILE)
-    shutil.move(tmp_path, OUTPUT_FILE)
-    new_hash = get_file_hash(OUTPUT_FILE)
-    
-    if old_hash == new_hash:
-        print(f"⚠️ Файл не изменился (хеш {old_hash})")
-    else:
-        print(f"📊 Файл изменён: {old_hash} -> {new_hash}")
-else:
-    shutil.move(tmp_path, OUTPUT_FILE)
 
-print(f"\n{'='*50}")
-print(f"✅ ГОТОВО!")
-print(f"   • HaGeZi: {len(main_domains)} доменов")
-print(f"   • ИИ-блоклист: {len(ai_domains)} доменов")
-print(f"   • ВСЕГО: {len(all_domains)} доменов")
-print(f"📁 {OUTPUT_FILE}")
-print("="*50)
+def main() -> int:
+    ai = TrackerAI()
+    
+    main_domains = download_blocklist(URL)
+    if not main_domains:
+        return 1
+    
+    ai_domains = ai.get_custom_domains()
+    
+    for domain in main_domains:
+        ai.analyze_and_remember(domain)
+    
+    ai.save_all()
+    ai_domains = ai.get_custom_domains()
+    
+    all_domains = main_domains.union(ai_domains)
+    
+    output_path = Path(OUTPUT_FILE)
+    backup_path = Path(BACKUP_FILE)
+    
+    if not write_hosts_file(all_domains, output_path, backup_path):
+        return 1
+    
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
