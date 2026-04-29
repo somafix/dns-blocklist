@@ -1,6 +1,6 @@
 # AI Self-Learning Blocklist
-# Обновлено: 2026-04-29 13:14:35
-# Всего доменов: 12935
+# Updated: 2026-04-29 20:07:13
+# Total domains: 12936
 
 0.0.0.0 000283-data-injection.s3.cn-north-1.amazonaws.com.cn
 0.0.0.0 0011f2d3dbb67b5be9c32379edff62f18ae706a4ed0caf3e43aa940220e0e74.us-east-1.prod.service.minerva.devices.a2z.com
@@ -9355,6 +9355,7 @@
 0.0.0.0 server-side-tagging-4pi4n5t2aq-uc.a.run.app
 0.0.0.0 server-side-tagging-4pifm2yyeq-uc.a.run.app
 0.0.0.0 server-side-tagging-4ptnomxg5q-uc.a.run.app
+0.0.0.0 server-side-tagging-4ryvqtln5q-uc.a.run.app
 0.0.0.0 server-side-tagging-4xp5wewwsq-uc.a.run.app
 0.0.0.0 server-side-tagging-4ylyr7d3ca-uc.a.run.app
 0.0.0.0 server-side-tagging-4yywuaej2q-uc.a.run.app
