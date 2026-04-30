@@ -1,5 +1,6 @@
 # AI Self-Learning Blocklist
-# Updated: 2026-04-30 17:23:17
+# Created by SomaFix (https://github.com/SomaFix/dns-blocklist-updater)
+# Updated: 2026-04-30 18:26:49
 # Total domains: 13039
 
 0.0.0.0 000283-data-injection.s3.cn-north-1.amazonaws.com.cn
