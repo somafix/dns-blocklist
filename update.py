@@ -11,6 +11,24 @@ import math
 from typing import Set, Dict, Optional
 from pathlib import Path
 
+__author__ = "somafix"
+__copyright__ = "Copyright (c) 2026 somafix"
+__license__ = "GPL-3.0"
+__version__ = "2.1.0"
+__source__ = "https://github.com/somafix/dns-blocklist-updater"
+
+WATERMARK = """
+╔══════════════════════════════════════════════════════════════╗
+║  DNS Blocklist Updater with AI Self-Learning                ║
+║  Author: somafix                                            ║
+║  License: GPL-3.0                                           ║
+║  Source: https://github.com/somafix/dns-blocklist-updater   ║
+║                                                             ║
+║  This script is open source but cannot be redistributed    ║
+║  under a different name or without attribution.            ║
+╚══════════════════════════════════════════════════════════════╝
+"""
+
 URL = "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/hosts/pro.plus.txt"
 AI_BLOCKLIST_FILE = "ai_custom_blocklist.txt"
 OUTPUT_FILE = "hosts.txt"
@@ -98,6 +116,7 @@ class TrackerAI:
     def _save_custom_blocklist(self) -> None:
         with open(self._blocklist_file, 'w') as f:
             f.write(f"# AI Self-Learning Blocklist\n")
+            f.write(f"# Created by SomaFix (https://github.com/SomaFix/dns-blocklist-updater)\n")
             f.write(f"# Updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
             f.write(f"# Total domains: {len(self._custom_domains)}\n\n")
             for domain in sorted(self._custom_domains):
@@ -294,6 +313,7 @@ def write_hosts_file(domains: Set[str], output_path: Path, backup_path: Path) ->
         with tempfile.NamedTemporaryFile(mode='w', delete=False, encoding='utf-8') as tmp:
             temp_file = tmp.name
             tmp.write("# DNS Blocklist: HaGeZi PRO++ + AI Self-Learning\n")
+            tmp.write(f"# Created by SomaFix (https://github.com/SomaFix/dns-blocklist-updater)\n")
             tmp.write(f"# Updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
             tmp.write(f"# Total domains: {len(domains)}\n\n")
             for domain in sorted(domains):
@@ -317,22 +337,32 @@ def write_hosts_file(domains: Set[str], output_path: Path, backup_path: Path) ->
 
 
 def main() -> int:
+    print(WATERMARK)
+    
     ai = TrackerAI()
+    
     main_domains = download_blocklist(URL)
     if not main_domains:
         print("ERROR: Failed to download main blocklist")
         return 1
+    
     for domain in main_domains:
         ai.analyze_and_remember(domain)
+    
     ai.save_all()
     ai_domains = ai.get_custom_domains()
+    
     all_domains = main_domains.union(ai_domains)
+    
     output_path = Path(OUTPUT_FILE)
     backup_path = Path(BACKUP_FILE)
+    
     if not write_hosts_file(all_domains, output_path, backup_path):
         print("ERROR: Failed to write hosts file")
         return 1
+    
     print(f"SUCCESS: {len(all_domains)} domains blocked")
+    print(f"Author: somafix | https://github.com/somafix/dns-blocklist-updater")
     return 0
 
 
