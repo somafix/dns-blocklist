@@ -1,43 +1,28 @@
-# 🛡️ AI-Enhanced DNS Sentinel 🧠
+# 🛡️ DNS Blocklist Updater with AI Learning
 
+![Version](https://img.shields.io/badge/Version-2.1.0-blueviolet?style=for-the-badge)
+![Author](https://img.shields.io/badge/Author-SomaFix-orange?style=for-the-badge)
+![License](https://img.shields.io/badge/License-GPL--3.0-green?style=for-the-badge)
 ![Python](https://img.shields.io/badge/Python-3.8+-3776AB?style=for-the-badge&logo=python&logoColor=white)
-![Status](https://img.shields.io/badge/Status-Active-brightgreen?style=for-the-badge)
-![Security](https://img.shields.io/badge/Security-Hardened-orange?style=for-the-badge&logo=guardedid)
-![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)
 
-**A high-performance, self-learning DNS blocklist manager.** It doesn't just download lists; it analyzes them using a custom heuristic engine to stay ahead of trackers and telemetry.
+**A professional DNS synchronization tool** that pairs the industry-standard HaGeZi PRO++ lists with a proprietary **TrackerAI** engine. It proactively identifies new trackers before they appear in public lists.
 
 ---
 
-## 🚀 Key Capabilities
+## ⚡ Core Enhancements in v2.1.0
 
-* **📡 Smart Syncing** — Automatically fetches the massive **HaGeZi PRO++** list.
-* **🤖 TrackerAI Engine** — Uses Shannon entropy and pattern recognition to identify malicious domains.
-* **⚖️ Reputation System** — Domains are scored dynamically. If they look suspicious (DGA, tracking keywords), they get blocked.
-* **🧹 Auto-Purge** — Intelligent cleanup of false positives to keep your browsing smooth.
-* **💾 Robust Backups** — Atomic file writes with `.backup` creation to ensure you never lose connectivity.
-
----
-
-## 🧠 How the AI Engine Thinks
-
-The `TrackerAI` class uses a multi-layered scoring system to evaluate domain safety:
-
-| Metric | logic | Icon |
-| :--- | :--- | :---: |
-| **Entropy** | Detects random-generated strings (DGA) | 📊 |
-| **Keywords** | Scans for `metrics`, `pixel`, `analytics`, etc. | 🔍 |
-| **Structure** | Analyzes subdomains and TLD depth | 🏗️ |
-| **History** | Tracks "first seen" and "last seen" timestamps | ⏳ |
-
-> [!TIP]
-> The engine calculates the **Shannon Entropy** of domain parts. If a domain looks like `a1b2c3d4e5.com`, the AI recognizes the high randomness and flags it!
+* **🧠 Advanced Heuristics** — Now detects high-entropy DGA (Domain Generation Algorithms) with enhanced regex patterns.
+* **🛡️ Legitimacy Safeguards** — Built-in exceptions for critical infrastructure (`Cloudflare`, `AWS`, `Google APIs`) to prevent breaking the internet.
+* **🕵️ Extended Keyword Database** — Monitors over 40+ tracking-related keywords and patterns.
+* **🧹 Smart Self-Cleaning** — Automatically removes false positives if domains gain a positive reputation over time.
+* **📝 Attribution & Watermarking** — Clear licensing and source tracking for open-source integrity.
 
 ---
 
-## 🛠️ Quick Start
+## 🚀 Installation & Usage
 
-### 1️⃣ Clone the repository
-```bash
-git clone [https://github.com/yourusername/ai-dns-sentinel.git](https://github.com/yourusername/ai-dns-sentinel.git)
-cd ai-dns-sentinel
+### 🛠️ Setup
+1. **Clone the repo:**
+   ```bash
+   git clone [https://github.com/SomaFix/dns-blocklist-updater.git](https://github.com/SomaFix/dns-blocklist-updater.git)
+   cd dns-blocklist-updater
