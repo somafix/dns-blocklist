@@ -33,13 +33,21 @@ _SHORT_TLDS = {'com', 'net', 'org', 'ru', 'cn'}
 
 
 class TrackerAI:
-    def __init__(self) -> None:
+    def __init__(self, auto_cleanup_days: int = 30, reputation_threshold: float = 5.0) -> None:
         self._db_file = Path(AI_DB_FILE)
         self._blocklist_file = Path(AI_BLOCKLIST_FILE)
+        self._whitelist_file = Path("ai_whitelist.txt")
         self._reputation: Dict[str, float] = {}
+        self._last_seen: Dict[str, str] = {}
+        self._first_added: Dict[str, str] = {}
         self._custom_domains: Set[str] = set()
+        self._whitelist: Set[str] = set()
+        self._auto_cleanup_days = auto_cleanup_days
+        self._reputation_threshold = reputation_threshold
         self._load_db()
         self._load_custom_blocklist()
+        self._load_whitelist()
+        self._cleanup_false_positives()
 
     def _load_db(self) -> None:
         if not self._db_file.exists():
@@ -49,6 +57,8 @@ class TrackerAI:
             with open(self._db_file, 'r') as f:
                 data = json.load(f)
                 self._reputation = data.get('reputation', {})
+                self._last_seen = data.get('last_seen', {})
+                self._first_added = data.get('first_added', {})
         except (json.JSONDecodeError, IOError):
             pass
 
@@ -72,6 +82,19 @@ class TrackerAI:
         except IOError:
             pass
 
+    def _load_whitelist(self) -> None:
+        if not self._whitelist_file.exists():
+            return
+        
+        try:
+            with open(self._whitelist_file, 'r') as f:
+                for line in f:
+                    line = line.strip().lower()
+                    if line and not line.startswith('#'):
+                        self._whitelist.add(line)
+        except IOError:
+            pass
+
     def _save_custom_blocklist(self) -> None:
         with open(self._blocklist_file, 'w') as f:
             f.write(f"# AI Self-Learning Blocklist\n")
@@ -79,6 +102,40 @@ class TrackerAI:
             f.write(f"# Total domains: {len(self._custom_domains)}\n\n")
             for domain in sorted(self._custom_domains):
                 f.write(f"0.0.0.0 {domain}\n")
+
+    def _cleanup_false_positives(self) -> None:
+        to_remove = []
+        now = datetime.now()
+        
+        for domain in self._custom_domains:
+            if domain in self._whitelist:
+                continue
+            
+            rep = self._reputation.get(domain, 0.0)
+            first_added_str = self._first_added.get(domain)
+            last_seen_str = self._last_seen.get(domain)
+            
+            if rep >= self._reputation_threshold:
+                to_remove.append(domain)
+                continue
+            
+            if first_added_str and last_seen_str:
+                try:
+                    first_added = datetime.fromisoformat(first_added_str)
+                    last_seen = datetime.fromisoformat(last_seen_str)
+                    days_since_added = (now - first_added).days
+                    days_since_last_seen = (now - last_seen).days
+                    
+                    if days_since_added > self._auto_cleanup_days and days_since_last_seen > 7 and rep > -2:
+                        to_remove.append(domain)
+                except (ValueError, TypeError):
+                    pass
+        
+        for domain in to_remove:
+            self._custom_domains.discard(domain)
+        
+        if to_remove:
+            print(f"Cleaned up {len(to_remove)} false positives")
 
     @staticmethod
     def _calculate_entropy(s: str) -> float:
@@ -118,19 +175,42 @@ class TrackerAI:
         return score >= 5
 
     def analyze_and_remember(self, domain: str) -> bool:
-        if domain in self._custom_domains:
+        now_iso = datetime.now().isoformat()
+        domain_lower = domain.lower()
+        
+        self._last_seen[domain_lower] = now_iso
+        
+        if domain_lower in self._whitelist:
+            self._reputation[domain_lower] = min(self._reputation.get(domain_lower, 0.0) + 1.0, 10.0)
+            if domain_lower in self._custom_domains:
+                self._custom_domains.discard(domain_lower)
+            return False
+        
+        if domain_lower in self._custom_domains:
+            if not self._is_suspicious_domain(domain_lower):
+                self._reputation[domain_lower] = min(self._reputation.get(domain_lower, 0.0) + 1.0, 10.0)
             return True
         
-        if domain in self._reputation and self._reputation[domain] <= -3:
-            self._custom_domains.add(domain)
-            return True
+        if domain_lower in self._reputation and self._reputation[domain_lower] <= -3:
+            if domain_lower not in self._whitelist:
+                self._custom_domains.add(domain_lower)
+                if domain_lower not in self._first_added:
+                    self._first_added[domain_lower] = now_iso
+                return True
         
-        if self._is_suspicious_domain(domain):
-            self._reputation[domain] = self._reputation.get(domain, 0.0) - 2
-            self._custom_domains.add(domain)
-            return True
+        if self._is_suspicious_domain(domain_lower):
+            self._reputation[domain_lower] = self._reputation.get(domain_lower, 0.0) - 2
+            self._reputation[domain_lower] = max(self._reputation[domain_lower], -10.0)
+            
+            if self._reputation[domain_lower] <= -3 and domain_lower not in self._whitelist:
+                self._custom_domains.add(domain_lower)
+                if domain_lower not in self._first_added:
+                    self._first_added[domain_lower] = now_iso
+                return True
+        else:
+            self._reputation[domain_lower] = self._reputation.get(domain_lower, 0.0) + 0.5
+            self._reputation[domain_lower] = min(self._reputation[domain_lower], 10.0)
         
-        self._reputation[domain] = self._reputation.get(domain, 0.0) + 0.5
         return False
 
     def get_custom_domains(self) -> Set[str]:
@@ -138,7 +218,11 @@ class TrackerAI:
 
     def save_all(self) -> None:
         with open(self._db_file, 'w') as f:
-            json.dump({'reputation': self._reputation}, f, indent=2)
+            json.dump({
+                'reputation': self._reputation,
+                'last_seen': self._last_seen,
+                'first_added': self._first_added
+            }, f, indent=2)
         self._save_custom_blocklist()
 
 
@@ -247,8 +331,6 @@ def main() -> int:
     if not main_domains:
         print("ERROR: Failed to download main blocklist")
         return 1
-    
-    ai_domains = ai.get_custom_domains()
     
     for domain in main_domains:
         ai.analyze_and_remember(domain)
