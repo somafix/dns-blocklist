@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import requests
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 import hashlib
 import os
 import sys
@@ -13,34 +13,21 @@ from typing import Set, Dict, Optional
 from pathlib import Path
 
 __author__ = "somafix"
-__copyright__ = "Copyright (c) 2026 somafix"
-__license__ = "GPL-3.0"
 __version__ = "2.3.0"
-__source__ = "https://github.com/somafix/dns-blocklist-updater"
-
-WATERMARK = """
-╔══════════════════════════════════════════════════════════════╗
-║  DNS Blocklist Updater with AI Self-Learning                ║
-║  Author: somafix                                            ║
-║  License: GPL-3.0                                           ║
-║  Source: https://github.com/somafix/dns-blocklist-updater   ║
-║  Version: 2.3.0 (Smart Learning)                           ║
-║                                                             ║
-║  This script is open source but cannot be redistributed    ║
-║  under a different name or without attribution.            ║
-╚══════════════════════════════════════════════════════════════╝
-"""
 
 URL = "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/hosts/pro.plus.txt"
 AI_BLOCKLIST_FILE = "ai_custom_blocklist.txt"
 OUTPUT_FILE = "hosts.txt"
 BACKUP_FILE = "hosts.backup"
 AI_DB_FILE = "ai_trackers.json"
+WHITELIST_FILE = "ai_whitelist.txt"
 
 TIMEOUT = 30
 MAX_FILE_SIZE = 50 * 1024 * 1024
-MAX_SUSPICIOUS_ANALYSIS = 10000  # Анализировать только 10000 самых подозрительных
+MAX_SUSPICIOUS_ANALYSIS = 10000
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+AUTO_CLEANUP_DAYS = 30
+REPUTATION_THRESHOLD = 5.0
 
 _SUSPICIOUS_KEYWORDS = [
     'track', 'analytics', 'metrics', 'stat', 'pixel', 'tag',
@@ -49,19 +36,19 @@ _SUSPICIOUS_KEYWORDS = [
     'ssp', 'dsp', 'rtb', 'bid', 'impression', 'beacon', 'counter',
     'adzerk', 'appnexus', 'adnxs', 'rubicon', 'openx', 'pubmatic',
     'indexww', 'contextweb', 'monetize', 'mediation', 'adsystem',
-    'clicktrack', 'trk', 'pixel', 'metrics'
+    'clicktrack', 'trk'
 ]
 
 _SHORT_TLDS = {'com', 'net', 'org', 'ru', 'cn'}
-
 _LEGIT_EXCEPTIONS = {'cloudflare', 'amazonaws', 'googleapis', 'github', 'cdn', 'cloudfront'}
 
 
 class TrackerAI:
-    def __init__(self, auto_cleanup_days: int = 30, reputation_threshold: float = 5.0) -> None:
+    def __init__(self, auto_cleanup_days: int = AUTO_CLEANUP_DAYS, 
+                 reputation_threshold: float = REPUTATION_THRESHOLD) -> None:
         self._db_file = Path(AI_DB_FILE)
         self._blocklist_file = Path(AI_BLOCKLIST_FILE)
-        self._whitelist_file = Path("ai_whitelist.txt")
+        self._whitelist_file = Path(WHITELIST_FILE)
         self._reputation: Dict[str, float] = {}
         self._last_seen: Dict[str, str] = {}
         self._first_added: Dict[str, str] = {}
@@ -69,14 +56,12 @@ class TrackerAI:
         self._whitelist: Set[str] = set()
         self._auto_cleanup_days = auto_cleanup_days
         self._reputation_threshold = reputation_threshold
+        self.stats_analyzed = 0
+        self.stats_added = 0
         self._load_db()
         self._load_custom_blocklist()
         self._load_whitelist()
         self._cleanup_false_positives()
-        
-        # Статистика для отчёта
-        self.stats_analyzed = 0
-        self.stats_added = 0
 
     def _load_db(self) -> None:
         if not self._db_file.exists():
@@ -87,23 +72,20 @@ class TrackerAI:
                 self._reputation = data.get('reputation', {})
                 self._last_seen = data.get('last_seen', {})
                 self._first_added = data.get('first_added', {})
-                
-            # Контроль размера: если JSON > 10 МБ, удаляем старые записи
+            
             if self._db_file.stat().st_size > 10 * 1024 * 1024:
                 self._trim_old_records()
-                
         except (json.JSONDecodeError, IOError):
             pass
 
     def _trim_old_records(self) -> None:
-        """Очищает старые неактивные записи"""
         now = datetime.now()
-        cutoff_date = now - datetime.timedelta(days=self._auto_cleanup_days * 2)
+        cutoff_date = now - timedelta(days=self._auto_cleanup_days * 2)
         
         to_delete = []
         for domain, last_seen_str in self._last_seen.items():
             if domain in self._custom_domains:
-                continue  # Сохраняем активные блокировки
+                continue
             try:
                 last_seen = datetime.fromisoformat(last_seen_str)
                 if last_seen < cutoff_date:
@@ -111,14 +93,13 @@ class TrackerAI:
             except (ValueError, TypeError):
                 pass
         
-        # Удаляем старые записи
         for domain in to_delete:
             self._reputation.pop(domain, None)
             self._last_seen.pop(domain, None)
             self._first_added.pop(domain, None)
         
         if to_delete:
-            print(f"🧹 Очищено {len(to_delete)} устаревших записей из JSON")
+            print(f"Cleaned up {len(to_delete)} old records")
 
     def _load_custom_blocklist(self) -> None:
         if not self._blocklist_file.exists():
@@ -139,7 +120,6 @@ class TrackerAI:
 
     def _load_whitelist(self) -> None:
         if not self._whitelist_file.exists():
-            self._whitelist_file.touch()
             return
         try:
             with open(self._whitelist_file, 'r') as f:
@@ -153,7 +133,6 @@ class TrackerAI:
     def _save_custom_blocklist(self) -> None:
         with open(self._blocklist_file, 'w') as f:
             f.write(f"# AI Self-Learning Blocklist\n")
-            f.write(f"# Created by SomaFix (https://github.com/SomaFix/dns-blocklist-updater)\n")
             f.write(f"# Updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
             f.write(f"# Total domains: {len(self._custom_domains)}\n\n")
             for domain in sorted(self._custom_domains):
@@ -170,22 +149,18 @@ class TrackerAI:
             if rep >= self._reputation_threshold:
                 to_remove.append(domain)
                 continue
-            first_added_str = self._first_added.get(domain)
             last_seen_str = self._last_seen.get(domain)
-            if first_added_str and last_seen_str:
+            if last_seen_str:
                 try:
-                    first_added = datetime.fromisoformat(first_added_str)
                     last_seen = datetime.fromisoformat(last_seen_str)
-                    days_since_added = (now - first_added).days
-                    days_since_last_seen = (now - last_seen).days
-                    if days_since_added > self._auto_cleanup_days and days_since_last_seen > 7 and rep > -2:
+                    if (now - last_seen).days > self._auto_cleanup_days and rep > -2:
                         to_remove.append(domain)
                 except (ValueError, TypeError):
                     pass
         for domain in to_remove:
             self._custom_domains.discard(domain)
         if to_remove:
-            print(f"🧹 Удалено {len(to_remove)} ложных срабатываний")
+            print(f"Cleaned up {len(to_remove)} false positives")
 
     @staticmethod
     def _calculate_entropy(s: str) -> float:
@@ -348,17 +323,35 @@ def download_blocklist(url: str) -> Set[str]:
         return set()
 
 
+def calculate_suspicious_score(domain: str) -> int:
+    score = 0
+    domain_lower = domain.lower()
+    
+    for kw in _SUSPICIOUS_KEYWORDS:
+        if kw in domain_lower:
+            score += 3
+    
+    if re.search(r'\d{5,}', domain_lower):
+        score += 2
+    if domain_lower.count('.') > 3:
+        score += 1
+    if re.search(r'[a-z0-9]{15,}', domain_lower):
+        score += 2
+    
+    return score
+
+
 def write_hosts_file(domains: Set[str], output_path: Path, backup_path: Path) -> bool:
     temp_file = None
     try:
         with tempfile.NamedTemporaryFile(mode='w', delete=False, encoding='utf-8') as tmp:
             temp_file = tmp.name
             tmp.write("# DNS Blocklist: HaGeZi PRO++ + AI Self-Learning\n")
-            tmp.write(f"# Created by SomaFix (https://github.com/SomaFix/dns-blocklist-updater)\n")
             tmp.write(f"# Updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
             tmp.write(f"# Total domains: {len(domains)}\n\n")
             for domain in sorted(domains):
                 tmp.write(f"0.0.0.0 {domain}\n")
+        
         if output_path.exists():
             old_hash = get_file_hash(output_path)
             shutil.copy2(output_path, backup_path)
@@ -377,75 +370,48 @@ def write_hosts_file(domains: Set[str], output_path: Path, backup_path: Path) ->
         return False
 
 
-def calculate_suspicious_score(domain: str) -> int:
-    """Быстрая оценка подозрительности домена для сортировки"""
-    score = 0
-    domain_lower = domain.lower()
-    
-    # Подозрительные ключевые слова
-    for kw in _SUSPICIOUS_KEYWORDS:
-        if kw in domain_lower:
-            score += 3
-    
-    # Подозрительные паттерны
-    if re.search(r'\d{5,}', domain_lower):
-        score += 2
-    if domain_lower.count('.') > 3:
-        score += 1
-    if re.search(r'[a-z0-9]{15,}', domain_lower):
-        score += 2
-    
-    return score
-
-
 def main() -> int:
-    print(WATERMARK)
+    print(f"DNS Blocklist Updater v{__version__}")
+    print(f"Author: {__author__}\n")
     
     ai = TrackerAI()
     
-    print("📥 Загрузка основного блоклиста HaGeZi...")
+    print("Downloading main blocklist...")
     main_domains = download_blocklist(URL)
     if not main_domains:
         print("ERROR: Failed to download main blocklist")
         return 1
     
-    print(f"✅ Загружено {len(main_domains)} доменов")
+    print(f"Loaded {len(main_domains)} domains")
     
-    # Анализируем только самые подозрительные домены
-    print(f"🔍 Анализ подозрительных доменов (максимум {MAX_SUSPICIOUS_ANALYSIS})...")
+    print(f"Analyzing suspicious domains (max {MAX_SUSPICIOUS_ANALYSIS})...")
     
-    # Сортируем домены по подозрительности
     suspicious_domains = []
     for domain in main_domains:
         score = calculate_suspicious_score(domain)
-        if score > 0:  # Только не совсем легитимные
+        if score > 0:
             suspicious_domains.append((score, domain))
     
-    # Берём топ N самых подозрительных
     suspicious_domains.sort(reverse=True)
     to_analyze = suspicious_domains[:MAX_SUSPICIOUS_ANALYSIS]
     
-    print(f"🎯 Найдено {len(suspicious_domains)} подозрительных доменов, анализирую {len(to_analyze)}...")
+    print(f"Found {len(suspicious_domains)} suspicious domains, analyzing {len(to_analyze)}...")
     
-    # Анализируем
     for score, domain in to_analyze:
         ai.analyze_and_remember(domain)
     
-    # Сохраняем AI данные
     ai.save_all()
     ai_domains = ai.get_custom_domains()
     
-    # Статистика
     json_path = Path(AI_DB_FILE)
     json_size_mb = json_path.stat().st_size / 1024 / 1024 if json_path.exists() else 0
     
-    print(f"\n📊 Статистика AI:")
-    print(f"   - Проанализировано доменов: {ai.stats_analyzed}")
-    print(f"   - Добавлено в блоклист: {ai.stats_added}")
-    print(f"   - Всего AI блокирует: {len(ai_domains)}")
-    print(f"   - Размер JSON файла: {json_size_mb:.2f} МБ")
+    print(f"\nAI Statistics:")
+    print(f"  - Analyzed: {ai.stats_analyzed}")
+    print(f"  - Added to blocklist: {ai.stats_added}")
+    print(f"  - Total AI blocked: {len(ai_domains)}")
+    print(f"  - JSON size: {json_size_mb:.2f} MB")
     
-    # Объединяем все домены
     all_domains = main_domains.union(ai_domains)
     
     output_path = Path(OUTPUT_FILE)
@@ -455,10 +421,10 @@ def main() -> int:
         print("ERROR: Failed to write hosts file")
         return 1
     
-    print(f"\n✅ SUCCESS: {len(all_domains)} доменов заблокировано")
-    print(f"   - Основной список: {len(main_domains)}")
-    print(f"   - AI обучение: {len(ai_domains)}")
-    print(f"\n👤 Author: somafix | https://github.com/somafix/dns-blocklist-updater")
+    print(f"\nSUCCESS: {len(all_domains)} domains blocked")
+    print(f"  - Main list: {len(main_domains)}")
+    print(f"  - AI learned: {len(ai_domains)}")
+    
     return 0
 
 
