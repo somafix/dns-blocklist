@@ -44,8 +44,7 @@ _LEGIT_EXCEPTIONS = {'cloudflare', 'amazonaws', 'googleapis', 'github', 'cdn', '
 
 
 class TrackerAI:
-    def __init__(self, auto_cleanup_days: int = AUTO_CLEANUP_DAYS, 
-                 reputation_threshold: float = REPUTATION_THRESHOLD) -> None:
+    def __init__(self) -> None:
         self._db_file = Path(AI_DB_FILE)
         self._blocklist_file = Path(AI_BLOCKLIST_FILE)
         self._whitelist_file = Path(WHITELIST_FILE)
@@ -54,8 +53,6 @@ class TrackerAI:
         self._first_added: Dict[str, str] = {}
         self._custom_domains: Set[str] = set()
         self._whitelist: Set[str] = set()
-        self._auto_cleanup_days = auto_cleanup_days
-        self._reputation_threshold = reputation_threshold
         self.stats_analyzed = 0
         self.stats_added = 0
         self._load_db()
@@ -72,34 +69,8 @@ class TrackerAI:
                 self._reputation = data.get('reputation', {})
                 self._last_seen = data.get('last_seen', {})
                 self._first_added = data.get('first_added', {})
-            
-            if self._db_file.stat().st_size > 10 * 1024 * 1024:
-                self._trim_old_records()
         except (json.JSONDecodeError, IOError):
             pass
-
-    def _trim_old_records(self) -> None:
-        now = datetime.now()
-        cutoff_date = now - timedelta(days=self._auto_cleanup_days * 2)
-        
-        to_delete = []
-        for domain, last_seen_str in self._last_seen.items():
-            if domain in self._custom_domains:
-                continue
-            try:
-                last_seen = datetime.fromisoformat(last_seen_str)
-                if last_seen < cutoff_date:
-                    to_delete.append(domain)
-            except (ValueError, TypeError):
-                pass
-        
-        for domain in to_delete:
-            self._reputation.pop(domain, None)
-            self._last_seen.pop(domain, None)
-            self._first_added.pop(domain, None)
-        
-        if to_delete:
-            print(f"Cleaned up {len(to_delete)} old records")
 
     def _load_custom_blocklist(self) -> None:
         if not self._blocklist_file.exists():
@@ -146,14 +117,14 @@ class TrackerAI:
                 to_remove.append(domain)
                 continue
             rep = self._reputation.get(domain, 0.0)
-            if rep >= self._reputation_threshold:
+            if rep >= REPUTATION_THRESHOLD:
                 to_remove.append(domain)
                 continue
             last_seen_str = self._last_seen.get(domain)
             if last_seen_str:
                 try:
                     last_seen = datetime.fromisoformat(last_seen_str)
-                    if (now - last_seen).days > self._auto_cleanup_days and rep > -2:
+                    if (now - last_seen).days > AUTO_CLEANUP_DAYS and rep > -2:
                         to_remove.append(domain)
                 except (ValueError, TypeError):
                     pass
