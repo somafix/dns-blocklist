@@ -1,5 +1,5 @@
 # AI Self-Learning Blocklist
-# Updated: 2026-05-03 01:25:15
+# Updated: 2026-05-03 12:38:08
 # Total domains: 25014
 
 0.0.0.0 0.fls.doubleclick.net
