@@ -1,6 +1,6 @@
 # AI Self-Learning Blocklist
-# Updated: 2026-05-03 12:38:08
-# Total domains: 25014
+# Updated: 2026-05-04 01:24:01
+# Total domains: 25075
 
 0.0.0.0 0.fls.doubleclick.net
 0.0.0.0 00000000.fls.doubleclick.net
@@ -76,6 +76,7 @@
 0.0.0.0 073zrzbjzies1etgd4ivdu8ho90bm1775548707.uaid.nmrodam.com
 0.0.0.0 076cceb91c5d3b0bb476d0637c1f39b38bfdfa7d0626600f62238e2ce7732e9.us-east-1.prod.service.minerva.devices.a2z.com
 0.0.0.0 0774pkzq6752snkjzlxbm6dwt405q1776021669.uaid.nmrodam.com
+0.0.0.0 0779f07236f08ef29daaa1772468093a.click
 0.0.0.0 077f589ab40f0a18092ff439dd173e56e140ccfa7282d2f93e5825231242dc9.us-east-1.prod.service.minerva.devices.a2z.com
 0.0.0.0 07a487d99ebc4c4c8037eaee257774f0.safeframe.googlesyndication.com
 0.0.0.0 07d0f5fda0084456a06897cc0e80dba3.fp.measure.office.com
@@ -339,6 +340,7 @@
 0.0.0.0 10116207.fls.doubleclick.net
 0.0.0.0 10120551.fls.doubleclick.net
 0.0.0.0 10121062.fls.doubleclick.net
+0.0.0.0 10122050.fls.doubleclick.net
 0.0.0.0 10122862.fls.doubleclick.net
 0.0.0.0 10122959.fls.doubleclick.net
 0.0.0.0 10129091.fls.doubleclick.net
@@ -1096,6 +1098,7 @@
 0.0.0.0 11644805.fls.doubleclick.net
 0.0.0.0 11651971.fls.doubleclick.net
 0.0.0.0 11653913.fls.doubleclick.net
+0.0.0.0 11655746.fls.doubleclick.net
 0.0.0.0 11656119.fls.doubleclick.net
 0.0.0.0 11660131.fls.doubleclick.net
 0.0.0.0 11665219.fls.doubleclick.net
@@ -1323,6 +1326,7 @@
 0.0.0.0 12322364.fls.doubleclick.net
 0.0.0.0 12325212.fls.doubleclick.net
 0.0.0.0 12325623.fls.doubleclick.net
+0.0.0.0 12330012.fls.doubleclick.net
 0.0.0.0 12332341.fls.doubleclick.net
 0.0.0.0 12332392.fls.doubleclick.net
 0.0.0.0 12341724.fls.doubleclick.net
@@ -1720,6 +1724,7 @@
 0.0.0.0 13313055.fls.doubleclick.net
 0.0.0.0 13314596.fls.doubleclick.net
 0.0.0.0 13315229.fls.doubleclick.net
+0.0.0.0 13318857.fls.doubleclick.net
 0.0.0.0 13320888.fls.doubleclick.net
 0.0.0.0 13331368.fls.doubleclick.net
 0.0.0.0 13335422.fls.doubleclick.net
@@ -1744,6 +1749,7 @@
 0.0.0.0 13386218.fls.doubleclick.net
 0.0.0.0 13388728.fls.doubleclick.net
 0.0.0.0 13389050.fls.doubleclick.net
+0.0.0.0 13389082.fls.doubleclick.net
 0.0.0.0 13389221.fls.doubleclick.net
 0.0.0.0 13392340.fls.doubleclick.net
 0.0.0.0 13393915.fls.doubleclick.net
@@ -2049,6 +2055,7 @@
 0.0.0.0 141091806e89e03936c6272ee736f88e.safeframe.googlesyndication.com
 0.0.0.0 14110629.fls.doubleclick.net
 0.0.0.0 14112688.fls.doubleclick.net
+0.0.0.0 14112775.fls.doubleclick.net
 0.0.0.0 14113259.fls.doubleclick.net
 0.0.0.0 14116831.fls.doubleclick.net
 0.0.0.0 14126569.fls.doubleclick.net
@@ -2558,6 +2565,7 @@
 0.0.0.0 15189515.fls.doubleclick.net
 0.0.0.0 15191495.fls.doubleclick.net
 0.0.0.0 15195652.fls.doubleclick.net
+0.0.0.0 15196070.fls.doubleclick.net
 0.0.0.0 15197983.fls.doubleclick.net
 0.0.0.0 1519932.fls.doubleclick.net
 0.0.0.0 15200815.fls.doubleclick.net
@@ -2987,6 +2995,7 @@
 0.0.0.0 16107967.fls.doubleclick.net
 0.0.0.0 16118783.fls.doubleclick.net
 0.0.0.0 16127630.fls.doubleclick.net
+0.0.0.0 16128235.fls.doubleclick.net
 0.0.0.0 16128583.fls.doubleclick.net
 0.0.0.0 16129057.fls.doubleclick.net
 0.0.0.0 16129666.fls.doubleclick.net
@@ -5628,6 +5637,34 @@
 0.0.0.0 1777687282950bc156eb1b8194c22399774267ebf0e2be9062948d81.trk.sensic.net
 0.0.0.0 1777697764169d4486c2adac92531cb85d0598f13bbb75665f548237.trk.sensic.net
 0.0.0.0 177769780999517c30f97dbff44d992b8509eeeea47de058438349fd.trk.sensic.net
+0.0.0.0 177770460015283422b028b8320b3a7ebf3b04f7b8884f168b667197.trk.sensic.net
+0.0.0.0 1777708402690d2466de4f4713f5347f29b4090a0942acba28d77c00.trk.sensic.net
+0.0.0.0 1777718160743aec15c1347781e9a3eee72591745d04c1ea41d24967.trk.sensic.net
+0.0.0.0 17777182104079a31e3f3599e36f80aae7cf6a4a774373f95c7dc983.trk.sensic.net
+0.0.0.0 1777718720845c7e491e7be514cc2e45122339706f6f7ed32112a10f.trk.sensic.net
+0.0.0.0 17777187672193d5d4feed8a0356968b414df6768f516cb6d61ed00d.trk.sensic.net
+0.0.0.0 1777720186359d214db8d7a6ab3267d2bda09779e8db6ef5839e0637.trk.sensic.net
+0.0.0.0 17777222423133e7f6eca1855686d8c0ffd0d35908895926df78a5ec.trk.sensic.net
+0.0.0.0 1777727700695f31c09bd3b0bb6a1988a2681dd25e9f09f66603bfea.trk.sensic.net
+0.0.0.0 1777728091359d412b4eca8f99033ab864291fbbf7be5eb53834d0b1.trk.sensic.net
+0.0.0.0 17777284662768e4efdd3250e1d1dcc0faf98017441a4ebab404db94.trk.sensic.net
+0.0.0.0 1777728990098fb49440fbe63edbb620aa8dfc4afccbcffb06516b3f.trk.sensic.net
+0.0.0.0 177773596263660e2eebabc75ab635e50df45cbe59f1dde0d544375b.trk.sensic.net
+0.0.0.0 1777742183465ee164c670c3f050200519df86471de8af0f227a8f74.trk.sensic.net
+0.0.0.0 1777743045761d55750f5ca33bfa6538951aad33c805a76c265d79bb.trk.sensic.net
+0.0.0.0 17777432221184d350ab832e62aa665d94c6dbf7a4e56ed14318ba13.trk.sensic.net
+0.0.0.0 1777743377942eca3a98aaf70145c0e5c039849fa883793689292968.trk.sensic.net
+0.0.0.0 17777434615707078ae0264371f8f12047cdb92cdb0c4c52c21a52c5.trk.sensic.net
+0.0.0.0 1777745163360d5b72fd5753f9913175eda8f31512e1dd4e102f9d5e.trk.sensic.net
+0.0.0.0 1777746215055bc565f46893c5fbd2d8830a7328d0335b96d281f544.trk.sensic.net
+0.0.0.0 1777746300513dec473136f83d7139498a78bf80227c99969cb33906.trk.sensic.net
+0.0.0.0 177774797600266ef05aee9ed9edf66e58cb70fb28179091bb82dd85.trk.sensic.net
+0.0.0.0 1777750536542d7c55adc5b41e5d1f9c70452fa392a94227dc14116f.trk.sensic.net
+0.0.0.0 1777751376979fc62978c2b06584f3311841fa5ff0a601cda7d67eb3.trk.sensic.net
+0.0.0.0 17777564776806ec0c522f000014deaea3f46275574a953197c8f8ce.trk.sensic.net
+0.0.0.0 1777757456418545ed1c7c0235d916dae8918ebf3fafdbac9ce06422.trk.sensic.net
+0.0.0.0 1777762774127ec5b51c6a188768aacbc3eed71bfa77ac3ef5fdc72d.trk.sensic.net
+0.0.0.0 1777764851988c31c990fe085bcf8ac187d75fbecc8dd18097eeb7e3.trk.sensic.net
 0.0.0.0 1782317.fls.doubleclick.net
 0.0.0.0 1785618.fls.doubleclick.net
 0.0.0.0 17c033984b9a8dc50b40a4e6847350b0.safeframe.googlesyndication.com
@@ -6741,6 +6778,7 @@
 0.0.0.0 3644761.fls.doubleclick.net
 0.0.0.0 3645490.fls.doubleclick.net
 0.0.0.0 364dbde276f149528e075ae7c17d520e.fp.measure.office.com
+0.0.0.0 3654593.fls.doubleclick.net
 0.0.0.0 365cbcab7d223269d65fe8dda80b6a0a.safeframe.googlesyndication.com
 0.0.0.0 3662759.fls.doubleclick.net
 0.0.0.0 3663027.fls.doubleclick.net
@@ -7242,6 +7280,7 @@
 0.0.0.0 4498641.fls.doubleclick.net
 0.0.0.0 449dn1knhq9gsvishtogeuhdoukpq1767560384.uaid.nmrodam.com
 0.0.0.0 44a80756556d11669257469f067e5e84f0daa00bf6c8b751833d1b87ee32174.click
+0.0.0.0 44b0bce48ce72550139a27d02a5414f9.click
 0.0.0.0 44crhrh8wicueuqudjfcrfvgifv7u1765824028.uaid.nmrodam.com
 0.0.0.0 44e347ee4a52e43c7f863ec719c79777.safeframe.googlesyndication.com
 0.0.0.0 44uc6sxjpokph3vekvopl1mycauva1773241215.darnuid.imrworldwide.com
@@ -7416,6 +7455,7 @@
 0.0.0.0 4953429.fls.doubleclick.net
 0.0.0.0 4953649.fls.doubleclick.net
 0.0.0.0 4954641.fls.doubleclick.net
+0.0.0.0 4955801.fls.doubleclick.net
 0.0.0.0 4959f2e5985a5ae67a694d525aff7261973588ee9280c5d2fe1ea7928e2bc53.us-east-1.prod.service.minerva.devices.a2z.com
 0.0.0.0 4967089.fls.doubleclick.net
 0.0.0.0 4967133.fls.doubleclick.net
@@ -7747,6 +7787,7 @@
 0.0.0.0 5386844.fls.doubleclick.net
 0.0.0.0 53b2b9a34153407ca2970a204fc17f8c-undefined.cdn.forter.com
 0.0.0.0 53cf8e83f10812d3bd779875306cdbea.safeframe.googlesyndication.com
+0.0.0.0 53df86656785be261e78dc4481e63166.click
 0.0.0.0 53ep6l7d3cjdxkhsu7gqymhm1qtyq1764681345.uaid.vtwenty.com
 0.0.0.0 53r91vnosy4wk08nogujpwcl7blfs1770220566.uaid.vtwenty.com
 0.0.0.0 53slemrtrhamicecvhp6khljobv711772475901.nuid.imrworldwide.com
@@ -7846,6 +7887,7 @@
 0.0.0.0 56232.global.siteimproveanalytics.io
 0.0.0.0 5627820.fls.doubleclick.net
 0.0.0.0 562cb786-235a-4aec-8b45-75140a84acb5.collector.p.analitik.bik.gov.tr
+0.0.0.0 5637625358d7b39ee0115b2344702dca.click
 0.0.0.0 5639524.fls.doubleclick.net
 0.0.0.0 5639910.fls.doubleclick.net
 0.0.0.0 5641738.fls.doubleclick.net
@@ -7960,6 +8002,7 @@
 0.0.0.0 59xc01jnmr4kom70k4jh5p42t1ggs1774783872.uaid.nmrodam.com
 0.0.0.0 5a0uq9plnkq9hmemayliumjnjogn61771775432.uaid.nmrodam.com
 0.0.0.0 5a20ed583726a2151e26d1e7d71a2a45db5a119ea68512b896f6bc6bdcf3ed5.us-east-1.prod.service.minerva.devices.a2z.com
+0.0.0.0 5a3b838661390fa25370de4dee3252dd.click
 0.0.0.0 5a3bb9c17a33768bc0bae4aef24c2632.safeframe.googlesyndication.com
 0.0.0.0 5a3f21a6b4a109a16610eb078ed6cb8d.safeframe.googlesyndication.com
 0.0.0.0 5a437426bc9c30f86a83ee7fb8fdc742.safeframe.googlesyndication.com
@@ -8452,6 +8495,7 @@
 0.0.0.0 6321597.fls.doubleclick.net
 0.0.0.0 6322109.fls.doubleclick.net
 0.0.0.0 6322922.fls.doubleclick.net
+0.0.0.0 6322967.fls.doubleclick.net
 0.0.0.0 6323411.fls.doubleclick.net
 0.0.0.0 6331029.fls.doubleclick.net
 0.0.0.0 6334075.global.r2.siteimproveanalytics.io
@@ -8691,6 +8735,7 @@
 0.0.0.0 6824303.fls.doubleclick.net
 0.0.0.0 682a3767c0fba98d39cc21c00865a29b70497b45130b5c16c3685951679907a.us-east-1.prod.service.minerva.devices.a2z.com
 0.0.0.0 68301.global.siteimproveanalytics.io
+0.0.0.0 6835190.fls.doubleclick.net
 0.0.0.0 6835277.fls.doubleclick.net
 0.0.0.0 6835515.fls.doubleclick.net
 0.0.0.0 6837024.fls.doubleclick.net
@@ -9236,6 +9281,7 @@
 0.0.0.0 7evd7xciuwv2sdwe8jkx33foccqrg1773187287.nuid.nmrodam.com
 0.0.0.0 7f0ux9jz165j41fay1xdau7e9t1pw1766049728.uaid.vtwenty.com
 0.0.0.0 7f254fe89a2f47acadf1385606988db6.fp.measure.office.com
+0.0.0.0 7f3cf2882845f52b03a9e0f026c55f11.click
 0.0.0.0 7f535a8b43dc375fe92bda0b479a2c5d.safeframe.googlesyndication.com
 0.0.0.0 7f747010acdc50196e6157fd3631b4adfe27d7c7b62b467721152bd83eff7dd.us-east-1.prod.service.minerva.devices.a2z.com
 0.0.0.0 7f7df55352d5cbf5ea5a81419b559cfe.fp.measure.office.com
@@ -9482,6 +9528,7 @@
 0.0.0.0 8166547.fls.doubleclick.net
 0.0.0.0 8166571.fls.doubleclick.net
 0.0.0.0 8168974.fls.doubleclick.net
+0.0.0.0 8169806.fls.doubleclick.net
 0.0.0.0 8170165.fls.doubleclick.net
 0.0.0.0 8173742.fls.doubleclick.net
 0.0.0.0 8173916.fls.doubleclick.net
@@ -9682,6 +9729,7 @@
 0.0.0.0 8412126.fls.doubleclick.net
 0.0.0.0 8413445.fls.doubleclick.net
 0.0.0.0 8414003441770090507259.cm.a.mts.ru
+0.0.0.0 8414903.fls.doubleclick.net
 0.0.0.0 8415160.fls.doubleclick.net
 0.0.0.0 8419184.fls.doubleclick.net
 0.0.0.0 84218.global.siteimproveanalytics.io
@@ -11102,6 +11150,7 @@
 0.0.0.0 9819972.fls.doubleclick.net
 0.0.0.0 981dc11d05dca02678058d701cafeb66.safeframe.googlesyndication.com
 0.0.0.0 9820014.fls.doubleclick.net
+0.0.0.0 9820668.fls.doubleclick.net
 0.0.0.0 9820956.fls.doubleclick.net
 0.0.0.0 9821217.fls.doubleclick.net
 0.0.0.0 9821341.fls.doubleclick.net
@@ -11111,6 +11160,7 @@
 0.0.0.0 9823024.fls.doubleclick.net
 0.0.0.0 9823247.fls.doubleclick.net
 0.0.0.0 9825178.fls.doubleclick.net
+0.0.0.0 9826794.fls.doubleclick.net
 0.0.0.0 9826899.fls.doubleclick.net
 0.0.0.0 9827184.fls.doubleclick.net
 0.0.0.0 9827385.fls.doubleclick.net
@@ -11138,6 +11188,7 @@
 0.0.0.0 9859302.fls.doubleclick.net
 0.0.0.0 9859913.fls.doubleclick.net
 0.0.0.0 9860003.fls.doubleclick.net
+0.0.0.0 9860051.fls.doubleclick.net
 0.0.0.0 9860163.fls.doubleclick.net
 0.0.0.0 9864063.fls.doubleclick.net
 0.0.0.0 9865653.fls.doubleclick.net
@@ -12476,6 +12527,7 @@
 0.0.0.0 beacons-usw.rapidbidding.com
 0.0.0.0 beacons.digital.disneyadvertising.com.edgekey.net
 0.0.0.0 beacons.rapidbidding.com
+0.0.0.0 begoudspace.click
 0.0.0.0 bekisspolars.click
 0.0.0.0 bellbindspace.click
 0.0.0.0 bestatiegen-regeln.click
@@ -12539,6 +12591,7 @@
 0.0.0.0 bidder.taboola.com
 0.0.0.0 bidderrtb.com
 0.0.0.0 bidding-dsp.ad-m.asia
+0.0.0.0 bidentalcloudco.click
 0.0.0.0 bidgear.rtb.adtarget.biz
 0.0.0.0 bidmatrixdsp.com
 0.0.0.0 bidresult-dsp.ad-m.asia
@@ -15087,6 +15140,7 @@
 0.0.0.0 ev9tesysqt1shuyiec7jhmvn5l67x1772354274.nuid.imrworldwide.com
 0.0.0.0 evdetuha609c1my58vxnr460nhfff1772033869.uaid.vtwenty.com
 0.0.0.0 event-collector-prod-use1-1328100352.us-east-1.elb.amazonaws.com
+0.0.0.0 everardspace.click
 0.0.0.0 evhsapxlxsrvsfcsw8bfrwnndqm8r1762399483.nuid.imrworldwide.com
 0.0.0.0 evhufk77rbvui0zgspsyznfdc6v6a1770463624.nuid.nmrodam.com
 0.0.0.0 evn0c8s6yo2ryg5e2uqo0rrrbj85c1776837736.nuid.nmrodam.com
@@ -15896,6 +15950,7 @@
 0.0.0.0 hhvwbsz9acuvbqhcxq5ziybc1jz4v1775707721.nuid.nmrodam.com
 0.0.0.0 hi62e0993e8clxcwtdwo7lwr05kko1771704212.uaid.vtwenty.com
 0.0.0.0 hi7h3ttksqzhwifodomli7pvjuqkb1773241853.darnuid.imrworldwide.com
+0.0.0.0 highroadspaceco.click
 0.0.0.0 hindvstat.click
 0.0.0.0 hirnaj5sedhmje51b3b9bpj96sbhg1763149140.uaid.nmrodam.com
 0.0.0.0 hitcounterstats.com
@@ -17201,6 +17256,7 @@
 0.0.0.0 madi8xs2tx09xcmjpkkhxlwaq301s1769854087.nuid.nmrodam.com
 0.0.0.0 mafm5qsag7cuprgxnf1b9evevl5sv1762821355.uaid.nmrodam.com
 0.0.0.0 mahe5nubxmc8weppoh3ke4un8nrqd1773757733.nuid.nmrodam.com
+0.0.0.0 manidspace.click
 0.0.0.0 manulifefinancialcorporationproduction20ra98xs.analytics.org.coveo.com
 0.0.0.0 maofpo81lefbadh4v43r1uh2e1zf21773569826.uaid.nmrodam.com
 0.0.0.0 maovc5ocfe9i7e0g0ss4j199sd5py1774686674.uaid.nmrodam.com
@@ -17765,6 +17821,7 @@
 0.0.0.0 monetize-ssp.genieesspv.jp
 0.0.0.0 monetize-static.viralize.tv
 0.0.0.0 monetizemore-d.openx.net
+0.0.0.0 monitor.tracksitemetrics.com
 0.0.0.0 montagnelayer.click
 0.0.0.0 mosaicone-lb-telemetry-prod-56a065490ca45ae3.elb.us-east-1.amazonaws.com
 0.0.0.0 motoe5dvtcmu6uouzcudqn8cwy3cu1773390283.nuid.imrworldwide.com
@@ -18928,6 +18985,7 @@
 0.0.0.0 porqponmlgfidcbedcbaupdate.yxwvutsnmlkjihgfedsummer-conference-2026.mario-s-event-organization.fullsailevents.com
 0.0.0.0 porqponmlgjidcbedcbaupdate.yxwvutsnmlkjihgfedsummer-conference-2026.mario-s-event-organization.fullsailevents.com
 0.0.0.0 porqponqponmlkjedcbaupdate.yxwvutsnmlkjihgfedsummer-conference-2026.mario-s-event-organization.fullsailevents.com
+0.0.0.0 portagetech.click
 0.0.0.0 portal-ad-prod-cread-com-679410734.cn-northwest-1.elb.amazonaws.com.cn
 0.0.0.0 posthog-proxy-service-prod-us-786081f7c4028325.elb.us-east-1.amazonaws.com
 0.0.0.0 pottagybase.click
@@ -20516,6 +20574,7 @@
 0.0.0.0 sgtm-tagging-592957272219.us-central1.run.app
 0.0.0.0 sgtm.universalmarket.co.il
 0.0.0.0 sh1ci23yng1lblzixloi3e7brd1yw1765039277.uaid.vtwenty.com
+0.0.0.0 sheetageworks.click
 0.0.0.0 shlwu5wuw7hujjvkr7fw3cp9cstxp1775723414.nuid.nmrodam.com
 0.0.0.0 shopify-pixel-hub-820195031509.europe-west4.run.app
 0.0.0.0 shoppingmiracles.co.uk
@@ -21512,6 +21571,7 @@
 0.0.0.0 stats2.rte.ie
 0.0.0.0 statstrk01.com
 0.0.0.0 stattracking.pw
+0.0.0.0 statualabs.click
 0.0.0.0 statuaspace.click
 0.0.0.0 status.planning-analytics.cloud.ibm.com
 0.0.0.0 stn5icwqsj4wnxcafhx5c9abf1zei1769854087.nuid.nmrodam.com
@@ -21861,6 +21921,7 @@
 0.0.0.0 track.msadcenter.zzv.com
 0.0.0.0 track.mspy.click
 0.0.0.0 track.nutrafitsuplementos.com.br
+0.0.0.0 track.nvntrk.com
 0.0.0.0 track.ploclicktrack.com
 0.0.0.0 track.privateadserver.com
 0.0.0.0 track.pubmatic.com
