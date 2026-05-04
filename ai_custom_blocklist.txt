@@ -1,6 +1,6 @@
 # AI Self-Learning Blocklist
-# Updated: 2026-05-04 01:24:01
-# Total domains: 25075
+# Updated: 2026-05-04 13:16:20
+# Total domains: 25081
 
 0.0.0.0 0.fls.doubleclick.net
 0.0.0.0 00000000.fls.doubleclick.net
@@ -11858,6 +11858,7 @@
 0.0.0.0 adclick.g.doubleclick.net
 0.0.0.0 adconsole.bidspotter.co.uk
 0.0.0.0 adiglobalcorporationproductioni0dbih7a.analytics.org.coveo.com
+0.0.0.0 adjutagelayerco.click
 0.0.0.0 adm.0-cafw4cuaifsvnlnjqzehy0dk.cab.gbc.criteo.com
 0.0.0.0 admrevafkhdwif3sxjv0bd4oe3jvr1776297626.nuid.nmrodam.com
 0.0.0.0 adobe-metrics.bankexchangeservices.com
@@ -12421,6 +12422,7 @@
 0.0.0.0 b7smnpxtdusakjtnpv3cdiakpz7ke1777407631.nuid.imrworldwide.com
 0.0.0.0 b8022d52b61b08b283947a75a1272eb6.safeframe.googlesyndication.com
 0.0.0.0 b82ae34a18a42367f46d65222cb0e97d6914c2a7c50abbfd61deaa1ed388b2c.us-east-1.prod.service.minerva.devices.a2z.com
+0.0.0.0 b830329bc9bc458296b2239cf33e61d8.click
 0.0.0.0 b8529dd451d54c22aa9ebbc343e74325.fp.measure.office.com
 0.0.0.0 b886d51c800d91fc41d4b038388a1327.safeframe.googlesyndication.com
 0.0.0.0 b8c07f51689ccb59ff9e32dd96913788.safeframe.googlesyndication.com
@@ -14619,6 +14621,7 @@
 0.0.0.0 dnttdynlpmqlch9wiscjtkxsrayir1772729006.darnuid.imrworldwide.com
 0.0.0.0 dobyhlrslxmfjcvdbvp6jep7am2p51775481998.nuid.nmrodam.com
 0.0.0.0 dok4cjcfw2lu.pixel.protectedanalytics.com
+0.0.0.0 domotracktrail.click
 0.0.0.0 dopgommm7no61goqqtcdwcyl7xxih1770811633.nuid.imrworldwide.com
 0.0.0.0 doregtzfhvcs53zttwpcfpi44bxojuid27auayqt2014f7e78602e79aam1.e.aa.online-metrix.net
 0.0.0.0 doregtzftb62tyjruv2obh7uycjlrmb7hi2gfbbxfcc4aea81d23390cam1.e.aa.online-metrix.net
@@ -15095,6 +15098,7 @@
 0.0.0.0 ertezihbegomciac5xrkttpvzjndw1774006119.nuid.nmrodam.com
 0.0.0.0 es3qefin06e8dytgvns68g1ohkys81762598490.uaid.vtwenty.com
 0.0.0.0 estatcounter.co.uk
+0.0.0.0 estateshiftline.click
 0.0.0.0 et3wdyibsuqdml8ivfg1s6ihndabh1765727522.uaid.nmrodam.com
 0.0.0.0 etd0vumrewhfluvvjgs1eyfo8kpco1775052885.nuid.nmrodam.com
 0.0.0.0 ethevx6wb31xqzbntquuh27f5elik1774950488.uaid.nmrodam.com
@@ -23708,6 +23712,7 @@
 0.0.0.0 www.da0.click
 0.0.0.0 www.dcssptrack.com
 0.0.0.0 www.dmca-tracker.click
+0.0.0.0 www.domotracktrail.click
 0.0.0.0 www.doubleclick-cn.net
 0.0.0.0 www.doubleclick.com
 0.0.0.0 www.doubleclick.de
@@ -23716,6 +23721,7 @@
 0.0.0.0 www.doubleclick.net
 0.0.0.0 www.doubleclickbygoogle.com
 0.0.0.0 www.doubleclicks.biz
+0.0.0.0 www.estateshiftline.click
 0.0.0.0 www.facebooksupport247.click
 0.0.0.0 www.freecounterstat.com
 0.0.0.0 www.freecounterstat.ovh
