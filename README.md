@@ -1,57 +1,36 @@
-# 🛡️ AI-Enhanced DNS Blocklist Updater
+# DNS Blocklist Manager v3.0
 
-![Version](https://img.shields.io/badge/version-2.3.0-blue)
-![Python](https://img.shields.io/badge/python-3.7+-green)
+![Python Version](https://img.shields.io/badge/python-3.8%2B-blue)
+![Version](https://img.shields.io/badge/version-3.0.0-green)
 ![License](https://img.shields.io/badge/license-MIT-orange)
-![Status](https://img.shields.io/badge/status-active-brightgreen)
+![Security](https://img.shields.io/badge/AI-Self--Learning-purple)
 
-An advanced DNS blocklist manager that combines the industry-standard **HaGeZi Pro++** list with a **local AI-driven heuristics engine**. It learns to identify and block new trackers based on entropy, suspicious patterns, and reputation scoring.
+A high-performance, autonomous DNS blocklist management system. This tool merges popular blocklists and uses a built-in **Self-Learning AI Tracker** to identify and block suspicious domains (trackers, telemetry, and ads) based on pattern analysis and entropy scoring.
 
----
+## 🚀 Key Features
 
-## ✨ Key Features
+* **Autonomous Analysis:** Uses heuristic analysis and Shannon entropy to detect suspicious domain names automatically.
+* **Reputation System:** Maintains a local database (`ai_trackers.json`) where domains gain or lose reputation over time.
+* **Smart Whitelisting:** Prevents blocking of critical infrastructure (Cloudflare, AWS, Google APIs) via a built-in exception list and a custom `ai_whitelist.txt`.
+* **Multi-threaded Engine:** High-speed processing using `ThreadPoolExecutor` for both downloads and domain analysis.
+* **Log Rotation:** Automatic log management with GZIP compression to save disk space.
+* **DNS Caching:** Internal cache to speed up repeated domain evaluations.
 
-* **Dual-Layer Protection**: Integrates the comprehensive [HaGeZi Pro++](https://github.com/hagezi/dns-blocklists) blocklist.
-* **AI Heuristics Engine**: Analyzes domains using Shannon entropy, keyword scoring, and pattern matching to catch zero-day trackers.
-* **Reputation System**: Remembers domain behavior over time. Persistent "suspicious" domains are permanently blocked, while false positives are automatically rehabilitated.
-* **Self-Cleaning**: Features an auto-cleanup mechanism for stale or redeemed domains after 30 days.
-* **Safety First**: Built-in whitelist and exceptions for critical services (Cloudflare, AWS, Google APIs, etc.) to prevent breakage.
-* **Atomic Updates**: Uses temporary files and backups to ensure your `hosts.txt` is never corrupted during an update.
+## 🛠 How It Works
 
----
 
-## 🚀 How It Works
 
-The script follows a sophisticated logic flow to ensure maximum privacy with minimum breakage:
+The script follows a 4-step process:
+1.  **Download:** Fetches the latest hosts files from verified sources (Hagezi, StevenBlack).
+2.  **Analysis:** Scans domains for suspicious patterns (e.g., long hex strings, tracking keywords, high character entropy).
+3.  **Training:** Updates the local AI database. If a domain consistently looks like a tracker, it is added to the `ai_custom_blocklist.txt`.
+4.  **Generation:** Merges all sources into a single, optimized `hosts.txt` file ready for use.
 
-1.  **Download**: Fetches the latest HaGeZi Pro++ list.
-2.  **Analyze**: Runs a heuristic analysis on the top 10,000 most suspicious domains.
-3.  **Learn**: 
-    * Domains with high entropy (random-looking strings) or tracking keywords gain negative reputation.
-    * Once a domain hits a threshold score ($\le -3$), it is added to the `ai_custom_blocklist.txt`.
-4.  **Consolidate**: Merges the main list with AI-learned domains.
-5.  **Output**: Generates a standard `hosts.txt` file ready for use in Pi-hole, AdGuard Home, or system-level blocking.
+## 📋 Requirements
 
----
-
-## 🛠️ Configuration
-
-The script uses several local files to manage its state:
-
-| File | Description |
-| :--- | :--- |
-| `hosts.txt` | The final generated blocklist (0.0.0.0 format). |
-| `ai_trackers.json` | The AI "brain" containing reputation and history. |
-| `ai_custom_blocklist.txt` | Domains identified and blocked by the AI. |
-| `ai_whitelist.txt` | User-defined domains that should never be blocked. |
-
----
-
-## 📦 Installation & Usage
-
-### Prerequisites
-* Python 3.7 or higher
+* Python 3.8 or higher
 * `requests` library
 
+To install dependencies:
 ```bash
 pip install requests
