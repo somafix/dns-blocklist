@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DNS Blocklist Manager — Control Panel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:        #080c10;
+    --surface:   #0d1219;
+    --border:    #1a2535;
+    --border2:   #243347;
+    --accent:    #00e5ff;
+    --accent2:   #00ff88;
+    --warn:      #ffb300;
+    --danger:    #ff3d5a;
+    --text:      #ccd6e8;
+    --muted:     #4a6080;
+    --glow:      rgba(0,229,255,.18);
+    --glow2:     rgba(0,255,136,.14);
+    --font-mono: 'Share Tech Mono', monospace;
+    --font-ui:   'Rajdhani', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-ui);
+    font-size: 15px;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── grid noise overlay ── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(0,229,255,.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,255,.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none; z-index: 0;
+  }
+
+  /* ── scanline flicker ── */
+  body::after {
+    content: '';
+    position: fixed; inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,.08) 2px,
+      rgba(0,0,0,.08) 4px
+    );
+    pointer-events: none; z-index: 1;
+    animation: scanMove 8s linear infinite;
+  }
+  @keyframes scanMove {
+    from { background-position: 0 0; }
+    to   { background-position: 0 400px; }
+  }
+
+  /* ── layout ── */
+  .shell {
+    position: relative; z-index: 2;
+    max-width: 1320px;
+    margin: 0 auto;
+    padding: 0 20px 60px;
+  }
+
+  /* ── header ── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 28px 0 20px;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap; gap: 12px;
+  }
+  .logo-block { display: flex; align-items: center; gap: 14px; }
+  .logo-icon {
+    width: 42px; height: 42px;
+    border: 2px solid var(--accent);
+    display: grid; place-items: center;
+    box-shadow: 0 0 16px var(--glow), inset 0 0 10px var(--glow);
+    animation: pulse 3s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%,100% { box-shadow: 0 0 16px var(--glow), inset 0 0 10px var(--glow); }
+    50%      { box-shadow: 0 0 28px var(--glow), inset 0 0 18px var(--glow); }
+  }
+  .logo-icon svg { color: var(--accent); }
+  h1 {
+    font-family: var(--font-ui);
+    font-size: 22px; font-weight: 700;
+    letter-spacing: 2px; text-transform: uppercase;
+    color: #fff;
+  }
+  h1 span { color: var(--accent); }
+  .version-badge {
+    font-family: var(--font-mono);
+    font-size: 11px; color: var(--accent2);
+    border: 1px solid var(--accent2);
+    padding: 2px 8px;
+    letter-spacing: 1px;
+  }
+
+  .header-right { display: flex; align-items: center; gap: 16px; }
+  .status-dot {
+    display: flex; align-items: center; gap: 8px;
+    font-family: var(--font-mono); font-size: 12px;
+    color: var(--accent2);
+  }
+  .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--accent2);
+    box-shadow: 0 0 8px var(--accent2);
+    animation: blink 1.4s ease-in-out infinite;
+  }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+  .author-tag {
+    font-family: var(--font-mono); font-size: 11px;
+    color: var(--muted); letter-spacing: 1px;
+  }
+
+  /* ── ticker bar ── */
+  .ticker {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    overflow: hidden; height: 32px;
+    display: flex; align-items: center;
+  }
+  .ticker-label {
+    font-family: var(--font-mono); font-size: 10px;
+    color: var(--accent); background: var(--accent);
+    color: var(--bg); padding: 0 10px; height: 100%;
+    display: flex; align-items: center;
+    letter-spacing: 2px; flex-shrink: 0;
+    font-weight: bold;
+  }
+  .ticker-track {
+    display: flex; gap: 0; width: max-content;
+    animation: tickerMove 40s linear infinite;
+  }
+  @keyframes tickerMove {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-50%); }
+  }
+  .ticker-item {
+    font-family: var(--font-mono); font-size: 11px;
+    color: var(--muted); white-space: nowrap;
+    padding: 0 32px;
+  }
+  .ticker-item .hi { color: var(--accent2); }
+  .ticker-item .warn { color: var(--warn); }
+
+  /* ── main grid ── */
+  .grid-top {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+    margin-top: 24px;
+  }
+
+  /* ── stat cards ── */
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 18px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color .2s;
+  }
+  .stat-card:hover { border-color: var(--border2); }
+  .stat-card::before {
+    content: '';
+    position: absolute; top: 0; left: 0;
+    width: 3px; height: 100%;
+  }
+  .stat-card.accent1::before { background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+  .stat-card.accent2::before { background: var(--accent2); box-shadow: 0 0 10px var(--accent2); }
+  .stat-card.warn::before    { background: var(--warn);    box-shadow: 0 0 10px var(--warn); }
+  .stat-card.danger::before  { background: var(--danger);  box-shadow: 0 0 10px var(--danger); }
+  .stat-card.muted::before   { background: var(--muted); }
+
+  .card-label {
+    font-family: var(--font-mono); font-size: 10px;
+    letter-spacing: 1.5px; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 10px;
+  }
+  .card-value {
+    font-family: var(--font-mono); font-size: 30px;
+    font-weight: normal; line-height: 1;
+    color: #fff;
+  }
+  .card-sub {
+    font-size: 12px; color: var(--muted);
+    margin-top: 6px; font-family: var(--font-mono);
+  }
+  .card-delta {
+    position: absolute; top: 16px; right: 16px;
+    font-family: var(--font-mono); font-size: 11px;
+  }
+  .delta-up   { color: var(--accent2); }
+  .delta-down { color: var(--danger); }
+
+  /* ── two-col layout ── */
+  .grid-mid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 12px;
+  }
+  @media (max-width: 820px) { .grid-mid { grid-template-columns: 1fr; } }
+
+  /* ── panel ── */
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+  }
+  .panel-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .panel-title {
+    font-family: var(--font-mono); font-size: 11px;
+    letter-spacing: 2px; text-transform: uppercase;
+    color: var(--accent);
+  }
+  .panel-badge {
+    font-family: var(--font-mono); font-size: 10px;
+    padding: 2px 7px; border: 1px solid;
+  }
+  .panel-badge.ok     { color: var(--accent2); border-color: var(--accent2); }
+  .panel-badge.warn   { color: var(--warn);    border-color: var(--warn); }
+  .panel-badge.danger { color: var(--danger);  border-color: var(--danger); }
+
+  .panel-body { padding: 14px 16px; }
+
+  /* ── bar chart ── */
+  .bar-row {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 10px;
+  }
+  .bar-label {
+    font-family: var(--font-mono); font-size: 11px;
+    color: var(--muted); width: 120px; flex-shrink: 0;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .bar-track {
+    flex: 1; height: 6px; background: var(--border);
+    position: relative; overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%; background: var(--accent);
+    animation: barGrow .8s ease-out both;
+    transform-origin: left;
+  }
+  @keyframes barGrow {
+    from { transform: scaleX(0); }
+    to   { transform: scaleX(1); }
+  }
+  .bar-val {
+    font-family: var(--font-mono); font-size: 11px;
+    color: var(--accent); width: 56px; text-align: right;
+  }
+
+  /* ── log feed ── */
+  .log-feed {
+    height: 220px; overflow-y: auto;
+    font-family: var(--font-mono); font-size: 12px;
+    line-height: 1.7;
+  }
+  .log-feed::-webkit-scrollbar { width: 4px; }
+  .log-feed::-webkit-scrollbar-track { background: var(--bg); }
+  .log-feed::-webkit-scrollbar-thumb { background: var(--border2); }
+  .log-entry { display: flex; gap: 10px; }
+  .log-time  { color: var(--muted); flex-shrink: 0; }
+  .log-lvl   { flex-shrink: 0; width: 50px; }
+  .log-lvl.info { color: var(--accent2); }
+  .log-lvl.warn { color: var(--warn); }
+  .log-lvl.err  { color: var(--danger); }
+  .log-msg   { color: var(--text); }
+
+  /* ── sources table ── */
+  .src-table { width: 100%; border-collapse: collapse; }
+  .src-table th {
+    font-family: var(--font-mono); font-size: 10px;
+    letter-spacing: 1px; color: var(--muted);
+    text-transform: uppercase; text-align: left;
+    padding: 6px 0; border-bottom: 1px solid var(--border);
+  }
+  .src-table td {
+    padding: 8px 0; border-bottom: 1px solid var(--border);
+    font-family: var(--font-mono); font-size: 12px;
+  }
+  .src-table td:last-child { text-align: right; }
+  .src-url { color: var(--text); }
+  .src-url small { color: var(--muted); font-size: 10px; }
+  .src-count { color: var(--accent2); }
+  .src-status { display: flex; justify-content: flex-end; }
+  .pill {
+    font-size: 10px; padding: 2px 8px; letter-spacing: 1px;
+  }
+  .pill.ok { background: rgba(0,255,136,.12); color: var(--accent2); }
+  .pill.er { background: rgba(255,61,90,.12);  color: var(--danger); }
+
+  /* ── activity chart ── */
+  .activity-grid {
+    display: grid;
+    grid-template-columns: repeat(24, 1fr);
+    gap: 3px;
+    margin-top: 8px;
+  }
+  .activity-cell {
+    aspect-ratio: 1;
+    border-radius: 1px;
+    background: var(--border);
+    transition: background .2s;
+    cursor: default;
+  }
+  .activity-cell[data-v="1"] { background: rgba(0,229,255,.25); }
+  .activity-cell[data-v="2"] { background: rgba(0,229,255,.50); }
+  .activity-cell[data-v="3"] { background: rgba(0,229,255,.75); }
+  .activity-cell[data-v="4"] { background: var(--accent); box-shadow: 0 0 6px var(--glow); }
+
+  .activity-labels {
+    display: grid;
+    grid-template-columns: repeat(24, 1fr);
+    margin-top: 4px;
+  }
+  .activity-labels span {
+    font-family: var(--font-mono); font-size: 8px;
+    color: var(--muted); text-align: center;
+  }
+
+  /* ── progress ring ── */
+  .rings-row {
+    display: flex; gap: 20px; justify-content: space-around;
+    flex-wrap: wrap; padding: 8px 0;
+  }
+  .ring-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .ring-svg { transform: rotate(-90deg); }
+  .ring-track { fill: none; stroke: var(--border); stroke-width: 6; }
+  .ring-fill  { fill: none; stroke-width: 6; stroke-linecap: butt; transition: stroke-dashoffset .8s ease; }
+  .ring-label {
+    font-family: var(--font-mono); font-size: 10px;
+    color: var(--muted); text-transform: uppercase;
+    letter-spacing: 1px; text-align: center;
+  }
+  .ring-val {
+    font-family: var(--font-mono); font-size: 18px;
+    color: #fff; line-height: 1;
+  }
+  .ring-center {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    transform: rotate(90deg);
+  }
+
+  /* ── config panel ── */
+  .cfg-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  @media (max-width: 480px) { .cfg-grid { grid-template-columns: 1fr; } }
+  .cfg-row {
+    background: var(--bg); border: 1px solid var(--border);
+    padding: 10px 12px;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .cfg-key {
+    font-family: var(--font-mono); font-size: 10px;
+    color: var(--muted); letter-spacing: 1px;
+  }
+  .cfg-val {
+    font-family: var(--font-mono); font-size: 14px;
+    color: var(--accent2);
+  }
+  .cfg-val.danger { color: var(--danger); }
+  .cfg-val.warn   { color: var(--warn); }
+
+  /* ── bottom 3-col grid ── */
+  .grid-bot {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 12px;
+    margin-top: 12px;
+  }
+  @media (max-width: 820px) { .grid-bot { grid-template-columns: 1fr; } }
+
+  /* ── terminal block ── */
+  .terminal {
+    background: #040608;
+    border: 1px solid var(--border);
+    padding: 16px;
+    font-family: var(--font-mono);
+    font-size: 12px; line-height: 1.8;
+    overflow: auto; max-height: 300px;
+  }
+  .t-line { display: flex; gap: 8px; }
+  .t-prompt { color: var(--accent2); flex-shrink: 0; }
+  .t-cmd    { color: var(--text); }
+  .t-out    { color: var(--muted); margin-left: 16px; }
+  .t-ok     { color: var(--accent2); }
+  .t-err    { color: var(--danger); }
+  .cursor {
+    display: inline-block; width: 8px; height: 14px;
+    background: var(--accent);
+    animation: blink 1s step-end infinite;
+    vertical-align: text-bottom;
+  }
+
+  /* ── footer ── */
+  footer {
+    margin-top: 40px;
+    border-top: 1px solid var(--border);
+    padding-top: 18px;
+    display: flex; justify-content: space-between; align-items: center;
+    flex-wrap: wrap; gap: 10px;
+  }
+  footer span {
+    font-family: var(--font-mono); font-size: 11px;
+    color: var(--muted);
+  }
+  footer a { color: var(--accent); text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+
+  /* ── section heading ── */
+  .section-head {
+    font-family: var(--font-mono); font-size: 10px;
+    letter-spacing: 3px; text-transform: uppercase;
+    color: var(--muted);
+    margin: 28px 0 10px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .section-head::after {
+    content: ''; flex: 1; height: 1px;
+    background: var(--border);
+  }
+
+  /* ── animate in ── */
+  .fade-in {
+    animation: fadeIn .5s ease both;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .stat-card { animation: fadeIn .4s ease both; }
+  .stat-card:nth-child(2) { animation-delay: .05s; }
+  .stat-card:nth-child(3) { animation-delay: .10s; }
+  .stat-card:nth-child(4) { animation-delay: .15s; }
+  .stat-card:nth-child(5) { animation-delay: .20s; }
+  .stat-card:nth-child(6) { animation-delay: .25s; }
+</style>
+</head>
+<body>
+
+<!-- ── TICKER ── -->
+<div class="ticker">
+  <div class="ticker-label">LIVE</div>
+  <div style="overflow:hidden;flex:1">
+    <div class="ticker-track" id="tickerTrack">
+      <!-- populated by JS -->
+    </div>
+  </div>
+</div>
+
+<div class="shell">
+
+  <!-- ── HEADER ── -->
+  <header>
+    <div class="logo-block">
+      <div class="logo-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/>
+          <path d="M12 8v4l3 3"/>
+          <circle cx="12" cy="12" r="3" fill="currentColor" stroke="none"/>
+        </svg>
+      </div>
+      <div>
+        <h1>DNS <span>Blocklist</span> Manager</h1>
+        <div style="font-family:var(--font-mono);font-size:11px;color:var(--muted);margin-top:2px;">Autonomous Threat Intelligence System</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <span class="version-badge">v3.0.0</span>
+      <div class="status-dot"><div class="dot"></div>ACTIVE</div>
+      <span class="author-tag">@somafix</span>
+    </div>
+  </header>
+
+  <!-- ── KPI CARDS ── -->
+  <div class="section-head">METRICS</div>
+  <div class="grid-top" id="kpiGrid">
+    <div class="stat-card accent1">
+      <div class="card-label">Total Blocked</div>
+      <div class="card-value" id="valTotal">—</div>
+      <div class="card-sub">domains in blocklist</div>
+      <div class="card-delta delta-up" id="deltaTotal">+0</div>
+    </div>
+    <div class="stat-card accent2">
+      <div class="card-label">AI Learned</div>
+      <div class="card-value" id="valAI">—</div>
+      <div class="card-sub">auto-detected</div>
+    </div>
+    <div class="stat-card warn">
+      <div class="card-label">Analyzed</div>
+      <div class="card-value" id="valAnalyzed">—</div>
+      <div class="card-sub">this session</div>
+    </div>
+    <div class="stat-card danger">
+      <div class="card-label">Removed (FP)</div>
+      <div class="card-value" id="valRemoved">—</div>
+      <div class="card-sub">false positives</div>
+    </div>
+    <div class="stat-card muted">
+      <div class="card-label">Whitelisted</div>
+      <div class="card-value" id="valWhite">—</div>
+      <div class="card-sub">trusted domains</div>
+    </div>
+    <div class="stat-card accent1">
+      <div class="card-label">Cache Hit Rate</div>
+      <div class="card-value" id="valCache">—</div>
+      <div class="card-sub">DNS cache efficiency</div>
+    </div>
+  </div>
+
+  <!-- ── MID GRID ── -->
+  <div class="grid-mid" style="margin-top:12px;">
+
+    <!-- Keyword score breakdown -->
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title">// TOP SUSPICIOUS KEYWORDS</span>
+        <span class="panel-badge warn">HEURISTIC</span>
+      </div>
+      <div class="panel-body">
+        <div id="keywordBars"></div>
+      </div>
+    </div>
+
+    <!-- Live log feed -->
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title">// SYSTEM LOG</span>
+        <span class="panel-badge ok">LIVE</span>
+      </div>
+      <div class="panel-body">
+        <div class="log-feed" id="logFeed"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SOURCES ── -->
+  <div class="section-head">INTELLIGENCE SOURCES</div>
+  <div class="panel fade-in">
+    <div class="panel-body" style="padding:0 16px">
+      <table class="src-table">
+        <thead>
+          <tr>
+            <th>Source URL</th>
+            <th>Domains</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="srcTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── RINGS + ACTIVITY ── -->
+  <div class="grid-mid" style="margin-top:12px;">
+
+    <!-- Rings -->
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title">// SCORE DISTRIBUTION</span>
+      </div>
+      <div class="panel-body">
+        <div class="rings-row" id="ringsRow"></div>
+      </div>
+    </div>
+
+    <!-- Activity heatmap (24h) -->
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title">// DETECTION ACTIVITY (24H)</span>
+        <span class="panel-badge ok" id="actBadge">—</span>
+      </div>
+      <div class="panel-body">
+        <div class="activity-grid" id="actGrid"></div>
+        <div class="activity-labels" id="actLabels"></div>
+        <div style="margin-top:10px;font-family:var(--font-mono);font-size:10px;color:var(--muted);">
+          peaks: <span id="actPeak" style="color:var(--accent)">—</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── BOTTOM GRID ── -->
+  <div class="grid-bot">
+
+    <!-- Terminal output -->
+    <div>
+      <div class="section-head">LAST RUN OUTPUT</div>
+      <div class="terminal" id="termBlock"></div>
+    </div>
+
+    <!-- Config snapshot -->
+    <div>
+      <div class="section-head">ACTIVE CONFIG</div>
+      <div class="cfg-grid" id="cfgGrid"></div>
+    </div>
+
+  </div>
+
+  <footer>
+    <span>DNS Blocklist Manager &copy; 2024 · <a href="https://github.com/somafix/dns-blocklist" target="_blank">github.com/somafix/dns-blocklist</a></span>
+    <span>Last updated: <span id="lastUpdated">—</span></span>
+  </footer>
+
+</div><!-- /shell -->
+
+<script>
+// ════════════════════════════════════════════════════════
+//  MOCK DATA (replace fetch() calls with real GitHub API
+//  or your stats JSON endpoint)
+// ════════════════════════════════════════════════════════
+
+const MOCK = {
+  total: 1_248_730,
+  ai_learned: 4_182,
+  analyzed: 100_000,
+  removed: 312,
+  whitelisted: 87,
+  cache_hit: 73.4,
+  sources: [
+    { url: "hagezi/dns-blocklists · pro.plus",      sub: "hagezi", domains: 932_811, ok: true  },
+    { url: "StevenBlack/hosts · fakenews+gambling",  sub: "stevenblack", domains: 315_919, ok: true  },
+  ],
+  keywords: [
+    { kw: "track / tracker",   hits: 18420 },
+    { kw: "analytics / stat",  hits: 14870 },
+    { kw: "pixel / beacon",    hits: 11900 },
+    { kw: "adserver / adsrv",  hits:  9340 },
+    { kw: "click / redirect",  hits:  7680 },
+    { kw: "telemetry",         hits:  6100 },
+    { kw: "rtb / bid / dsp",   hits:  5210 },
+    { kw: "doubleclick",       hits:  4830 },
+  ],
+  hourly: [12,8,5,3,2,1,4,18,34,48,62,71,55,44,50,68,82,91,78,60,45,38,25,17],
+  config: {
+    timeout:      "30s",
+    max_file_mb:  "50 MB",
+    workers:      "10",
+    cache_ttl:    "3600s",
+    rep_thresh:   "5.0",
+    cleanup_days: "30d",
+  },
+  logLines: [
+    { t:"09:00:01", lvl:"info", msg:"Starting DNS Blocklist Manager v3.0.0" },
+    { t:"09:00:02", lvl:"info", msg:"Loaded DB: 4,182 domains" },
+    { t:"09:00:02", lvl:"info", msg:"Loaded 87 whitelisted domains" },
+    { t:"09:00:03", lvl:"info", msg:"Downloading blocklist #1 (hagezi/pro.plus)…" },
+    { t:"09:01:14", lvl:"info", msg:"Loaded 932,811 domains from source #1" },
+    { t:"09:01:14", lvl:"info", msg:"Downloading blocklist #2 (StevenBlack)…" },
+    { t:"09:01:58", lvl:"info", msg:"Loaded 315,919 domains from source #2" },
+    { t:"09:02:00", lvl:"info", msg:"Analyzing 100,000 domains (sampling)…" },
+    { t:"09:02:44", lvl:"warn", msg:"ReDoS pattern detected — regex hardened" },
+    { t:"09:03:01", lvl:"info", msg:"Training AI on 18,420 suspicious domains" },
+    { t:"09:03:18", lvl:"info", msg:"Cleaned up 312 false positives" },
+    { t:"09:03:19", lvl:"info", msg:"All data saved successfully" },
+    { t:"09:03:20", lvl:"info", msg:"Hosts file written: 1,248,730 domains (9.41 MB)" },
+  ],
+  termLines: [
+    { type:"cmd",  text:"python3 dns_blocker.py" },
+    { type:"out",  text:"DNS Blocklist Manager v3.0.0  ·  Author: somafix" },
+    { type:"out",  text:"══════════════════════════════════════════════════" },
+    { type:"out",  text:"" },
+    { type:"out",  text:"[1/4] Downloading blocklists..." },
+    { type:"ok",   text:"  ✓  Loaded 932,811 domains from hagezi/pro.plus" },
+    { type:"ok",   text:"  ✓  Loaded 315,919 domains from StevenBlack/hosts" },
+    { type:"out",  text:"" },
+    { type:"out",  text:"[2/4] Analyzing domains..." },
+    { type:"out",  text:"  Total domains: 1,248,730" },
+    { type:"out",  text:"  Suspicious domains found: 18,420" },
+    { type:"out",  text:"" },
+    { type:"out",  text:"[3/4] Training AI..." },
+    { type:"out",  text:"  Added: 4,182 · Removed: 312 · Whitelisted: 87" },
+    { type:"out",  text:"  Cache hit rate: 73.4%" },
+    { type:"out",  text:"" },
+    { type:"out",  text:"[4/4] Results:" },
+    { type:"ok",   text:"  ✓ SUCCESS! hosts.txt created" },
+    { type:"ok",   text:"  Size: 9.41 MB  |  Domains: 1,248,730" },
+  ]
+};
+
+// ── helpers ──────────────────────────────────────────────
+function fmt(n) {
+  return n >= 1_000_000
+    ? (n/1_000_000).toFixed(2)+'M'
+    : n >= 1_000
+    ? (n/1_000).toFixed(1)+'K'
+    : String(n);
+}
+
+function now() {
+  return new Date().toLocaleTimeString('en-GB');
+}
+
+// ── ticker ───────────────────────────────────────────────
+function buildTicker() {
+  const items = [
+    `TOTAL BLOCKED <span class="hi">${fmt(MOCK.total)}</span>`,
+    `AI LEARNED <span class="hi">${fmt(MOCK.ai_learned)}</span>`,
+    `CACHE HIT RATE <span class="hi">${MOCK.cache_hit}%</span>`,
+    `SOURCES <span class="hi">${MOCK.sources.length} ACTIVE</span>`,
+    `WORKERS <span class="hi">${MOCK.config.workers} THREADS</span>`,
+    `LAST RUN <span class="warn">09:03:20</span>`,
+    `FALSE POSITIVES REMOVED <span class="hi">${MOCK.removed}</span>`,
+  ];
+  const all = [...items, ...items].map(t=>`<span class="ticker-item">${t} &nbsp;/</span>`).join('');
+  document.getElementById('tickerTrack').innerHTML = all;
+}
+
+// ── KPIs ─────────────────────────────────────────────────
+function buildKPIs() {
+  document.getElementById('valTotal').textContent    = fmt(MOCK.total);
+  document.getElementById('valAI').textContent       = fmt(MOCK.ai_learned);
+  document.getElementById('valAnalyzed').textContent = fmt(MOCK.analyzed);
+  document.getElementById('valRemoved').textContent  = fmt(MOCK.removed);
+  document.getElementById('valWhite').textContent    = fmt(MOCK.whitelisted);
+  document.getElementById('valCache').textContent    = MOCK.cache_hit+'%';
+  document.getElementById('deltaTotal').textContent  = '+'+fmt(MOCK.ai_learned);
+}
+
+// ── keyword bars ─────────────────────────────────────────
+function buildBars() {
+  const max = Math.max(...MOCK.keywords.map(k=>k.hits));
+  const container = document.getElementById('keywordBars');
+  container.innerHTML = MOCK.keywords.map((k,i)=>`
+    <div class="bar-row" style="animation-delay:${i*.06}s">
+      <div class="bar-label">${k.kw}</div>
+      <div class="bar-track">
+        <div class="bar-fill" style="width:${(k.hits/max*100).toFixed(1)}%;animation-delay:${i*.06}s"></div>
+      </div>
+      <div class="bar-val">${fmt(k.hits)}</div>
+    </div>`).join('');
+}
+
+// ── log feed ─────────────────────────────────────────────
+function buildLog() {
+  const feed = document.getElementById('logFeed');
+  feed.innerHTML = MOCK.logLines.map(l=>`
+    <div class="log-entry">
+      <span class="log-time">${l.t}</span>
+      <span class="log-lvl ${l.lvl}">[${l.lvl.toUpperCase()}]</span>
+      <span class="log-msg">${l.msg}</span>
+    </div>`).join('');
+  feed.scrollTop = feed.scrollHeight;
+}
+
+// ── append live log entries ───────────────────────────────
+const liveMessages = [
+  { lvl:'info', msg:'DNS cache pruned — 0 expired entries' },
+  { lvl:'info', msg:'ETag check: source #1 unchanged (304)' },
+  { lvl:'warn', msg:'Source #2 response latency >2s' },
+  { lvl:'info', msg:'AI model: 0 new suspicious patterns' },
+  { lvl:'info', msg:'Reputation DB flushed to disk' },
+];
+let liveIdx = 0;
+function appendLiveLog() {
+  const feed = document.getElementById('logFeed');
+  const entry = liveMessages[liveIdx++ % liveMessages.length];
+  const div = document.createElement('div');
+  div.className = 'log-entry';
+  div.innerHTML = `
+    <span class="log-time">${now()}</span>
+    <span class="log-lvl ${entry.lvl}">[${entry.lvl.toUpperCase()}]</span>
+    <span class="log-msg">${entry.msg}</span>`;
+  feed.appendChild(div);
+  feed.scrollTop = feed.scrollHeight;
+  while(feed.children.length > 40) feed.removeChild(feed.firstChild);
+}
+
+// ── sources table ─────────────────────────────────────────
+function buildSources() {
+  const tbody = document.getElementById('srcTableBody');
+  tbody.innerHTML = MOCK.sources.map(s=>`
+    <tr>
+      <td class="src-url">${s.url}<br><small>${s.sub}</small></td>
+      <td class="src-count">${fmt(s.domains)}</td>
+      <td><div class="src-status">
+        <span class="pill ${s.ok?'ok':'er'}">${s.ok?'OK':'FAIL'}</span>
+      </div></td>
+    </tr>`).join('');
+}
+
+// ── rings ─────────────────────────────────────────────────
+function buildRings() {
+  const rings = [
+    { label:'Blocked', pct: (MOCK.total / (MOCK.total + MOCK.whitelisted) * 100).toFixed(0), color:'#00e5ff' },
+    { label:'AI Ratio', pct: (MOCK.ai_learned / MOCK.total * 100 * 20).toFixed(0), color:'#00ff88' },
+    { label:'Cache',   pct: MOCK.cache_hit.toFixed(0), color:'#ffb300' },
+    { label:'Clean',   pct: ((1 - MOCK.removed/MOCK.analyzed)*100).toFixed(0), color:'#a78bfa' },
+  ];
+  const r = 28, circ = 2 * Math.PI * r;
+  document.getElementById('ringsRow').innerHTML = rings.map(ring=>{
+    const offset = circ - (ring.pct / 100) * circ;
+    return `
+    <div class="ring-wrap">
+      <div style="position:relative;width:70px;height:70px">
+        <svg class="ring-svg" width="70" height="70" viewBox="0 0 70 70">
+          <circle class="ring-track" cx="35" cy="35" r="${r}"/>
+          <circle class="ring-fill" cx="35" cy="35" r="${r}"
+            stroke="${ring.color}"
+            stroke-dasharray="${circ}"
+            stroke-dashoffset="${offset}"
+            style="filter:drop-shadow(0 0 4px ${ring.color})"/>
+        </svg>
+        <div class="ring-center">
+          <span class="ring-val">${ring.pct}%</span>
+        </div>
+      </div>
+      <div class="ring-label">${ring.label}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── activity heatmap ──────────────────────────────────────
+function buildActivity() {
+  const max = Math.max(...MOCK.hourly);
+  const grid = document.getElementById('actGrid');
+  const labels = document.getElementById('actLabels');
+  grid.innerHTML = MOCK.hourly.map((v,h)=>{
+    const lvl = v===0?0:v<max*.25?1:v<max*.5?2:v<max*.75?3:4;
+    return `<div class="activity-cell" data-v="${lvl}" title="${String(h).padStart(2,'0')}:00 — ${v} detections"></div>`;
+  }).join('');
+  labels.innerHTML = MOCK.hourly.map((_,h)=>
+    `<span>${h%6===0?h+':00':''}</span>`).join('');
+  const peakH = MOCK.hourly.indexOf(max);
+  document.getElementById('actBadge').textContent = max+' det/h';
+  document.getElementById('actPeak').textContent  = `${String(peakH).padStart(2,'0')}:00 (${max} detections)`;
+}
+
+// ── terminal ──────────────────────────────────────────────
+function buildTerminal() {
+  const block = document.getElementById('termBlock');
+  block.innerHTML = MOCK.termLines.map(l=>{
+    if (l.type==='cmd') return `<div class="t-line"><span class="t-prompt">$</span><span class="t-cmd">${l.text}</span></div>`;
+    if (l.type==='ok')  return `<div class="t-out t-ok">${l.text}</div>`;
+    if (l.type==='err') return `<div class="t-out t-err">${l.text}</div>`;
+    if (!l.text)        return `<div style="height:6px"></div>`;
+    return `<div class="t-out">${l.text}</div>`;
+  }).join('');
+  block.innerHTML += `<div class="t-line" style="margin-top:4px"><span class="t-prompt">$</span><span class="cursor"></span></div>`;
+  block.scrollTop = block.scrollHeight;
+}
+
+// ── config grid ───────────────────────────────────────────
+function buildConfig() {
+  const entries = Object.entries(MOCK.config);
+  document.getElementById('cfgGrid').innerHTML = entries.map(([k,v])=>`
+    <div class="cfg-row">
+      <div class="cfg-key">${k.toUpperCase()}</div>
+      <div class="cfg-val">${v}</div>
+    </div>`).join('');
+}
+
+// ── live KPI shimmer ──────────────────────────────────────
+function liveUpdate() {
+  // simulate small real-time increments
+  MOCK.total     += Math.floor(Math.random()*3);
+  MOCK.ai_learned+= Math.random()<.15 ? 1 : 0;
+  MOCK.analyzed  += Math.floor(Math.random()*10);
+  document.getElementById('valTotal').textContent    = fmt(MOCK.total);
+  document.getElementById('valAI').textContent       = fmt(MOCK.ai_learned);
+  document.getElementById('valAnalyzed').textContent = fmt(MOCK.analyzed);
+  document.getElementById('lastUpdated').textContent = now();
+}
+
+// ── init ──────────────────────────────────────────────────
+(function init() {
+  buildTicker();
+  buildKPIs();
+  buildBars();
+  buildLog();
+  buildSources();
+  buildRings();
+  buildActivity();
+  buildTerminal();
+  buildConfig();
+  document.getElementById('lastUpdated').textContent = now();
+
+  // live updates
+  setInterval(appendLiveLog, 4000);
+  setInterval(liveUpdate,    2000);
+})();
+</script>
+</body>
+</html>
