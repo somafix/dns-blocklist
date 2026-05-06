@@ -6,7 +6,7 @@ DNS Blocklist Manager v4.0.0 - Полностью автономная сист�
 
 import asyncio
 import aiohttp
-import aiofiles
+import hashlib
 import re
 import json
 import gzip
@@ -212,7 +212,6 @@ class ETagCache:
         return None
 
     def set_cached_content(self, url: str, content: str):
-        import hashlib
         filename = hashlib.md5(url.encode()).hexdigest() + ".cache"
         path = FILES["etag_cache"].parent / filename
         try:
@@ -553,17 +552,12 @@ class TrackerAI:
 
         return False
 
-    # ── Пакетный анализ (нет вложенных пулов) ─
-    async def analyze_batch(self, domains: List[str]) -> int:
-        """
-        Асинхронный batch без вложенных ThreadPoolExecutor.
-        score_domain — CPU-bound, но лёгкий → запускаем в asyncio loop напрямую.
-        """
+    # ── Пакетный анализ ───────────────────────
+    def analyze_batch(self, domains: List[str]) -> int:
+        """observe() — чистый CPU без I/O, executor не нужен."""
         added = 0
-        loop = asyncio.get_event_loop()
         for domain in domains:
-            result = await loop.run_in_executor(None, self.observe, domain)
-            if result:
+            if self.observe(domain):
                 added += 1
         return added
 
@@ -670,7 +664,7 @@ async def async_main() -> int:
 
     # ── 3. Обучение AI ────────────────────────
     print("\n[3/4] Training AI (reputation + frequency)...")
-    added_count = await ai.analyze_batch(suspicious)
+    ai.analyze_batch(suspicious)
     ai.save_all()
 
     s = ai.stats
