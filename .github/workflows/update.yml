@@ -20,7 +20,7 @@ jobs:
           python-version: '3.11'
       
       - name: Install dependencies
-        run: pip install requests
+        run: pip install requests aiohttp aiofiles
       
       - name: Run update.py
         run: python update.py
