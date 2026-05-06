@@ -1,6 +1,6 @@
 # AI Self-Learning Blocklist
-# Updated: 2026-05-05 13:02:30
-# Total domains: 25263
+# Updated: 2026-05-06 01:22:33
+# Total domains: 25335
 
 0.0.0.0 0.fls.doubleclick.net
 0.0.0.0 00000000.fls.doubleclick.net
@@ -73,6 +73,7 @@
 0.0.0.0 05ed1e7c4207de2ddcaef54ee8b59c75.safeframe.googlesyndication.com
 0.0.0.0 05f68e2db92239108c2ec5ee75a8595c.safeframe.googlesyndication.com
 0.0.0.0 0632f94f7c179662a6b341e2018ac7f5.safeframe.googlesyndication.com
+0.0.0.0 064075ce864290ce399326fbe030a7b7.fp.measure.office.com
 0.0.0.0 0667r7ee07j5ac8rta5m6280hpdlz1770734515.uaid.vtwenty.com
 0.0.0.0 066ff5a9e2f176702b03945de800ddb4.safeframe.googlesyndication.com
 0.0.0.0 067a36e3863565dc5663eeb317628e8f.safeframe.googlesyndication.com
@@ -82,6 +83,7 @@
 0.0.0.0 06u-uebc4b51b-c81-a3901-s1762072134-i8f69d17a-0.eu.dotnxdomain.net
 0.0.0.0 0730ca2151d01423ac2b33406784a7e87234532db6a1651e17bb53120feb830.us-east-1.prod.service.minerva.devices.a2z.com
 0.0.0.0 073zrzbjzies1etgd4ivdu8ho90bm1775548707.uaid.nmrodam.com
+0.0.0.0 07446dfa6a9e44098cb0465531f1aeab.fp.measure.office.com
 0.0.0.0 076cceb91c5d3b0bb476d0637c1f39b38bfdfa7d0626600f62238e2ce7732e9.us-east-1.prod.service.minerva.devices.a2z.com
 0.0.0.0 0774pkzq6752snkjzlxbm6dwt405q1776021669.uaid.nmrodam.com
 0.0.0.0 0779f07236f08ef29daaa1772468093a.click
@@ -121,6 +123,7 @@
 0.0.0.0 0a3ll3ioi0xear5fk8rllemf9j0p21777014480.uaid.nmrodam.com
 0.0.0.0 0a4977c7b11d448b7827e0d117763457.safeframe.googlesyndication.com
 0.0.0.0 0a54101a5faad4bb929df8c897c26d55.fp.measure.office.com
+0.0.0.0 0a6460872fc7a9e78c26d4669d2ee839.safeframe.googlesyndication.com
 0.0.0.0 0a84a82d63f18a653a99ad4808dceb3b.safeframe.googlesyndication.com
 0.0.0.0 0a9rdbav19xrngpx5e0sxpn1tk18v1765246075.uaid.vtwenty.com
 0.0.0.0 0ac51c9049b379ba5bc237e5481130b2.safeframe.googlesyndication.com
@@ -173,6 +176,7 @@
 0.0.0.0 0e6sq6c9pbrisuefajxjirguzyyw11777179140.nuid.imrworldwide.com
 0.0.0.0 0e8a7566f125afe38fb478885e66faf2978f84d99d8e44161ec9b1abb4938e4.us-east-1.prod.service.minerva.devices.a2z.com
 0.0.0.0 0e8vb90fq3s5rgjgtlfxu5cpeu2ft1762033587.uaid.nmrodam.com
+0.0.0.0 0eab6c5d608d4c60d3b61cbed11078fc.fp.measure.office.com
 0.0.0.0 0ec9309dd3778acec762ba044d273fcb.safeframe.googlesyndication.com
 0.0.0.0 0ee3f07f1d864095497dd727b990f9b0db51c6206d8b2db9858ba616b0a1a9c.us-east-1.prod.service.minerva.devices.a2z.com
 0.0.0.0 0egqljdy1lykljmrtqcka0jyqq1nl1776204861.nuid.nmrodam.com
@@ -1362,6 +1366,7 @@
 0.0.0.0 12374224.fls.doubleclick.net
 0.0.0.0 12374581.fls.doubleclick.net
 0.0.0.0 12374962.fls.doubleclick.net
+0.0.0.0 12375275.fls.doubleclick.net
 0.0.0.0 12382465.fls.doubleclick.net
 0.0.0.0 12382480.fls.doubleclick.net
 0.0.0.0 12386819.fls.doubleclick.net
@@ -1823,6 +1828,7 @@
 0.0.0.0 13543233.fls.doubleclick.net
 0.0.0.0 13544729.fls.doubleclick.net
 0.0.0.0 13549826.fls.doubleclick.net
+0.0.0.0 13553557.fls.doubleclick.net
 0.0.0.0 13555863.fls.doubleclick.net
 0.0.0.0 13565877.fls.doubleclick.net
 0.0.0.0 13573583.fls.doubleclick.net
@@ -1957,6 +1963,7 @@
 0.0.0.0 13903519.fls.doubleclick.net
 0.0.0.0 13908331.fls.doubleclick.net
 0.0.0.0 13913334.fls.doubleclick.net
+0.0.0.0 13915267ef9244a391176fe3b48c9453.fp.measure.office.com
 0.0.0.0 13919372.fls.doubleclick.net
 0.0.0.0 13919390.fls.doubleclick.net
 0.0.0.0 13920138.fls.doubleclick.net
@@ -3078,6 +3085,7 @@
 0.0.0.0 16240012.fls.doubleclick.net
 0.0.0.0 16242065.fls.doubleclick.net
 0.0.0.0 16250765.fls.doubleclick.net
+0.0.0.0 162599b9e1cb328466a1ed9e154036c7.fp.measure.office.com
 0.0.0.0 16260678.fls.doubleclick.net
 0.0.0.0 16262571.fls.doubleclick.net
 0.0.0.0 16264305.fls.doubleclick.net
@@ -3366,6 +3374,7 @@
 0.0.0.0 1766972955578b4107fe195cd811170f3fa30fe3b1d09f5f4c0fbb04.trk.sensic.net
 0.0.0.0 17669962848758379bb0915285a2ab1c2d605c20ebfea58399581fa0.trk.sensic.net
 0.0.0.0 1766997757883c2da3f424d235cb30cced1c5b826f24e8cf5f3e1536.trk.sensic.net
+0.0.0.0 1766a51051964a5db7d453ddb7454901.fp.measure.office.com
 0.0.0.0 17670349098013e98e05722c14a4d4d00bd5b32ea21018506e1e1f27.trk.sensic.net
 0.0.0.0 1767055724701cef826202e07f97e52ae7c3186d70faebfacd932c4e.trk.sensic.net
 0.0.0.0 176705589316098416a2db0a61a7dd6617da92a23aebacc6155fcf3b.trk.sensic.net
@@ -5685,12 +5694,15 @@
 0.0.0.0 1777811322052fec68fe5f8b3d6d4d21d14f32ab13a130c1873865ef.trk.sensic.net
 0.0.0.0 1777815608605b2d0a8a3e6bb225ad02a83260249563a6935fa16557.trk.sensic.net
 0.0.0.0 17778181241068781a103b9aa3dcfb376028d9551646d4eb8977682f.trk.sensic.net
+0.0.0.0 1777820052501e406b9ec9623b42920d04c85242a11a2533a34c8296.trk.sensic.net
 0.0.0.0 1777820874569030514d5a051546e2bc3ce6571c24d3fcb537a3808d.trk.sensic.net
 0.0.0.0 1777821246519fbc88addb5ece160af2a9a005199e72d7d60c5e0c20.trk.sensic.net
 0.0.0.0 17778241275631f467a41a6229004df6a9827fddd8b6faa1bfaf85f7.trk.sensic.net
 0.0.0.0 1777826720861443445e54afaf1692dcc6881af265706fd51868eafd.trk.sensic.net
+0.0.0.0 1777827323926200f8c24822bd8498274b1b61ffde8500a30a8f9f2b.trk.sensic.net
 0.0.0.0 17778279259396ad3b77f0133da3854ef4ce7c56eccba2d60dad351f.trk.sensic.net
 0.0.0.0 177782852796614da910e16751b09f6bb275bf5504f5845b8bd13459.trk.sensic.net
+0.0.0.0 177783154080044f6047ff2591f98ad90598c172305c6907f61346f9.trk.sensic.net
 0.0.0.0 177783189736931bfaa11675cee6a5972e92571aba899ce30cca88e4.trk.sensic.net
 0.0.0.0 1777832091784a07dfdfa737c5d92b2e1f3664b55aabd8b06c507eee.trk.sensic.net
 0.0.0.0 1777832341820068dc80052ed68abee2fd3714e03f989e37404cc924.trk.sensic.net
@@ -5702,9 +5714,12 @@
 0.0.0.0 17778351544820b884fca572342b56709a1d181d0b284a878370d13f.trk.sensic.net
 0.0.0.0 1777836963209205fbb398fa62947215fad0a21a77ab0231272d5b86.trk.sensic.net
 0.0.0.0 17778375667396a42a0f2d430b143080abf3902a8558c89b5381db19.trk.sensic.net
+0.0.0.0 1777837808340c92e47aae98af8e85d2d41f8b1fa447687653bb34ce.trk.sensic.net
+0.0.0.0 1777838169572d07d1b0150157061caea18526e8761bd1907f7d8468.trk.sensic.net
 0.0.0.0 1777839373812c2aed581bce993bae5b6fc6d284ad1fd7c443013a64.trk.sensic.net
 0.0.0.0 17778399757705e2f1072a092407b7df7aa977dac97dd049db9d52da.trk.sensic.net
 0.0.0.0 17778413735349ec19c81350605bc7ef9c697e22b798a11e72f11cd4.trk.sensic.net
+0.0.0.0 1777859201462fa2c2c34006d5a27323fd4a6c948fcceee9168a9546.trk.sensic.net
 0.0.0.0 1777866338042816ed06eb6900509844131b066887dcfe3fa31842de.trk.sensic.net
 0.0.0.0 1777866359367cd73dc7a25818625e91fe7b56084a5c2592d13eae4a.trk.sensic.net
 0.0.0.0 1777866399171fbcddab019b0b161e47cda93bb7a46e82a8bc130b5a.trk.sensic.net
@@ -5880,6 +5895,7 @@
 0.0.0.0 1dtlnzrm5ejab5ity4m6nn30qqgcq1776181730.uaid.nmrodam.com
 0.0.0.0 1dudl8y9ranwe3cg8cg7hnjs0t9nk1773154074.nuid.imrworldwide.com
 0.0.0.0 1e078196f42e05fc5383233e3ebb9304439c49794b1ce0d65c8c5f57af734ad.us-east-1.prod.service.minerva.devices.a2z.com
+0.0.0.0 1e10adc3949ba59ab3kl2b7tnl23awsbnzjgsmheh6e.vegslb.com
 0.0.0.0 1e186cbd815b2f98c4abab25fc2d498b21c0f3385feb4ee3fcc5e66a1cd911f.us-east-1.prod.service.minerva.devices.a2z.com
 0.0.0.0 1e2lx9gcndp5hq6v2hxotqu875eaa1776008725.uaid.nmrodam.com
 0.0.0.0 1e481364ba15021435fc1fe49ef6b9c7.safeframe.googlesyndication.com
@@ -5897,6 +5913,7 @@
 0.0.0.0 1f7301309bdf58cc883128288d6c7ad6.safeframe.googlesyndication.com
 0.0.0.0 1f88454ee83df77e7afcb7193d512d74b800c60573e4263388cb4776ab5abbc.us-east-1.prod.service.minerva.devices.a2z.com
 0.0.0.0 1f9vrq5pfrwq9envkqq3gheve7yz91775066906.darnuid.imrworldwide.com
+0.0.0.0 1fa01f51c80548b28f2acc34b11580ce.fp.measure.office.com
 0.0.0.0 1fctest.statcounter.com
 0.0.0.0 1fdfb1xuywwsuzm8n8gobkaaprzfa1772050953.nuid.imrworldwide.com
 0.0.0.0 1fktpd9ebroouf568sjzqytcbzlqu1776457355.uaid.nmrodam.com
@@ -6646,7 +6663,9 @@
 0.0.0.0 3105982eda43d551abe7e54dfe6ed0b49bc72e2923d9e04ac161a4d7d21a41e.us-east-1.prod.service.minerva.devices.a2z.com
 0.0.0.0 3115456e4a041564f3af3941f09ea635336631661b5c91f06ae9c918e1aee39.us-east-1.prod.service.minerva.devices.a2z.com
 0.0.0.0 311a532cdb744be5bb82b0c331dd4058.fp.measure.office.com
+0.0.0.0 311ffc2a2b87467da8bcef360ae225a2.fp.measure.office.com
 0.0.0.0 3121451ad9f44455859ac478473ff2e7.fp.measure.office.com
+0.0.0.0 3123607e0dac1ea2314a2b27af0b7076.fp.measure.office.com
 0.0.0.0 3124256.fls.doubleclick.net
 0.0.0.0 3126fe9b98cc4b3ab7a2a44e298426f2.fp.measure.office.com
 0.0.0.0 3139184.fls.doubleclick.net
@@ -6700,6 +6719,7 @@
 0.0.0.0 3307368151--20648295-211-mnews.ms.vk.com
 0.0.0.0 3307368151--26284064-211-mnews.ms.vk.com
 0.0.0.0 3307368316--51966513-211-mnews.ms.vk.com
+0.0.0.0 33121d70d5ed42ad9ccb84915ef7daaa.fp.measure.office.com
 0.0.0.0 3313db0442864d67ac68cf529b5653a7.fp.measure.office.com
 0.0.0.0 3318532.fls.doubleclick.net
 0.0.0.0 333e29a5a922475598469890fbd7aa22.fp.measure.office.com
@@ -6989,8 +7009,10 @@
 0.0.0.0 3e0a6bd660764f2dacb60cc48bf42193.fp.measure.office.com
 0.0.0.0 3e16a2f21c9748b08edea05fbb3a399e.fp.measure.office.com
 0.0.0.0 3e1a0ebd0d9f982a8d6fad5e78dddfdd3b23ce35114d6896096095fbd05d749.us-east-1.prod.service.minerva.devices.a2z.com
+0.0.0.0 3e1ed30a1bbf28f6ec8e72a17266ada6.safeframe.googlesyndication.com
 0.0.0.0 3e2f94db40bd6726f37cbd5f0c7307cbbb430a60a2ea0575a7a872ac135419f.us-east-1.prod.service.minerva.devices.a2z.com
 0.0.0.0 3e9hgsd9uhgv9jrlj5lp9mltyp9621762791079.nuid.imrworldwide.com
+0.0.0.0 3ea9553d8b50469bac251da9993a5617.fp.measure.office.com
 0.0.0.0 3ebf0bea944f69e654b68095828ba0ca.safeframe.googlesyndication.com
 0.0.0.0 3ec31a5d75c7d4ab4a9ba1eb4eff55bbc75565134ab19620bbe54239166eb46.us-east-1.prod.service.minerva.devices.a2z.com
 0.0.0.0 3edd6ftajuig5t40xc0z3s9y1zwf01775228404.uaid.nmrodam.com
@@ -7006,9 +7028,11 @@
 0.0.0.0 3f6d877c5650489d67ebcf611d0e7d55.safeframe.googlesyndication.com
 0.0.0.0 3f89c62f610940a2bf24dde79348c805-undefined.cdn.forter.com
 0.0.0.0 3f8f3a0ae4a33fe71cd9863926e694c9.safeframe.googlesyndication.com
+0.0.0.0 3f96b02818eade7398592933364186c8.safeframe.googlesyndication.com
 0.0.0.0 3f9a5uahzsz4xm5s34o6q5r19u9qi1770203654.uaid.nmrodam.com
 0.0.0.0 3fc41a587802926d6be6f7a8c06227f0.safeframe.googlesyndication.com
 0.0.0.0 3fc85b125fab5a2d596e486408bfe534.safeframe.googlesyndication.com
+0.0.0.0 3fd173d007bf4dccbc726bd188935be2.fp.measure.office.com
 0.0.0.0 3fd236b72e38f8bdad33cc3de01760d1c1e31b739c347bbc1fee9c0524c1cc7.us-east-1.prod.service.minerva.devices.a2z.com
 0.0.0.0 3fdf1e838c0ffa9387d567c3e843f2b3.safeframe.googlesyndication.com
 0.0.0.0 3ffeeplab63am9h3p2z8ygsfkq7rk1777336899.uaid.nmrodam.com
@@ -7236,6 +7260,7 @@
 0.0.0.0 4251601.fls.doubleclick.net
 0.0.0.0 4257211.fls.doubleclick.net
 0.0.0.0 4260700.fls.doubleclick.net
+0.0.0.0 42696171e510df95966a25849020cc71.safeframe.googlesyndication.com
 0.0.0.0 4269937.fls.doubleclick.net
 0.0.0.0 4270108.fls.doubleclick.net
 0.0.0.0 4270375.fls.doubleclick.net
@@ -7800,6 +7825,7 @@
 0.0.0.0 521h2auhcolim8w8yaqdp176rsksl1776535336.uaid.nmrodam.com
 0.0.0.0 52214.global.siteimproveanalytics.io
 0.0.0.0 52372.global.siteimproveanalytics.io
+0.0.0.0 5238112f7d254a9588c2ccd7f9f544a7.fp.measure.office.com
 0.0.0.0 5238141.fls.doubleclick.net
 0.0.0.0 5238618.fls.doubleclick.net
 0.0.0.0 5239714.fls.doubleclick.net
@@ -8011,6 +8037,7 @@
 0.0.0.0 578176.fls.doubleclick.net
 0.0.0.0 5781858.fls.doubleclick.net
 0.0.0.0 5781897.fls.doubleclick.net
+0.0.0.0 5786d46dca1946e494af5b88c118f8ca.fp.measure.office.com
 0.0.0.0 5788b722484d24d085dcc41c0258a533.safeframe.googlesyndication.com
 0.0.0.0 5788e51910a38ec81cc4520b8dcdb83964aefc4d9c8177d299a45041879aac4.us-east-1.prod.service.minerva.devices.a2z.com
 0.0.0.0 5793346.fls.doubleclick.net
@@ -8496,6 +8523,7 @@
 0.0.0.0 61fdfdc328dde72ea9d111f9ed04d384.safeframe.googlesyndication.com
 0.0.0.0 61jn2vmddruk4zfgp9t4nvknzqe641762371256.uaid.vtwenty.com
 0.0.0.0 61s2z8wky2v69p4schkbnvc8e81cb1773170277.uaid.nmrodam.com
+0.0.0.0 62030b4f0b301fefb1d863fc6a3e2e02.fp.measure.office.com
 0.0.0.0 6203434.fls.doubleclick.net
 0.0.0.0 621119.fls.doubleclick.net
 0.0.0.0 6219543.fls.doubleclick.net
@@ -8579,6 +8607,7 @@
 0.0.0.0 6302541.fls.doubleclick.net
 0.0.0.0 6304901.fls.doubleclick.net
 0.0.0.0 6313124.global.r2.siteimproveanalytics.io
+0.0.0.0 63135574852f9ab5562f65620ede1bf2.fp.measure.office.com
 0.0.0.0 6318018.fls.doubleclick.net
 0.0.0.0 6319010.global.r2.siteimproveanalytics.io
 0.0.0.0 6319779.fls.doubleclick.net
@@ -8649,6 +8678,7 @@
 0.0.0.0 6417609.fls.doubleclick.net
 0.0.0.0 6417615.fls.doubleclick.net
 0.0.0.0 6418128.fls.doubleclick.net
+0.0.0.0 642111.ms.vk.ru
 0.0.0.0 6423209.fls.doubleclick.net
 0.0.0.0 6424694.fls.doubleclick.net
 0.0.0.0 64370.global.siteimproveanalytics.io
@@ -8718,6 +8748,8 @@
 0.0.0.0 65d95a61b0ea9cce171d93928587adbc.safeframe.googlesyndication.com
 0.0.0.0 65e52d88-16e5-4b21-bd8e-b32b3c1b7add.collector.p.analitik.bik.gov.tr
 0.0.0.0 65f205f966e06469d995241d0304f1062ad1bfa9a10a591c206a3dadd336248.us-east-1.prod.service.minerva.devices.a2z.com
+0.0.0.0 65f84dffa045b10bf19906a43835ad44.fp.measure.office.com
+0.0.0.0 65faefa688064ca8974c6754c27420a0.fp.measure.office.com
 0.0.0.0 65fwhkeewuo4kojj6vyujoy4y5pat1763058927.nuid.imrworldwide.com
 0.0.0.0 65kdwuaxxlylhlnb4iybjb2d2kilp1776239462.nuid.nmrodam.com
 0.0.0.0 65n14jdkdraf4832cfdjaeuneh8sa1772301819.uaid.nmrodam.com
@@ -8879,6 +8911,7 @@
 0.0.0.0 6907055.fls.doubleclick.net
 0.0.0.0 69150.global.siteimproveanalytics.io
 0.0.0.0 69160.global.siteimproveanalytics.io
+0.0.0.0 69161eb1cbc94a0e933332e55444f4a5.fp.measure.office.com
 0.0.0.0 6921200.fls.doubleclick.net
 0.0.0.0 6926831.fls.doubleclick.net
 0.0.0.0 6927552.fls.doubleclick.net
@@ -9230,6 +9263,7 @@
 0.0.0.0 711821b001e333ea7a03e15df244e8b5.safeframe.googlesyndication.com
 0.0.0.0 7123053562.fls.doubleclick.net
 0.0.0.0 712xhwe05gvwts8cus67tofkq40s31770554217.uaid.vtwenty.com
+0.0.0.0 713b39baddd1471195531f6640c33268.fp.measure.office.com
 0.0.0.0 7144936a8068a4e3008fa70dbab31424d45533df382ceeed652a85e0fc573d1.us-east-1.prod.service.minerva.devices.a2z.com
 0.0.0.0 71522a39d92ff8c8f298109f3fe4ff88.safeframe.googlesyndication.com
 0.0.0.0 718cd423088ed7bbcd1f12183e286691d09122527cedac1f84020f64350c84d.us-east-1.prod.service.minerva.devices.a2z.com
@@ -9237,6 +9271,7 @@
 0.0.0.0 71b73bbe800a8de8b29dbaf0a2e316d0.safeframe.googlesyndication.com
 0.0.0.0 71bdd373c0da0ad428f6d9a80adfaa4c.safeframe.googlesyndication.com
 0.0.0.0 71c2a7045afffad838611cdf8056a0a9.fp.measure.office.com
+0.0.0.0 71fcc18688d84ff88567a1e7c3864d8f.safeframe.googlesyndication.com
 0.0.0.0 71yx0f5wrz2530reuplw10v9ia1gd1771802143.uaid.nmrodam.com
 0.0.0.0 72264be50afa7e52f13aef466b1b7d69.safeframe.googlesyndication.com
 0.0.0.0 722a038f854421977b303e1f354dc225.safeframe.googlesyndication.com
@@ -9356,6 +9391,7 @@
 0.0.0.0 7b327b939682e83aea7a9b1b715fd4e2.safeframe.googlesyndication.com
 0.0.0.0 7b3475112f1c6efe37bb97ebd671f11092f7002afa0aea417e6c85a9e7955c8.us-east-1.prod.service.minerva.devices.a2z.com
 0.0.0.0 7b3eyifmgavo0g63ixefgqh6rty2m1777391147.nuid.nmrodam.com
+0.0.0.0 7b6f6e0477764e09b375a8bcc4d113a6.fp.measure.office.com
 0.0.0.0 7baf4ae7f4b1328bb1ad08b59c5a0213.safeframe.googlesyndication.com
 0.0.0.0 7bcc727006f896279cc13eae4deb0c7332e7d4b9e638fb42ebf07c63ebb2390.us-east-1.prod.service.minerva.devices.a2z.com
 0.0.0.0 7bd7c0434f17495fbfc6b72dfaa1eb56.fp.measure.office.com
@@ -9394,6 +9430,7 @@
 0.0.0.0 7f254fe89a2f47acadf1385606988db6.fp.measure.office.com
 0.0.0.0 7f3cf2882845f52b03a9e0f026c55f11.click
 0.0.0.0 7f535a8b43dc375fe92bda0b479a2c5d.safeframe.googlesyndication.com
+0.0.0.0 7f6789eb6e561db61d30aa242c8bbf3b.safeframe.googlesyndication.com
 0.0.0.0 7f747010acdc50196e6157fd3631b4adfe27d7c7b62b467721152bd83eff7dd.us-east-1.prod.service.minerva.devices.a2z.com
 0.0.0.0 7f7df55352d5cbf5ea5a81419b559cfe.fp.measure.office.com
 0.0.0.0 7fa6998b19f2f4aa2c28ef159185bd0125d9839072dde8240281d47f44cd256.us-east-1.prod.service.minerva.devices.a2z.com
@@ -9792,6 +9829,7 @@
 0.0.0.0 8329482.fls.doubleclick.net
 0.0.0.0 8330936.fls.doubleclick.net
 0.0.0.0 8331584.fls.doubleclick.net
+0.0.0.0 8335b91220f6d6e3310077e70ca5accf.safeframe.googlesyndication.com
 0.0.0.0 8340555.fls.doubleclick.net
 0.0.0.0 8341063.fls.doubleclick.net
 0.0.0.0 8341466.fls.doubleclick.net
@@ -10709,6 +10747,8 @@
 0.0.0.0 90bc7588ee144ba6958210a2df9e3779-3e8f6ac6dc32.cdn8.forter.com
 0.0.0.0 90c72476443b4bf384c176e986472512.fp.measure.office.com
 0.0.0.0 90e813cb059bd5ed16d892f5c63ad7e4.safeframe.googlesyndication.com
+0.0.0.0 90e981b0d42246e9bcb31997d06e9060.fp.measure.office.com
+0.0.0.0 90efc985fb17413fb1ccfa49eae1db99.fp.measure.office.com
 0.0.0.0 90nhps3kecyf4tkvt3ht7b0dfucrx1775339979.uaid.nmrodam.com
 0.0.0.0 90wxwpzybqm30j8iufzd07emznl171775921967.uaid.nmrodam.com
 0.0.0.0 9100576.fls.doubleclick.net
@@ -11017,6 +11057,7 @@
 0.0.0.0 94a5f60qpwz9skz5mk9mzdz9tnwr91774379663.uaid.nmrodam.com
 0.0.0.0 94cp1kuqedlebhhzphg857gi7qwgw1776201367.nuid.nmrodam.com
 0.0.0.0 94daa0f45cd3f31f62bb152437e47b5f.safeframe.googlesyndication.com
+0.0.0.0 94edfe8a27464d66aee1b50ad0c5da70.fp.measure.office.com
 0.0.0.0 94fe371c268148bb933f03c607533000a9e5c5a2acb6cc5fd284ba6217ad66d.us-east-1.prod.service.minerva.devices.a2z.com
 0.0.0.0 94k0g9s5lv6j02rhh7yt5lbe5mgy21761653032.uaid.nmrodam.com
 0.0.0.0 94kh9pwpvqn0l2ncsl6vkf2a7hflh1770161123.uaid.vtwenty.com
@@ -11095,6 +11136,7 @@
 0.0.0.0 95d270d3cb9c1102f50f3ec38445b941c2a26346d6f266e331509e88fcf20cc.us-east-1.prod.service.minerva.devices.a2z.com
 0.0.0.0 95d7fbe6a54640a18a3eb58c3ba9faa1.fp.measure.office.com
 0.0.0.0 95f648a918a5b427e0caa088488c3cc0.safeframe.googlesyndication.com
+0.0.0.0 9600251.fls.doubleclick.net
 0.0.0.0 9605173.fls.doubleclick.net
 0.0.0.0 9608194.fls.doubleclick.net
 0.0.0.0 960cea00d1dc4285b7fc5363ac89c4f2.fp.measure.office.com
@@ -11170,6 +11212,7 @@
 0.0.0.0 96x2aqp4h6w2rwjc1e2ep3efh3xus1771453849.uaid.vtwenty.com
 0.0.0.0 96x4hklzfm7hwhmm3l5huy2wc9c1b1775067655.uaid.nmrodam.com
 0.0.0.0 9705872.fls.doubleclick.net
+0.0.0.0 970ae2d3b4f847b6922acae5378e852b.fp.measure.office.com
 0.0.0.0 970kpx8rfyhv2wh5um7smgkdkfmsh1772004151.uaid.nmrodam.com
 0.0.0.0 9713980.fls.doubleclick.net
 0.0.0.0 971f8e93d53d4abfbbc7ae4ab74778dc.fp.measure.office.com
@@ -11358,6 +11401,7 @@
 0.0.0.0 9910945.fls.doubleclick.net
 0.0.0.0 9910951.fls.doubleclick.net
 0.0.0.0 9912970.fls.doubleclick.net
+0.0.0.0 9912d3a03c699061b3d8bd25b83ef34f.safeframe.googlesyndication.com
 0.0.0.0 9913586.fls.doubleclick.net
 0.0.0.0 9913733.fls.doubleclick.net
 0.0.0.0 9913796.fls.doubleclick.net
@@ -11403,6 +11447,7 @@
 0.0.0.0 9945854.fls.doubleclick.net
 0.0.0.0 9946142.fls.doubleclick.net
 0.0.0.0 9947439.fls.doubleclick.net
+0.0.0.0 9956779.fls.doubleclick.net
 0.0.0.0 995c970e46cd69ecd770f1b3001a119530f0a61655b30538ee15c44ad3228aa.us-east-1.prod.service.minerva.devices.a2z.com
 0.0.0.0 9961308.fls.doubleclick.net
 0.0.0.0 9962316.fls.doubleclick.net
@@ -11435,6 +11480,7 @@
 0.0.0.0 99iap7azfn3i8icgyf7b3an6u39tc1772463090.uaid.nmrodam.com
 0.0.0.0 99zz53b2i4um5op9anh5c57qjtcn71776962650.uaid.nmrodam.com
 0.0.0.0 9a0c444c298a8535d8763a7691b109925d45b9180ff92412e77499a918c98ab.us-east-1.prod.service.minerva.devices.a2z.com
+0.0.0.0 9a5f5c3887c78f199572454b65ef42b0.safeframe.googlesyndication.com
 0.0.0.0 9a8427bfd92a5d9767213918e8a8eb39.safeframe.googlesyndication.com
 0.0.0.0 9a8c16ee0e54c73cb9cbca455548945bbf91a3c9e157f86ebdf63ddb42b4d90.us-east-1.prod.service.minerva.devices.a2z.com
 0.0.0.0 9af8ad9c-05a1-4595-ad30-4def1ed98656-00-89wii1gjlnqy.worf.replit.dev
@@ -11458,6 +11504,7 @@
 0.0.0.0 9ced622f0abf24a74567738d68526aa4.safeframe.googlesyndication.com
 0.0.0.0 9ces9kvs3tz8ic3wjppkiandwvphi1766516595.darnuid.imrworldwide.com
 0.0.0.0 9cf6fa6db78041dee72f3ca3e058e7a8017a9a2a5fb2524d4abb1e8c9ff94cb.us-east-1.prod.service.minerva.devices.a2z.com
+0.0.0.0 9cf8f23e764b4fd84e8f1af5c50793ef.safeframe.googlesyndication.com
 0.0.0.0 9cooh7t3qt9sg1wtycqpcea5kqcjg1772023495.nuid.imrworldwide.com
 0.0.0.0 9d0ec35b9ad7d1cad2ddd092589e892d.safeframe.googlesyndication.com
 0.0.0.0 9d10f48a7ebdb9a85b538f09b24589ff.safeframe.googlesyndication.com
@@ -11584,6 +11631,7 @@
 0.0.0.0 9zyd63wsasgpg7pyjaisku3b4j0dl1767813433.uaid.nmrodam.com
 0.0.0.0 a.advantageclicks.net
 0.0.0.0 a0201716a4b2c2e675f2c3b0290af1c4.safeframe.googlesyndication.com
+0.0.0.0 a02c51f7009a401f901f85d7bee92626.fp.measure.office.com
 0.0.0.0 a02kh5voeenzhjrbsioh4rfdkmq1p1763308055.nuid.imrworldwide.com
 0.0.0.0 a03534ls393fg7tmnf833lrr6e82ids4.d.sardine.ai
 0.0.0.0 a036d11177b14dd3bae2c21f6c0c7426.fp.measure.office.com
@@ -11788,6 +11836,7 @@
 0.0.0.0 aax-us-pdx-rtb.amazon-adsystem.com
 0.0.0.0 aax-us-west-rtb.amazon-adsystem.com
 0.0.0.0 aayhdrjyt5lwfkko9r5ygqd3migox1771974595.nuid.imrworldwide.com
+0.0.0.0 ab1ac49b4ecc5245460d3ee25ff56ab1.fp.measure.office.com
 0.0.0.0 ab1h5gu1rjx9v1isapyuo05h1adeo1769606061.uaid.vtwenty.com
 0.0.0.0 ab4c18d3fc107783b4ce85088d40ee45.safeframe.googlesyndication.com
 0.0.0.0 ab4j6ofeqjfqimajrjijk6xvmjhye1775917374.nuid.nmrodam.com
@@ -12052,6 +12101,7 @@
 0.0.0.0 ads.bounceme.netoppofrobledevradiod.devkissflowd-netoppofweblatedevradio-krd-kr-finance-fw.devkissflowd-netoppofweblatedevradio-krd-kr.ali.zomans.com
 0.0.0.0 ads.smrtbid.com
 0.0.0.0 ads.tds.bid
+0.0.0.0 ads.track.net
 0.0.0.0 adsdoubleclick.net
 0.0.0.0 adserver.4clicks.org
 0.0.0.0 adserver.axtracking.com
@@ -12577,6 +12627,7 @@
 0.0.0.0 b9fb129e5d8af971417ac798b0565843.safeframe.googlesyndication.com
 0.0.0.0 b9oeeemz83kmssknc7h72p8gfkiy81764804746.uaid.vtwenty.com
 0.0.0.0 b9sxwhfgue09n8fzduvakaqhownfz1775544836.uaid.nmrodam.com
+0.0.0.0 ba084d1f31e883108c89a1b4c97bcb48.fp.measure.office.com
 0.0.0.0 ba1179d5f9794df0948c28439ac63119.fp.measure.office.com
 0.0.0.0 ba851fc792c989dc17bae5c28aad3d9a53d2735b62a5f7fa9f4ba4d7eb98f5d.us-east-1.prod.service.minerva.devices.a2z.com
 0.0.0.0 baaf9f6018f6313cc038f935674d8566d0ebc4778cbdf81ace45b76e99580ce.us-east-1.prod.service.minerva.devices.a2z.com
@@ -12842,6 +12893,7 @@
 0.0.0.0 bu1xd39dlennimefj77uwhkjxiaa11765287709.nuid.imrworldwide.com
 0.0.0.0 buckmanfrontoffice.co.uk
 0.0.0.0 bud1jgnoskiejstjzuy6p0hjdir5q1773236922.darnuid.imrworldwide.com
+0.0.0.0 bupachileintegramedica.112.2o7.net
 0.0.0.0 bur3hlrb2nq3aofelku2yvnotaru7zybaphis4d3ead6c3ca93e24077am1.e.aa.online-metrix.net
 0.0.0.0 bur3hlrb2t3a7hkmknd43lmfvecpimxqop57ezmcb126ce468088d854am1.e.aa.online-metrix.net
 0.0.0.0 bur3hlrb2w7evdcsxudfngumvs7r565jsenb5o72f3965529f01ad67cam1.e.aa.online-metrix.net
@@ -13051,6 +13103,7 @@
 0.0.0.0 c68c099fdb822aa7e2ea5b9b5f5d47468b1b53b445891948e5a51f67250a96e.us-east-1.prod.service.minerva.devices.a2z.com
 0.0.0.0 c6aaz59otkz4dcjnf3rabtc7xcuoz1771283131.uaid.nmrodam.com
 0.0.0.0 c6dpwzfmv28h0ctq9uvcobvop2mab1770552147.uaid.vtwenty.com
+0.0.0.0 c6f4640ad7394d54bf2fc8a665a55e7d.fp.measure.office.com
 0.0.0.0 c6i5jrzwf5a6iuicjbdngfocayuln1775816513.nuid.nmrodam.com
 0.0.0.0 c7.statcounter.com
 0.0.0.0 c711427bb38c7dc2e4a2d285861beaa042beb102dbfa95b535c3e7ecbebbba5.us-east-1.prod.service.minerva.devices.a2z.com
@@ -13125,6 +13178,7 @@
 0.0.0.0 cartbotebase.click
 0.0.0.0 cawzyvaljbdgptwdryxms6crrwqu81767272516.nuid.imrworldwide.com
 0.0.0.0 cb070db57e54e5cf21d80946205ed314.fp.measure.office.com
+0.0.0.0 cb18a3eb4e3c44989c08b5e2c3c6c64e.fp.measure.office.com
 0.0.0.0 cb7a781bae22d7f6a329cfb9c4ea1a24bd7d30003c1b5753fc464023ae4e528.us-east-1.prod.service.minerva.devices.a2z.com
 0.0.0.0 cb91b3c730545009f8250fc180778d5e.safeframe.googlesyndication.com
 0.0.0.0 cb9311k2j63zl9o7rm95zq8o0z7xs1764740051.uaid.vtwenty.com
@@ -13147,6 +13201,7 @@
 0.0.0.0 cc4tmrgegymlqs91irxvef5gnki3f1776941902.darnuid.imrworldwide.com
 0.0.0.0 cc73kid4hx7ldt7i6rvoeho296zsr1777391408.uaid.imrworldwide.com
 0.0.0.0 cc77489f1172bd9cacad08ce165ded92.safeframe.googlesyndication.com
+0.0.0.0 cc78e3c79cdb4593aabb84d06c76557f.fp.measure.office.com
 0.0.0.0 cc922a184a24e03240df9ab89b322216.safeframe.googlesyndication.com
 0.0.0.0 cc9be8c74fb5fbcaea2abcb9aea03c36da4475ba748af9f36fb0343609ca3ec.us-east-1.prod.service.minerva.devices.a2z.com
 0.0.0.0 cca039482a104d5d9b04bd2e20f6bb64.apm.us-west-2.aws.found.io
@@ -13522,6 +13577,7 @@
 0.0.0.0 d0ffb52fc9d78b77c84b3293315f0995343c3178d6446a6fbe8e223acc25520.us-east-1.prod.service.minerva.devices.a2z.com
 0.0.0.0 d0u3srq7jl5klmfsahzvj4ix7yz1f1771854287.uaid.vtwenty.com
 0.0.0.0 d0vkajdego22xgjwdhtousf18ej6g1775723416.nuid.nmrodam.com
+0.0.0.0 d10a03dc2bbe4abb8351422e4f304ded.fp.measure.office.com
 0.0.0.0 d11t7povaahl2cq321mlq5pbzpna91766413117.uaid.nmrodam.com
 0.0.0.0 d14wmodjh6cweymmliqj3g4rfgcaa1774026450.nuid.nmrodam.com
 0.0.0.0 d1595eb1ee0f6e3dec4051c5c26f4e3d.safeframe.googlesyndication.com
@@ -13571,6 +13627,7 @@
 0.0.0.0 d23ew8hifjsx2r54yefdnf6pvlzmtkxw6sojrdsx9a51c59a90624349am1.e.aa.online-metrix.net
 0.0.0.0 d263775e84a5e0b4a921d3605ced681f.safeframe.googlesyndication.com
 0.0.0.0 d27c4401e36413d4e0aeefbc768d4bd3.fp.measure.office.com
+0.0.0.0 d280f45979eb44e7ada2c7e8309f5f4f.fp.measure.office.com
 0.0.0.0 d28505281ef0163be97b49811dc5768d919eae7347e42fd3034a3b8abcd9e7f.us-east-1.prod.service.minerva.devices.a2z.com
 0.0.0.0 d28750855e62ca75e817aa19fd49f830.safeframe.googlesyndication.com
 0.0.0.0 d29a75fa9db9421eace5e81531cae7f0.fp.measure.office.com
@@ -13646,6 +13703,7 @@
 0.0.0.0 d832f0a4853cab084090025e19ea0bef.fp.measure.office.com
 0.0.0.0 d834efe771fd2fc5bc1001d3262bd6e3.safeframe.googlesyndication.com
 0.0.0.0 d847870f4ec40488ed2885eed96be12602541c5d87644532d2a6abd4593a4a9.us-east-1.prod.service.minerva.devices.a2z.com
+0.0.0.0 d84aa6376d287a87ff298340d4df16ef.safeframe.googlesyndication.com
 0.0.0.0 d874255021f819b6fb2ab6c51c8c1b6c.safeframe.googlesyndication.com
 0.0.0.0 d8881c0e1909e26403c9d83f5e94cdc53c1a06288d471cfae58801165f07d93.us-east-1.prod.service.minerva.devices.a2z.com
 0.0.0.0 d8952c3fb9a048e99102c409eefd705a.fp.measure.office.com
@@ -13667,6 +13725,7 @@
 0.0.0.0 da22624ac3a8506f5080cdfde328cff6.safeframe.googlesyndication.com
 0.0.0.0 da386e4acea2f54a634e856627da5494d1f75a7f7b652c622be423c328ee80c.us-east-1.prod.service.minerva.devices.a2z.com
 0.0.0.0 da495kmue682pb51g2pksls6po5kh1767485954.uaid.vtwenty.com
+0.0.0.0 da6169b5d62014455b405c80fc1cf535.safeframe.googlesyndication.com
 0.0.0.0 da6d8dfe9641474ca0b3033a4133eda6.fp.measure.office.com
 0.0.0.0 da868554002deba3211ba4265fcdbf9e.safeframe.googlesyndication.com
 0.0.0.0 da910f51671de7d73ab8579645f339c788445a7eaf471a7da158e1d7f591799.us-east-1.prod.service.minerva.devices.a2z.com
@@ -13753,6 +13812,7 @@
 0.0.0.0 de754d96e95809fb9ddb5957a6b4a7e3.safeframe.googlesyndication.com
 0.0.0.0 de8ce044722a5b61d948e76ee6602b075f182156f17006205d52d64ad07e356.us-east-1.prod.service.minerva.devices.a2z.com
 0.0.0.0 de94dcaa85f74ea883eed0d3c7f322a6.fp.measure.office.com
+0.0.0.0 deae06a9de349cd1868fcd463568b3dd.fp.measure.office.com
 0.0.0.0 debiyq462ul4mxj4h2v7nmgaklc4r1772327793.uaid.vtwenty.com
 0.0.0.0 debnqnoywkfx5k4plb1ipxblydqor1774109721.nuid.nmrodam.com
 0.0.0.0 dec590dfc39046508597ad5fec15649a355416e8782c3db7e5688ba1c0d9f9d.us-east-1.prod.service.minerva.devices.a2z.com
@@ -15065,6 +15125,7 @@
 0.0.0.0 e8046bbbc97c7918fa15ad9f16a46d40.safeframe.googlesyndication.com
 0.0.0.0 e8217e6c-d419-4ca3-acd7-6bc96a35cce4.collector.p.analitik.bik.gov.tr
 0.0.0.0 e85f3b6afd98457feac748f47042e5f4.fp.measure.office.com
+0.0.0.0 e865ce886b0711b7b34caba9bf0d2489.fp.measure.office.com
 0.0.0.0 e86b0996b0b9b7bc16169c65dbcec27dd2e0dee3bb4716b2a4a13116f7f131c.us-east-1.prod.service.minerva.devices.a2z.com
 0.0.0.0 e878f41220168cd9aa3413ed65371fe9f26207076a76bac17a1bbe19c915436.us-east-1.prod.service.minerva.devices.a2z.com
 0.0.0.0 e87b25db14ad166076ffd6f41c5b65b9.safeframe.googlesyndication.com
@@ -15124,6 +15185,7 @@
 0.0.0.0 ed5a5afdae00e56351dbc47280c9a3e3.fp.measure.office.com
 0.0.0.0 ed5ed6593c1f568613cb28d46791ad0b.fp.measure.office.com
 0.0.0.0 ed86a6223139d68e48c590da675b97cdca199abcaa94dd5534bb79f470c7ee4.us-east-1.prod.service.minerva.devices.a2z.com
+0.0.0.0 ed95efbc08a942cfb9ae748bf8c14359.fp.measure.office.com
 0.0.0.0 eda939b4b6a0adcd9fc52f19ea40526f.safeframe.googlesyndication.com
 0.0.0.0 edcfef2ff3806fbba3d1fbf99db49f0b32a5398d87befac26be80c1551d54d9.click
 0.0.0.0 edde1f104d7e051b1c5223bfc758d3a5e24c73c143fe8cc98cea2f98bb7fedd.us-east-1.prod.service.minerva.devices.a2z.com
@@ -15149,6 +15211,7 @@
 0.0.0.0 eeigsmjohgpqpgungvxqa4gqktnta1767630847.nuid.nmrodam.com
 0.0.0.0 eewnrs4i6e4qoe0ubo3tg2g8tlt051761138464.uaid.vtwenty.com
 0.0.0.0 ef2fd8abc1f827c0719cd43b9396335abd2f7b3878c0cd435c0b76ac57c0d36.us-east-1.prod.service.minerva.devices.a2z.com
+0.0.0.0 ef349fa8484f4cf999434cf4a1980e37.js.ubembed.com
 0.0.0.0 ef3r6frsviqbgptfu9xd3xiqjef3f1773905126.uaid.nmrodam.com
 0.0.0.0 ef6222896826de12392f352920fec517.safeframe.googlesyndication.com
 0.0.0.0 ef7c9ad57f573673824202358eb4737a.safeframe.googlesyndication.com
@@ -15358,6 +15421,7 @@
 0.0.0.0 f0xxchgem38jqxx5lwlcubbgbkwch1774981093.darnuid.imrworldwide.com
 0.0.0.0 f1099ad3efba22c3fb73a55dc3e1e9ad.safeframe.googlesyndication.com
 0.0.0.0 f110396b8962dc0797a91b82d6d41baf.safeframe.googlesyndication.com
+0.0.0.0 f15e0148681b6a647af1767532221864.safeframe.googlesyndication.com
 0.0.0.0 f1b2n0yqbczie0ibg1ri2qia1fvg11777443909.nuid.imrworldwide.com
 0.0.0.0 f1b773fed543e56b97fd5d5624a575ec.safeframe.googlesyndication.com
 0.0.0.0 f1cayomrc7miuky0u3dr75ye7vcpj1776627783.uaid.nmrodam.com
@@ -15383,6 +15447,7 @@
 0.0.0.0 f38b72a72c69ab749e30b4d3bf2f3750bd6ecabe820b3c2d8414a7dbe03cf60.us-east-1.prod.service.minerva.devices.a2z.com
 0.0.0.0 f38bd4713eefb16a72d6e1697e80c7315120703ce48c6be9e3676230.trk.sensic.net
 0.0.0.0 f3ba6xomntkvg2hxs8r7sdbtueqxu1767727019.nuid.nmrodam.com
+0.0.0.0 f3d56e40748f4522b1b84c460e2055dc.fp.measure.office.com
 0.0.0.0 f3f75bb715e83187193889367e540322.safeframe.googlesyndication.com
 0.0.0.0 f3jpmhbbp3jzgeiuor1mgpomspahm1769796741.nuid.imrworldwide.com
 0.0.0.0 f3r3hhvb7o93xlmqcmgsoi3nypcb31762580843.nuid.imrworldwide.com
@@ -15898,6 +15963,7 @@
 0.0.0.0 ght0gp4988wd5hj5zn76qf68skj631771807213.uaid.vtwenty.com
 0.0.0.0 gi8kln4hbv1pyrl95lffzj56pne151777166621.uaid.nmrodam.com
 0.0.0.0 gibwdjl8rizjl1r0fssmsph8dl9q71774975467.darnuid.imrworldwide.com
+0.0.0.0 giftcardsurveys.us.com
 0.0.0.0 gigep3m6zzdiw4j0rknrnukq1o2dz1770036744.uaid.vtwenty.com
 0.0.0.0 gihlgyecy4ucgp7z9hzat5ctook121777482637.uaid.nmrodam.com
 0.0.0.0 gikhmhhosnypcdxuwa7fsgfijswk61771532849.nuid.nmrodam.com
@@ -16380,6 +16446,7 @@
 0.0.0.0 impression-tracker-service-5eimuebuhq-lz.a.run.app
 0.0.0.0 imvznbn677uth3wjxv1xcsmbgftj01776002024.nuid.nmrodam.com
 0.0.0.0 in-ftd-188.us5.vip.prod.criteo.com
+0.0.0.0 in-ftd-269.da1.v4only.vip.prod.criteo.com
 0.0.0.0 in-ftd-336.fr3.vip.prod.criteo.com
 0.0.0.0 in-stagram.hl.cn
 0.0.0.0 in6o9dvkpj4e5skccouu5py6rzfhp1762617330.uaid.vtwenty.com
@@ -18977,6 +19044,7 @@
 0.0.0.0 pixel.pointmediatracker.com
 0.0.0.0 pixel.protectedanalytics.com
 0.0.0.0 pixel.pulsebrand.io
+0.0.0.0 pixel.quantserve.com
 0.0.0.0 pixel.quoinrock.co.za
 0.0.0.0 pixel.renanpivetta.com.br
 0.0.0.0 pixel.rtbix.com
@@ -21777,6 +21845,7 @@
 0.0.0.0 stv.bid-na.ads-beta.aps.amazon-adsystem.com
 0.0.0.0 stv.bid-na.ads-gamma.aps.amazon-adsystem.com
 0.0.0.0 stv.bid-na.ads.aps.amazon-adsystem.com
+0.0.0.0 stx5.sextracker.com
 0.0.0.0 suaypnkh7b8f3wbr7tuedkovpjp0z1773173057.nuid.imrworldwide.com
 0.0.0.0 subidealflow.click
 0.0.0.0 sudf2aryyfmwmighpxmys21hpisqv1777490340.nuid.nmrodam.com
@@ -21898,6 +21967,7 @@
 0.0.0.0 tagdelivery.mayoclinic.org.pc-mc.greylabeldelivery.com
 0.0.0.0 tage9hcw.emltrk.com
 0.0.0.0 tageb922am6gfglrpq15gviu3v53f1770501700.uaid.vtwenty.com
+0.0.0.0 tagesblick.click
 0.0.0.0 tagesspiegel.met.vgwort.de
 0.0.0.0 tagged-by.rubiconproject.net.akadns.net
 0.0.0.0 tagging-assets-noneu.truecallerstatic.com
@@ -23092,6 +23162,7 @@
 0.0.0.0 vas6jtb4aqhs7ehg8aaixdshdiiet1777208634.nuid.imrworldwide.com
 0.0.0.0 vaxpiaoozffjbtsor6hwsgz0ggwmf1774652644.nuid.nmrodam.com
 0.0.0.0 vayqxln90vktzq3v5h9dly3uwx6yv1773857634.nuid.nmrodam.com
+0.0.0.0 vbavqjxcmv8ip8lle64r9m4xq2wdo1777655067.darnuid.imrworldwide.com
 0.0.0.0 vbbdhtx3jfmhamk50oqthqemc1rfk1770408901.nuid.nmrodam.com
 0.0.0.0 vbcq7s5mmfqc904fuxvc5y3d97dca1773040004.nuid.imrworldwide.com
 0.0.0.0 vbdnola9tluogyi5elwq5kej8m2xu1761760205.uaid.vtwenty.com
@@ -23932,6 +24003,7 @@
 0.0.0.0 www.pixeltracker.co
 0.0.0.0 www.pixelviewlight.pro
 0.0.0.0 www.pointclicktrack.com
+0.0.0.0 www.promocjezkauflandu.24.eu
 0.0.0.0 www.qclicktrk.com
 0.0.0.0 www.redstatcounter.com
 0.0.0.0 www.rtbanalytics.com
