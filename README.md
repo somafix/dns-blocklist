@@ -60,7 +60,7 @@ git clone https://github.com/somafix/dns-blocklist.git
 cd dns-blocklist
 
 # 2. Install dependencies
-pip install aiohttp aiofiles requests
+pip install aiohttp requests
 
 # 3. Run
 python update.py
@@ -196,11 +196,9 @@ dns-blocklist/
 ├── ai_trackers.json            # Reputation DB (reputation, frequency, last_seen)
 ├── ai_custom_blocklist.txt     # AI-learned domains (auto-managed)
 ├── ai_whitelist.txt            # User-managed whitelist
-├── etag_cache.json             # Auto-generated — HTTP conditional request cache
-└── dns_blocker.log             # Auto-generated — rotating log
+├── etag_cache.json             # Auto-generated on first run
+└── dns_blocker.log             # Auto-generated on first run
 ```
-
-`etag_cache.json` and `dns_blocker.log` are created on first run and do not need to be committed unless ETag persistence across CI runs is desired.
 
 ---
 
@@ -277,8 +275,9 @@ Commits are tagged `[skip ci]` to prevent recursive workflow triggers.
 - `NEW` `frequency` field added to `ai_trackers.json`
 - `FIX` `validate_domain` — single-character segments (`a.bc`) now validate correctly
 - `FIX` `_is_suspicious_domain` renamed to public `score_domain()` — encapsulation restored
-- `PERF` Removed nested `ThreadPoolExecutor` in `batch_analyze` — replaced with `async` / `run_in_executor`
-- `ARCH` Compiled suspicious patterns into module-level `re.compile()` list — not recompiled per domain
+- `PERF` Removed nested `ThreadPoolExecutor` — `analyze_batch` is now synchronous, no executor overhead
+- `ARCH` `hashlib` moved to top-level imports; compiled regex patterns at module level
+- `CLEAN` Removed unused `aiofiles` import
 
 </details>
 
@@ -299,12 +298,11 @@ Commits are tagged `[skip ci]` to prevent recursive workflow triggers.
 
 ```
 aiohttp>=3.9
-aiofiles>=23.0
 requests>=2.31
 ```
 
 ```bash
-pip install aiohttp aiofiles requests
+pip install aiohttp requests
 ```
 
 ---
