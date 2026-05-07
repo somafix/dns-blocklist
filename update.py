@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-DNS Blocklist Manager v4.0.0 - Полностью автономная система блокировки трекеров
-Рефакторинг: async/aiohttp, ETag кэширование, улучшенная репутация, чистая архитектура
+DNS Blocklist Manager v4.0.1
+Автономная система блокировки трекеров с AI-репутацией.
 """
 
 import asyncio
@@ -17,16 +17,15 @@ import signal
 import shutil
 import tempfile
 import time
+import fcntl
 from datetime import datetime
 from typing import Set, Dict, Optional, Tuple, List
 from pathlib import Path
 from collections import defaultdict
 
 __author__ = "somafix"
-__version__ = "4.0.0"
+__version__ = "4.0.1"
 
-# ─────────────────────────────────────────────
-#  CONFIG
 # ─────────────────────────────────────────────
 CONFIG = {
     "urls": [
@@ -38,20 +37,18 @@ CONFIG = {
     "max_domains_to_analyze": 100_000,
     "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
     "cleanup_days": 30,
-    # Reputation
-    "reputation_threshold": 5.0,       # выше → снять блокировку
-    "reputation_block_at": -3.0,       # ниже → добавить в blocklist
-    "reputation_decay": 0.05,          # ежедневное затухание (к нулю)
-    "frequency_weight": 0.3,           # вес частоты появления
+    "reputation_threshold": 5.0,
+    "reputation_block_at": -3.0,
+    "reputation_decay": 0.05,
+    "frequency_weight": 0.3,
     "min_reputation": -10.0,
     "max_reputation": 10.0,
-    # Cache
     "dns_cache_ttl": 3600,
     "enable_dns_cache": True,
-    # Logs
     "enable_log_rotation": True,
     "max_log_size_mb": 10,
     "backup_count": 3,
+    "lock_file": "/tmp/dns_blocker.lock",
 }
 
 FILES = {
@@ -94,9 +91,9 @@ SUSPICIOUS_PATTERNS = [
     re.compile(r'pixel\.[a-z]+', re.I),
 ]
 
+_SEGMENT_RE = re.compile(r'^[a-z0-9]([a-z0-9\-]*[a-z0-9])?$')
 
-# ─────────────────────────────────────────────
-#  LOGGER
+
 # ─────────────────────────────────────────────
 class Logger:
     def __init__(self, log_file: Path):
@@ -133,9 +130,6 @@ class Logger:
     def warning(self, msg): self._write("WARNING", msg)
 
 
-# ─────────────────────────────────────────────
-#  DNS IN-MEMORY CACHE
-# ─────────────────────────────────────────────
 class DNSCache:
     def __init__(self):
         self._cache: Dict[str, Tuple[bool, float]] = {}
@@ -165,12 +159,7 @@ class DNSCache:
         return (self.hits / total * 100) if total > 0 else 0.0
 
 
-# ─────────────────────────────────────────────
-#  ETAG HTTP CACHE
-# ─────────────────────────────────────────────
 class ETagCache:
-    """Хранит ETag/Last-Modified для каждого URL — не скачивает если не изменилось."""
-
     def __init__(self, cache_file: Path):
         self.cache_file = cache_file
         self._data: Dict[str, dict] = self._load()
@@ -180,7 +169,7 @@ class ETagCache:
             try:
                 return json.loads(self.cache_file.read_text())
             except Exception:
-                pass
+                return {}
         return {}
 
     def save(self):
@@ -208,7 +197,10 @@ class ETagCache:
         entry = self._data.get(url, {})
         cached_path = entry.get("cached_path")
         if cached_path and Path(cached_path).exists():
-            return Path(cached_path).read_text(encoding='utf-8', errors='ignore')
+            try:
+                return Path(cached_path).read_text(encoding='utf-8', errors='ignore')
+            except Exception:
+                return None
         return None
 
     def set_cached_content(self, url: str, content: str):
@@ -221,13 +213,7 @@ class ETagCache:
             pass
 
 
-# ─────────────────────────────────────────────
-#  DOMAIN VALIDATION
-# ─────────────────────────────────────────────
-_SEGMENT_RE = re.compile(r'^[a-z0-9]([a-z0-9\-]*[a-z0-9])?$')
-
 def validate_domain(domain: str) -> bool:
-    """Валидирует домен. Допускает однобуквенные сегменты (фикс v3)."""
     if not domain or len(domain) > 253:
         return False
     segments = domain.lower().split('.')
@@ -236,7 +222,6 @@ def validate_domain(domain: str) -> bool:
     for seg in segments:
         if not seg or len(seg) > 63:
             return False
-        # Однобуквенный сегмент допустим: 'a', 'b', 'x' и т.д.
         if len(seg) == 1:
             if not seg.isalnum():
                 return False
@@ -246,21 +231,14 @@ def validate_domain(domain: str) -> bool:
     return True
 
 
-# ─────────────────────────────────────────────
-#  ASYNC DOWNLOADER
-# ─────────────────────────────────────────────
 async def fetch_blocklist(
     session: aiohttp.ClientSession,
     url: str,
     etag_cache: ETagCache,
     logger: Logger,
 ) -> Set[str]:
-    """Скачивает список с поддержкой ETag (304 Not Modified → берём кэш)."""
     conditional_headers = etag_cache.get_headers(url)
-    headers = {
-        "User-Agent": CONFIG["user_agent"],
-        **conditional_headers,
-    }
+    headers = {"User-Agent": CONFIG["user_agent"], **conditional_headers}
 
     try:
         async with session.get(url, headers=headers, timeout=aiohttp.ClientTimeout(total=CONFIG["timeout"])) as resp:
@@ -269,35 +247,37 @@ async def fetch_blocklist(
                 cached = etag_cache.get_cached_content(url)
                 if cached:
                     return _parse_hosts(cached)
-                # нет локального кэша — придётся скачать заново без заголовков
                 async with session.get(url, headers={"User-Agent": CONFIG["user_agent"]},
                                        timeout=aiohttp.ClientTimeout(total=CONFIG["timeout"])) as r2:
                     r2.raise_for_status()
-                    text = await r2.text(encoding='utf-8', errors='ignore')
+                    text = await _read_limited(r2)
                     etag_cache.update(url, dict(r2.headers))
                     etag_cache.set_cached_content(url, text)
                     return _parse_hosts(text)
 
             resp.raise_for_status()
-
-            # Проверка размера
-            cl = resp.headers.get("Content-Length")
-            if cl and int(cl) > CONFIG["max_file_size_mb"] * 1024 * 1024:
-                raise ValueError(f"File too large: {url}")
-
-            text = await resp.text(encoding='utf-8', errors='ignore')
+            text = await _read_limited(resp)
             etag_cache.update(url, dict(resp.headers))
             etag_cache.set_cached_content(url, text)
             return _parse_hosts(text)
 
     except Exception as e:
         logger.error(f"Failed to fetch {url}: {e}")
-        # Fallback на кэш
         cached = etag_cache.get_cached_content(url)
         if cached:
             logger.warning(f"Using cached version for {url}")
             return _parse_hosts(cached)
         return set()
+
+
+async def _read_limited(resp: aiohttp.ClientResponse) -> str:
+    max_bytes = CONFIG["max_file_size_mb"] * 1024 * 1024
+    content = b''
+    async for chunk in resp.content.iter_chunks():
+        content += chunk[0]
+        if len(content) > max_bytes:
+            raise ValueError(f"File too large: {len(content)} > {max_bytes}")
+    return content.decode('utf-8', errors='ignore')
 
 
 def _parse_hosts(text: str) -> Set[str]:
@@ -335,27 +315,19 @@ async def merge_blocklists_async(
     return all_domains
 
 
-# ─────────────────────────────────────────────
-#  TRACKER AI
-# ─────────────────────────────────────────────
 class TrackerAI:
     def __init__(self, logger: Logger):
         self.logger = logger
         self.dns_cache = DNSCache()
-
-        # Репутация и метаданные
         self.reputation: Dict[str, float] = {}
         self.last_seen: Dict[str, str] = {}
         self.first_added: Dict[str, str] = {}
-        self.frequency: Dict[str, int] = {}      # сколько раз домен встречался
+        self.frequency: Dict[str, int] = {}
         self.custom_domains: Set[str] = set()
         self.whitelist: Set[str] = set()
-
         self.stats = {"analyzed": 0, "added": 0, "removed": 0, "whitelisted": 0}
-
         self._load_all()
 
-    # ── Загрузка ──────────────────────────────
     def _load_all(self):
         self._load_db()
         self._load_custom_blocklist()
@@ -405,9 +377,7 @@ class TrackerAI:
         except Exception as e:
             self.logger.error(f"Failed to load whitelist: {e}")
 
-    # ── Репутация: затухание ──────────────────
     def _apply_reputation_decay(self):
-        """Ежедневное затухание: репутация плавно движется к 0."""
         decay = CONFIG["reputation_decay"]
         for domain in list(self.reputation):
             rep = self.reputation[domain]
@@ -416,7 +386,6 @@ class TrackerAI:
                 continue
             self.reputation[domain] = rep * (1 - decay)
 
-    # ── Очистка ложных срабатываний ──────────
     def _cleanup_false_positives(self):
         to_remove = []
         now = datetime.now()
@@ -444,7 +413,6 @@ class TrackerAI:
         if to_remove:
             self.logger.info(f"Cleaned up {len(to_remove)} false positives")
 
-    # ── Энтропия ─────────────────────────────
     @staticmethod
     def _entropy(s: str) -> float:
         if not s:
@@ -455,9 +423,7 @@ class TrackerAI:
         l = len(s)
         return -sum((v / l) * math.log2(v / l) for v in freq.values())
 
-    # ── Анализ домена (публичный метод) ───────
     def score_domain(self, domain: str) -> Tuple[bool, int]:
-        """Возвращает (is_suspicious, score). Публичный интерфейс."""
         cached = self.dns_cache.get(domain)
         if cached is not None:
             return cached, 0
@@ -465,7 +431,6 @@ class TrackerAI:
         d = domain.lower()
         score = 0
 
-        # Белый список CDN/легитимных сервисов
         for exc in LEGIT_EXCEPTIONS:
             if exc in d:
                 self.dns_cache.set(domain, False)
@@ -473,7 +438,6 @@ class TrackerAI:
 
         parts = d.split('.')
 
-        # Структурные признаки
         if len(parts) > 5:
             score += 2
         for part in parts[:-2]:
@@ -486,18 +450,15 @@ class TrackerAI:
             if len(part) >= 15 and self._entropy(part) > 3.5:
                 score += 2
 
-        # Ключевые слова
         for kw in SUSPICIOUS_KEYWORDS:
             if kw in d:
                 score += 2
-                break  # один раз достаточно — не суммируем все совпадения
+                break
 
-        # Паттерны
         for pat in SUSPICIOUS_PATTERNS:
             if pat.search(d):
                 score += 1
 
-        # Короткое основное имя (не TLD)
         if len(parts) >= 2:
             main = parts[-2]
             short_legit = {'com', 'net', 'org', 'ru', 'cn', 'io', 'co'}
@@ -508,12 +469,7 @@ class TrackerAI:
         self.dns_cache.set(domain, result)
         return result, score
 
-    # ── Запомнить домен ───────────────────────
     def observe(self, domain: str) -> bool:
-        """
-        Обновляет репутацию домена с учётом частоты.
-        Возвращает True если домен добавлен в blocklist.
-        """
         now_iso = datetime.now().isoformat()
         d = domain.lower()
 
@@ -552,16 +508,13 @@ class TrackerAI:
 
         return False
 
-    # ── Пакетный анализ ───────────────────────
     def analyze_batch(self, domains: List[str]) -> int:
-        """observe() — чистый CPU без I/O, executor не нужен."""
         added = 0
         for domain in domains:
             if self.observe(domain):
                 added += 1
         return added
 
-    # ── Сохранение ────────────────────────────
     def save_all(self):
         try:
             FILES["ai_db"].write_text(json.dumps({
@@ -593,15 +546,12 @@ class TrackerAI:
         return self.custom_domains.copy()
 
 
-# ─────────────────────────────────────────────
-#  WRITE HOSTS FILE
-# ─────────────────────────────────────────────
 def write_hosts_file(domains: Set[str], output_path: Path, backup_path: Path) -> bool:
     tmp_path = None
     try:
         with tempfile.NamedTemporaryFile(mode='w', delete=False, encoding='utf-8', suffix='.tmp') as tmp:
             tmp_path = tmp.name
-            tmp.write("# DNS Blocklist Manager v4.0.0\n")
+            tmp.write("# DNS Blocklist Manager v4.0.1\n")
             tmp.write(f"# Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
             tmp.write(f"# Total domains: {len(domains):,}\n")
             tmp.write("# ==========================================\n\n")
@@ -609,7 +559,7 @@ def write_hosts_file(domains: Set[str], output_path: Path, backup_path: Path) ->
                 tmp.write(f"0.0.0.0 {domain}\n")
         if output_path.exists():
             shutil.copy2(output_path, backup_path)
-        shutil.move(tmp_path, output_path)
+        os.replace(tmp_path, output_path)
         return True
     except Exception as e:
         print(f"ERROR: Failed to write hosts file: {e}")
@@ -618,17 +568,28 @@ def write_hosts_file(domains: Set[str], output_path: Path, backup_path: Path) ->
         return False
 
 
-# ─────────────────────────────────────────────
-#  MAIN
-# ─────────────────────────────────────────────
+interrupted = False
+
 def signal_handler(signum, frame):
-    print("\nInterrupted.")
-    sys.exit(0)
+    global interrupted
+    interrupted = True
+
+
+def acquire_lock():
+    lock_fd = open(CONFIG["lock_file"], 'w')
+    try:
+        fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        return lock_fd
+    except BlockingIOError:
+        sys.exit("ERROR: Another instance is already running")
 
 
 async def async_main() -> int:
+    global interrupted
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
+
+    lock_fd = acquire_lock()
 
     print(f"DNS Blocklist Manager v{__version__}  |  Author: {__author__}")
     print("=" * 55)
@@ -639,8 +600,7 @@ async def async_main() -> int:
 
     logger.info(f"Starting DNS Blocklist Manager v{__version__}")
 
-    # ── 1. Скачивание ─────────────────────────
-    print("\n[1/4] Downloading blocklists (async + ETag)...")
+    print("\n[1/4] Downloading blocklists...")
     main_domains = await merge_blocklists_async(CONFIG["urls"], etag_cache, logger)
     etag_cache.save()
 
@@ -650,11 +610,16 @@ async def async_main() -> int:
 
     print(f"      Total domains fetched: {len(main_domains):,}")
 
-    # ── 2. Фильтрация подозрительных ──────────
+    if len(main_domains) > CONFIG["max_domains_to_analyze"]:
+        logger.warning(f"Only {CONFIG['max_domains_to_analyze']:,} of {len(main_domains):,} domains analyzed!")
+
     print("\n[2/4] Scoring domains...")
     suspicious: List[str] = []
     sample = list(main_domains)[:CONFIG["max_domains_to_analyze"]]
     for domain in sample:
+        if interrupted:
+            logger.info("Interrupted during scoring")
+            return 1
         is_susp, _ = ai.score_domain(domain)
         if is_susp:
             suspicious.append(domain)
@@ -662,8 +627,7 @@ async def async_main() -> int:
     print(f"      Suspicious found: {len(suspicious):,}")
     print(f"      DNS cache hit rate: {ai.dns_cache.hit_rate:.1f}%")
 
-    # ── 3. Обучение AI ────────────────────────
-    print("\n[3/4] Training AI (reputation + frequency)...")
+    print("\n[3/4] Training AI...")
     ai.analyze_batch(suspicious)
     ai.save_all()
 
@@ -674,7 +638,6 @@ async def async_main() -> int:
     print(f"      Whitelisted: {s['whitelisted']:,}")
     print(f"      Custom:      {len(ai.get_custom_domains()):,}")
 
-    # ── 4. Запись ─────────────────────────────
     ai_domains  = ai.get_custom_domains()
     all_domains = main_domains | ai_domains
 
@@ -683,10 +646,16 @@ async def async_main() -> int:
     print(f"      AI learned: {len(ai_domains):,}")
     print(f"      Total:      {len(all_domains):,}")
 
+    if interrupted:
+        logger.info("Interrupted before writing")
+        return 1
+
     if write_hosts_file(all_domains, FILES["output"], FILES["backup"]):
         size_mb = FILES["output"].stat().st_size / 1024 / 1024
         print(f"\n✓ SUCCESS → {FILES['output']}  ({size_mb:.2f} MB, {len(all_domains):,} domains)")
         logger.info(f"Hosts file written: {len(all_domains)} domains, {size_mb:.2f} MB")
+        fcntl.flock(lock_fd, fcntl.LOCK_UN)
+        lock_fd.close()
         return 0
     else:
         print("\n✗ ERROR: Failed to write hosts file")
@@ -694,7 +663,11 @@ async def async_main() -> int:
 
 
 def main() -> int:
-    return asyncio.run(async_main())
+    try:
+        return asyncio.run(async_main())
+    except KeyboardInterrupt:
+        print("\nInterrupted")
+        return 1
 
 
 if __name__ == "__main__":
