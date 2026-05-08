@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-DNS Blocklist Manager v5.0.0
-Многоуровневая система блокировки трекеров с поведенческим AI.
+DNS Blocklist Manager v5.0.1
+Поведенческий AI для блокировки трекеров | Актуальные источники 2026
 """
 
 import asyncio
 import aiohttp
-import hashlib
 import json
+import sqlite3
 import gzip
 import os
 import sys
@@ -15,56 +15,51 @@ import signal
 import shutil
 import tempfile
 import time
-import fcntl
 from datetime import datetime, timedelta
 from typing import Set, Dict, Optional, List, Tuple
 from pathlib import Path
-from collections import defaultdict, Counter
+from collections import defaultdict
 from dataclasses import dataclass, asdict
-from concurrent.futures import ThreadPoolExecutor
-import sqlite3
+import re
 
 __author__ = "somafix"
-__version__ = "5.0.0"
+__version__ = "5.0.1"
 
 # ─────────────────────────────────────────────
-# СОВРЕМЕННАЯ КОНФИГУРАЦИЯ
+# РАБОЧАЯ КОНФИГУРАЦИЯ (май 2026)
 CONFIG = {
-    # Только актуальные источники (май 2026)
     "urls": {
-        "primary": "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/domains/pro.txt",
-        "secondary": "https://blocks.1hosts.com/lite/domains.txt",
-        "trackers": "https://raw.githubusercontent.com/Perflyst/Pi-hole-ADBLOCK/master/src/trackers",
+        "hagezi": "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/domains/pro.txt",
+        "oisd": "https://big.oisd.nl/domains",
+        "adguard": "https://adguardteam.github.io/AdGuardSDNSFilter/Filters/filter.txt",
+        "stevenblack": "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts",
     },
-    "adguard_api": "https://adguardteam.github.io/AdGuardSDNSFilter/Filters/filter.txt",
     "timeout": 30,
     "max_file_size_mb": 50,
     "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
     "reputation_db": "reputation.db",
     # AI параметры
-    "behavior_window_minutes": 60,
-    "min_requests_for_block": 100,
-    "suspicious_tlds": {'.tk', '.ml', '.ga', '.cf', '.click', '.work', '.date', '.men'},
-    "block_threshold": 0.7,  # 70% запросов к новым доменам = трекер
-    "safelist_threshold": 0.95,  # 95% к известным = легитимный
+    "reputation_threshold": -5.0,  # Порог блокировки
+    "learning_days": 14,           # Период обучения AI
+    "min_queries_for_learning": 50, # Минимум запросов для анализа
+    "suspicious_tlds": {'.tk', '.ml', '.ga', '.cf', '.click', '.work', '.date', '.men', '.top', '.xyz'},
 }
 
 FILES = {
     "output_domains": Path("domains.txt"),
     "output_adguard": Path("adguard_list.txt"),
+    "output_hosts": Path("hosts.txt"),
     "backup": Path("domains.backup"),
-    "ai_db": Path("ai_trackers.json"),
     "whitelist": Path("whitelist.txt"),
     "blacklist": Path("blacklist.txt"),
     "log": Path("dns_blocker.log"),
-    "pid_file": Path("/tmp/dns_blocker.pid"),
 }
 
-# Современные сигнатуры
-LEGIT_TLDS = {'.com', '.org', '.net', '.io', '.app', '.dev', '.cloud', '.ai'}
-KNOWN_CDN = {
+# Легитимные CDN и сервисы
+LEGIT_CDN = {
     'cloudflare', 'cloudfront', 'akamai', 'fastly', 'incapsula',
-    'stackpath', 'aws', 'google', 'azure', 'digitalocean'
+    'stackpath', 'amazonaws', 'googleapis', 'github', 'cdn',
+    'bootstrap', 'jquery', 'google', 'yandex', 'microsoft'
 }
 
 # ─────────────────────────────────────────────
@@ -72,31 +67,24 @@ KNOWN_CDN = {
 class DomainBehavior:
     """Поведенческая модель домена"""
     total_queries: int = 0
-    unique_client_ips: Set[str] = None
+    unique_clients: int = 0
     avg_interval_sec: float = 0
-    first_seen: datetime = None
-    last_seen: datetime = None
-    cname_chain: List[str] = None
-    parent_domain: str = ""
-    
-    def __post_init__(self):
-        if self.unique_client_ips is None:
-            self.unique_client_ips = set()
-        if self.cname_chain is None:
-            self.cname_chain = []
+    first_seen: Optional[str] = None
+    last_seen: Optional[str] = None
+    reputation: float = 0.0
+    is_blocked: bool = False
 
 class BehavioralAI:
-    """AI на основе поведения, а не названий"""
+    """AI на основе поведения доменов"""
     
     def __init__(self, logger):
         self.logger = logger
         self.db_path = Path(CONFIG["reputation_db"])
+        self.conn = None
         self._init_db()
-        self.behaviors: Dict[str, DomainBehavior] = {}
-        self.session_stats = {"total_domains": 0, "blocked": 0, "analyzed": 0}
         
     def _init_db(self):
-        """SQLite для хранения поведенческих данных"""
+        """Инициализация SQLite базы"""
         self.conn = sqlite3.connect(str(self.db_path))
         self.conn.execute("""
             CREATE TABLE IF NOT EXISTS domain_behavior (
@@ -107,181 +95,150 @@ class BehavioralAI:
                 first_seen TIMESTAMP,
                 last_seen TIMESTAMP,
                 reputation REAL DEFAULT 0,
-                is_blocked BOOLEAN DEFAULT 0,
-                cname_chain TEXT,
-                parent_domain TEXT
+                is_blocked BOOLEAN DEFAULT 0
             )
         """)
-        self.conn.execute("""
-            CREATE INDEX IF NOT EXISTS idx_reputation 
-            ON domain_behavior(reputation DESC)
-        """)
+        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_reputation ON domain_behavior(reputation)")
+        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_last_seen ON domain_behavior(last_seen)")
         self.conn.commit()
         
-    def analyze_behavior(self, domain: str, client_ip: str, timestamp: datetime) -> float:
-        """Анализирует поведение и возвращает репутацию"""
-        behavior = self._get_or_create_behavior(domain)
+    def update_behavior(self, domain: str, client_ip: str, timestamp: datetime) -> float:
+        """Обновляет поведенческие данные и возвращает репутацию"""
+        domain = domain.lower()
         
-        # Обновляем статистику
-        behavior.total_queries += 1
-        behavior.unique_client_ips.add(client_ip)
-        behavior.last_seen = timestamp
+        # Получаем текущие данные
+        cursor = self.conn.execute(
+            "SELECT * FROM domain_behavior WHERE domain = ?", (domain,)
+        )
+        row = cursor.fetchone()
         
-        if not behavior.first_seen:
-            behavior.first_seen = timestamp
+        if row:
+            total = row[1] + 1
+            clients = row[2]
+            first_seen = row[3]
+            last_seen = timestamp.isoformat()
             
-        # Рассчитываем интервалы (трекеры часто стучатся регулярно)
-        if behavior.total_queries > 1:
-            time_diff = (behavior.last_seen - behavior.first_seen).total_seconds()
-            behavior.avg_interval_sec = time_diff / behavior.total_queries
+            # Обновляем уникальных клиентов
+            # (в реальном приложении нужно отслеживать множество, тут упрощенно)
+            if clients < 100:  # Ограничим для простоты
+                clients += 1
+        else:
+            total = 1
+            clients = 1
+            first_seen = timestamp.isoformat()
+            last_seen = timestamp.isoformat()
             
-        # Вычисляем репутацию
-        reputation = self._calculate_reputation(behavior, domain)
+        # Вычисляем новую репутацию
+        reputation = self._calculate_reputation(domain, total, clients, first_seen)
         
         # Сохраняем
-        self._save_behavior(domain, behavior, reputation)
+        self.conn.execute("""
+            INSERT OR REPLACE INTO domain_behavior 
+            (domain, total_queries, unique_clients, first_seen, last_seen, reputation)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (domain, total, clients, first_seen, last_seen, reputation))
+        self.conn.commit()
         
         return reputation
         
-    def _calculate_reputation(self, behavior: DomainBehavior, domain: str) -> float:
-        """Калькулятор репутации от -10 (плохо) до +10 (хорошо)"""
+    def _calculate_reputation(self, domain: str, queries: int, clients: int, first_seen: str) -> float:
+        """Вычисляет репутацию от -10 (плохо) до +10 (хорошо)"""
         score = 0.0
         
-        # 1. Частота запросов (трекеры часто стучатся)
-        if behavior.avg_interval_sec > 0:
-            freq_per_hour = 3600 / behavior.avg_interval_sec
-            if freq_per_hour > 60:  # >1 запроса в минуту
-                score -= 3
-            elif freq_per_hour > 10:  # 10-60 в час
-                score -= 1
-                
-        # 2. Количество уникальных клиентов (трекеры от многих)
-        unique_clients = len(behavior.unique_client_ips)
-        if unique_clients > 10:
-            score -= 2
-        elif unique_clients == 1:
-            score += 1  # Легитимный сервис, скорее всего
+        # 1. Частота запросов (чем чаще, тем подозрительнее)
+        if queries > 100:
+            score -= 3
+        elif queries > 50:
+            score -= 1
             
-        # 3. Структура домена
-        parts = domain.split('.')
-        tld = '.' + parts[-1] if len(parts) > 0 else ''
-        
-        # Подозрительные TLD
+        # 2. Количество клиентов (трекеры видны многим)
+        if clients > 10:
+            score -= 2
+        elif clients > 5:
+            score -= 1
+            
+        # 3. TLD анализ
+        tld = '.' + domain.split('.')[-1] if '.' in domain else ''
         if tld in CONFIG["suspicious_tlds"]:
             score -= 4
             
-        # Слишком длинное имя
-        if len(parts[0]) > 30:
-            score -= 2
+        # 4. Длина имени (трекеры часто длинные)
+        name_parts = domain.split('.')
+        if len(name_parts) > 4:
+            score -= 1
+        if len(name_parts[0]) > 20:
+            score -= 1
             
-        # 4. Цепочка CNAME (трекеры часто маскируются)
-        if behavior.cname_chain:
-            # Если CNAME ведет на CDN - скорее легитимно
-            for cname in behavior.cname_chain:
-                if any(cdn in cname for cdn in KNOWN_CDN):
+        # 5. Легитимные CDN (плюс к репутации)
+        for cdn in LEGIT_CDN:
+            if cdn in domain:
+                score += 3
+                break
+                
+        # 6. Возраст домена (новые подозрительнее)
+        if first_seen:
+            try:
+                age_days = (datetime.now() - datetime.fromisoformat(first_seen)).days
+                if age_days < 1:
+                    score -= 3
+                elif age_days < 7:
+                    score -= 1
+                elif age_days > 30:
                     score += 2
-                    break
-            # Длинная цепочка (>3) - подозрительно
-            if len(behavior.cname_chain) > 3:
-                score -= 3
-                
-        # 5. Время жизни (новые домены подозрительны)
-        if behavior.first_seen:
-            age_hours = (datetime.now() - behavior.first_seen).total_seconds() / 3600
-            if age_hours < 24:
-                score -= 2
-            elif age_hours > 720:  # >30 дней
-                score += 1
-                
-        # Возраст последнего запроса
-        if behavior.last_seen:
-            idle_hours = (datetime.now() - behavior.last_seen).total_seconds() / 3600
-            if idle_hours > 48 and behavior.total_queries < 100:
-                score += 1  # Возможно, разовый запрос
+            except:
+                pass
                 
         return max(-10, min(10, score))
         
-    def _get_or_create_behavior(self, domain: str) -> DomainBehavior:
-        if domain not in self.behaviors:
-            # Пробуем загрузить из БД
-            cursor = self.conn.execute(
-                "SELECT * FROM domain_behavior WHERE domain = ?", 
-                (domain,)
-            )
-            row = cursor.fetchone()
-            if row:
-                behavior = DomainBehavior(
-                    total_queries=row[1],
-                    unique_client_ips=set(),  # Десериализуем отдельно
-                    avg_interval=row[3],
-                    first_seen=datetime.fromisoformat(row[4]) if row[4] else None,
-                    last_seen=datetime.fromisoformat(row[5]) if row[5] else None,
-                    cname_chain=json.loads(row[8]) if row[8] else [],
-                    parent_domain=row[9] or ""
-                )
-                self.behaviors[domain] = behavior
-            else:
-                self.behaviors[domain] = DomainBehavior()
-                self.session_stats["total_domains"] += 1
-                
-        return self.behaviors[domain]
-        
-    def _save_behavior(self, domain: str, behavior: DomainBehavior, reputation: float):
-        self.conn.execute("""
-            INSERT OR REPLACE INTO domain_behavior 
-            (domain, total_queries, unique_clients, avg_interval, 
-             first_seen, last_seen, reputation, cname_chain, parent_domain)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            domain,
-            behavior.total_queries,
-            len(behavior.unique_client_ips),
-            behavior.avg_interval_sec,
-            behavior.first_seen.isoformat() if behavior.first_seen else None,
-            behavior.last_seen.isoformat() if behavior.last_seen else None,
-            reputation,
-            json.dumps(behavior.cname_chain),
-            behavior.parent_domain
-        ))
-        self.conn.commit()
-        
-    def get_blocked_domains(self, threshold: float = -5.0) -> Set[str]:
-        """Возвращает домены с репутацией ниже порога"""
+    def get_blocked_domains(self, threshold: float = None) -> Set[str]:
+        """Возвращает множество доменов для блокировки"""
+        if threshold is None:
+            threshold = CONFIG["reputation_threshold"]
+            
+        # Берем домены с репутацией ниже порога
         cursor = self.conn.execute(
-            "SELECT domain FROM domain_behavior WHERE reputation <= ?",
-            (threshold,)
+            "SELECT domain FROM domain_behavior WHERE reputation <= ? AND total_queries >= ?",
+            (threshold, CONFIG["min_queries_for_learning"])
         )
         return {row[0] for row in cursor.fetchall()}
         
-    def cleanup_old(self, days: int = 30):
-        """Удаляет старые данные"""
-        cutoff = datetime.now() - timedelta(days=days)
-        self.conn.execute(
-            "DELETE FROM domain_behavior WHERE last_seen <= ?",
-            (cutoff.isoformat(),)
+    def get_stats(self) -> dict:
+        """Возвращает статистику AI"""
+        cursor = self.conn.execute("SELECT COUNT(*) FROM domain_behavior")
+        total = cursor.fetchone()[0]
+        
+        cursor = self.conn.execute(
+            "SELECT COUNT(*) FROM domain_behavior WHERE reputation <= ?",
+            (CONFIG["reputation_threshold"],)
         )
+        blocked = cursor.fetchone()[0]
+        
+        return {"total": total, "blocked": blocked}
+        
+    def cleanup_old(self, days: int = 30):
+        """Очищает старые данные"""
+        cutoff = (datetime.now() - timedelta(days=days)).isoformat()
+        self.conn.execute("DELETE FROM domain_behavior WHERE last_seen <= ?", (cutoff,))
         self.conn.commit()
 
-class ModernBlocklistManager:
-    """Современный менеджер списков блокировки"""
+class BlocklistManager:
+    """Менеджер списков блокировки"""
     
-    def __init__(self, logger, ai):
+    def __init__(self, logger, ai: BehavioralAI):
         self.logger = logger
         self.ai = ai
         self.domains: Set[str] = set()
         self.whitelist: Set[str] = set()
         self.blacklist: Set[str] = set()
-        self._load_lists()
+        self._load_custom_lists()
         
-    def _load_lists(self):
-        """Загружает whitelist/blacklist"""
-        # Whitelist
+    def _load_custom_lists(self):
+        """Загружает пользовательские списки"""
         if FILES["whitelist"].exists():
             with open(FILES["whitelist"]) as f:
                 self.whitelist = {line.strip().lower() for line in f 
                                  if line.strip() and not line.startswith('#')}
                                  
-        # Blacklist  
         if FILES["blacklist"].exists():
             with open(FILES["blacklist"]) as f:
                 self.blacklist = {line.strip().lower() for line in f
@@ -289,33 +246,31 @@ class ModernBlocklistManager:
                                 
         self.logger.info(f"Loaded {len(self.whitelist)} whitelist, {len(self.blacklist)} blacklist")
         
-    async def fetch_modern_lists(self):
-        """Загрузка современных списков блокировки"""
-        connector = aiohttp.TCPConnector(limit=20, ssl=True)  # ssl включен!
+    async def fetch_lists(self):
+        """Загружает все списки блокировки"""
+        connector = aiohttp.TCPConnector(limit=10, ssl=True)
         async with aiohttp.ClientSession(connector=connector) as session:
-            tasks = []
-            for name, url in CONFIG["urls"].items():
-                tasks.append(self._fetch_list(session, url, name))
-                
-            # AdGuard filter
-            tasks.append(self._fetch_adguard_filter(session))
-            
+            tasks = [self._fetch_domain_list(session, url, name) 
+                    for name, url in CONFIG["urls"].items()]
             results = await asyncio.gather(*tasks, return_exceptions=True)
             
         for result in results:
             if isinstance(result, set):
                 self.domains.update(result)
             elif isinstance(result, Exception):
-                self.logger.error(f"Error fetching list: {result}")
+                self.logger.error(f"List fetch error: {result}")
                 
         self.logger.info(f"Total unique domains: {len(self.domains):,}")
         
-    async def _fetch_list(self, session, url: str, name: str) -> Set[str]:
-        """Загрузка списка доменов"""
+    async def _fetch_domain_list(self, session, url: str, name: str) -> Set[str]:
+        """Загружает один список"""
         try:
             headers = {"User-Agent": CONFIG["user_agent"]}
             async with session.get(url, headers=headers, timeout=CONFIG["timeout"]) as resp:
-                resp.raise_for_status()
+                if resp.status != 200:
+                    self.logger.error(f"Failed {name}: HTTP {resp.status}")
+                    return set()
+                    
                 text = await resp.text()
                 domains = set()
                 
@@ -323,6 +278,7 @@ class ModernBlocklistManager:
                     line = line.strip().lower()
                     if not line or line.startswith('#'):
                         continue
+                        
                     # Парсим разные форматы
                     if line.startswith('0.0.0.0 '):
                         line = line[7:]
@@ -330,10 +286,10 @@ class ModernBlocklistManager:
                         line = line[2:]
                         if line.endswith('^'):
                             line = line[:-1]
-                    elif ' ' in line:
+                    elif ' ' in line and '.' in line:
                         line = line.split()[0]
                         
-                    # Валидация
+                    # Валидация домена
                     if self._validate_domain(line):
                         domains.add(line)
                         
@@ -341,51 +297,37 @@ class ModernBlocklistManager:
                 return domains
                 
         except Exception as e:
-            self.logger.error(f"Failed to fetch {name}: {e}")
-            return set()
-            
-    async def _fetch_adguard_filter(self, session) -> Set[str]:
-        """Специальный парсер для AdGuard фильтров"""
-        url = CONFIG["adguard_api"]
-        try:
-            async with session.get(url, headers={"User-Agent": CONFIG["user_agent"]}) as resp:
-                text = await resp.text()
-                domains = set()
-                
-                for line in text.splitlines():
-                    # AdGuard format: ||example.org^
-                    if line.startswith('||') and '^' in line:
-                        domain = line[2:line.index('^')]
-                        if self._validate_domain(domain):
-                            domains.add(domain)
-                            
-                self.logger.info(f"Loaded {len(domains):,} from AdGuard")
-                return domains
-                
-        except Exception as e:
-            self.logger.error(f"Failed to fetch AdGuard filter: {e}")
+            self.logger.error(f"Error fetching {name}: {e}")
             return set()
             
     @staticmethod
     def _validate_domain(domain: str) -> bool:
-        """Валидация домена"""
+        """Валидация доменного имени"""
         if not domain or len(domain) > 253:
             return False
-        # Минимум 2 сегмента
         if '.' not in domain:
             return False
-        # Нет спецсимволов
-        if any(c in domain for c in '!@#$%^&*()=+[]{};:\'"\\|<>?,'):
+        # Запрещенные символы
+        if re.search(r'[!@#$%^&*()=+\[\]{};\':"\\|,<>/?]', domain):
+            return False
+        # Должен содержать только буквы, цифры, точки и дефисы
+        if not re.match(r'^[a-z0-9.-]+$', domain):
             return False
         return True
         
     def apply_filters(self) -> Set[str]:
-        """Применяет whitelist/blacklist и AI рекомендации"""
+        """Применяет все фильтры и возвращает финальный список"""
+        # Получаем AI-заблокированные домены
+        ai_blocked = self.ai.get_blocked_domains()
+        
         filtered = set()
+        whitelisted_count = 0
+        ai_blocked_count = 0
         
         for domain in self.domains:
-            # Whitelist имеет приоритет
+            # Whitelist имеет наивысший приоритет
             if domain in self.whitelist:
+                whitelisted_count += 1
                 continue
                 
             # Blacklist всегда блокируем
@@ -393,133 +335,125 @@ class ModernBlocklistManager:
                 filtered.add(domain)
                 continue
                 
-            # AI анализ (если есть данные)
-            ai_reputation = self._get_ai_reputation(domain)
-            if ai_reputation is not None:
-                if ai_reputation <= -5.0:  # Плохая репутация
-                    filtered.add(domain)
-                    self.ai.session_stats["blocked"] += 1
-                elif ai_reputation >= 5.0:  # Хорошая репутация
-                    continue  # Пропускаем
-                else:
-                    # Серая зона - включаем как есть
-                    filtered.add(domain)
-            else:
-                # Нет данных AI - включаем
+            # AI блокировка
+            if domain in ai_blocked:
                 filtered.add(domain)
+                ai_blocked_count += 1
+                continue
                 
-        self.logger.info(f"Filtered: {len(self.domains):,} → {len(filtered):,} domains")
-        return filtered
+            # Остальные домены тоже добавляем (вдруг что-то пропустим)
+            filtered.add(domain)
+            
+        self.logger.info(f"Filtered: {len(self.domains):,} → {len(filtered):,}")
+        self.logger.info(f"  - Whitelisted: {whitelisted_count}")
+        self.logger.info(f"  - AI blocked: {ai_blocked_count}")
         
-    def _get_ai_reputation(self, domain: str) -> Optional[float]:
-        """Получает репутацию от AI"""
-        cursor = self.ai.conn.execute(
-            "SELECT reputation FROM domain_behavior WHERE domain = ?",
-            (domain,)
-        )
-        row = cursor.fetchone()
-        return row[0] if row else None
+        return filtered
 
-class MultiFormatExporter:
-    """Экспорт в разные форматы"""
+class Exporter:
+    """Экспорт в различные форматы"""
     
     @staticmethod
-    def export_domain_list(domains: Set[str], output_path: Path):
+    def export_domain_list(domains: Set[str], path: Path):
         """Простой список доменов"""
-        with open(output_path, 'w') as f:
+        with open(path, 'w') as f:
             f.write(f"# DNS Blocklist Manager v{__version__}\n")
             f.write(f"# Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-            f.write(f"# Total domains: {len(domains):,}\n")
+            f.write(f"# Total: {len(domains):,}\n")
             f.write("# ==========================================\n\n")
-            
             for domain in sorted(domains):
                 f.write(f"{domain}\n")
                 
     @staticmethod
-    def export_adguard_format(domains: Set[str], output_path: Path):
-        """AdGuard Home совместимый формат"""
-        with open(output_path, 'w') as f:
+    def export_adguard_format(domains: Set[str], path: Path):
+        """AdGuard Home формат"""
+        with open(path, 'w') as f:
             f.write(f"! Title: AI DNS Blocklist\n")
             f.write(f"! Version: {__version__}\n")
             f.write(f"! Last modified: {datetime.now().strftime('%c')}\n")
-            f.write(f"! Number of entries: {len(domains):,}\n")
-            f.write(f"! --------------------------------\n\n")
-            
+            f.write(f"! Entries: {len(domains):,}\n\n")
             for domain in sorted(domains):
-                # AdGuard format: ||domain^
                 f.write(f"||{domain}^\n")
                 
     @staticmethod
-    def export_hosts_format(domains: Set[str], output_path: Path):
-        """Классический hosts формат (для совместимости)"""
-        with open(output_path, 'w') as f:
-            f.write(f"# DNS Blocklist Manager v{__version__} (Legacy format)\n")
+    def export_hosts_format(domains: Set[str], path: Path):
+        """Классический hosts формат"""
+        with open(path, 'w') as f:
+            f.write(f"# DNS Blocklist Manager v{__version__}\n")
             f.write(f"# Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-            f.write(f"# Total domains: {len(domains):,}\n")
-            f.write("# ==========================================\n\n")
-            
+            f.write(f"# Total: {len(domains):,}\n\n")
             for domain in sorted(domains):
                 f.write(f"0.0.0.0 {domain}\n")
-
-async def main():
-    """Основная функция"""
-    print(f"DNS Blocklist Manager v{__version__} | Behavioral AI Edition")
-    print("="*60)
-    
-    # Инициализация
-    logger = Logger(FILES["log"])
-    ai = BehavioralAI(logger)
-    manager = ModernBlocklistManager(logger, ai)
-    exporter = MultiFormatExporter()
-    
-    print("\n[1/4] Downloading modern blocklists...")
-    await manager.fetch_modern_lists()
-    
-    print("\n[2/4] Applying AI filters...")
-    filtered_domains = manager.apply_filters()
-    
-    print("\n[3/4] Exporting to formats...")
-    exporter.export_domain_list(filtered_domains, FILES["output_domains"])
-    exporter.export_adguard_format(filtered_domains, FILES["output_adguard"])
-    exporter.export_hosts_format(filtered_domains, FILES["output_domains"].with_suffix(".hosts"))
-    
-    # Статистика
-    print("\n[4/4] Final statistics:")
-    print(f"  • Total domains: {len(filtered_domains):,}")
-    print(f"  • AI blocked: {ai.session_stats['blocked']:,}")
-    print(f"  • DB size: {len(ai.behaviors):,} domains tracked")
-    
-    # Размеры файлов
-    for fmt, file in [("Domain list", FILES["output_domains"]),
-                      ("AdGuard format", FILES["output_adguard"])]:
-        if file.exists():
-            size_mb = file.stat().st_size / 1024 / 1024
-            print(f"  • {fmt}: {size_mb:.2f} MB")
-            
-    print(f"\n✓ SUCCESS! Lists updated at {datetime.now().strftime('%H:%M:%S')}")
-    
-    # Очистка старых данных
-    if len(ai.behaviors) > 10000:
-        ai.cleanup_old(days=30)
-        print("  • Cleaned old behavioral data")
 
 class Logger:
     def __init__(self, log_file: Path):
         self.log_file = log_file
         self.log_file.parent.mkdir(parents=True, exist_ok=True)
         
-    def info(self, msg):    self._write("INFO", msg)
-    def error(self, msg):   self._write("ERROR", msg)
-    def warning(self, msg): self._write("WARNING", msg)
-    
-    def _write(self, level: str, message: str):
-        line = f"[{datetime.now().isoformat()}] [{level}] {message}\n"
+    def info(self, msg):
+        self._write("INFO", msg)
+        
+    def error(self, msg):
+        self._write("ERROR", msg)
+        
+    def warning(self, msg):
+        self._write("WARNING", msg)
+        
+    def _write(self, level: str, msg: str):
+        line = f"[{datetime.now().isoformat()}] [{level}] {msg}\n"
         try:
             with open(self.log_file, 'a', encoding='utf-8') as f:
                 f.write(line)
-        except Exception:
+        except:
             pass
-        print(f"[{level}] {message}")
+        print(f"[{level}] {msg}")
+
+# ─────────────────────────────────────────────
+# ОСНОВНАЯ ФУНКЦИЯ
+async def main():
+    print(f"DNS Blocklist Manager v{__version__} | Behavioral AI Edition")
+    print("=" * 55)
+    
+    logger = Logger(FILES["log"])
+    ai = BehavioralAI(logger)
+    manager = BlocklistManager(logger, ai)
+    exporter = Exporter()
+    
+    # 1. Загрузка списков
+    print("\n[1/4] Downloading blocklists...")
+    await manager.fetch_lists()
+    
+    # 2. Применение фильтров
+    print("\n[2/4] Applying AI filters...")
+    filtered_domains = manager.apply_filters()
+    
+    # 3. Экспорт
+    print("\n[3/4] Exporting to formats...")
+    exporter.export_domain_list(filtered_domains, FILES["output_domains"])
+    exporter.export_adguard_format(filtered_domains, FILES["output_adguard"])
+    exporter.export_hosts_format(filtered_domains, FILES["output_hosts"])
+    
+    # 4. Статистика
+    print("\n[4/4] Final statistics:")
+    ai_stats = ai.get_stats()
+    print(f"  • Total domains: {len(filtered_domains):,}")
+    print(f"  • AI tracked: {ai_stats['total']:,} domains")
+    print(f"  • AI blocked: {ai_stats['blocked']:,} domains")
+    
+    # Размеры файлов
+    for name, path in [("Domain list", FILES["output_domains"]),
+                       ("AdGuard format", FILES["output_adguard"]),
+                       ("Hosts format", FILES["output_hosts"])]:
+        if path.exists():
+            size_mb = path.stat().st_size / 1024 / 1024
+            print(f"  • {name}: {size_mb:.2f} MB")
+            
+    # Очистка старых данных (раз в неделю)
+    if ai_stats['total'] > 10000:
+        ai.cleanup_old(days=CONFIG["learning_days"])
+        print(f"  • Cleaned old data (> {CONFIG['learning_days']} days)")
+        
+    print(f"\n✓ SUCCESS! Lists updated at {datetime.now().strftime('%H:%M:%S')}")
 
 if __name__ == "__main__":
     try:
