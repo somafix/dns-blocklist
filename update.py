@@ -21,10 +21,6 @@ CONFIG = {
             "url": "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/domains/pro.txt",
             "enabled": True,
         },
-        "adguard": {
-            "url": "https://adguardteam.github.io/AdGuardSDNSFilter/Filters/filter.txt",
-            "enabled": True,
-        },
     },
     "timeout": 30,
     "max_retries": 3,
@@ -33,8 +29,6 @@ CONFIG = {
 }
 
 FILES = {
-    "output_domains": Path("domains.txt"),
-    "output_adguard": Path("adguard_list.txt"),
     "output_hosts": Path("hosts.txt"),
     "backup_dir": Path("backup"),
     "whitelist": Path("lists/whitelist.txt"),
@@ -158,13 +152,9 @@ class BlocklistManager:
             self.logger.info(f"Blacklist: {len(self.blacklist)} domains")
 
     async def fetch_all(self):
-        tasks = []
-        for name, src in CONFIG["urls"].items():
-            if src.get("enabled", True):
-                tasks.append(self._fetch_and_parse(src["url"], name))
-
-        results = await asyncio.gather(*tasks)
-        for domains_set in results:
+        src = CONFIG["urls"]["hagezi"]
+        if src.get("enabled", True):
+            domains_set = await self._fetch_and_parse(src["url"], "hagezi")
             if domains_set:
                 self.domains.update(domains_set)
 
@@ -215,37 +205,16 @@ class Exporter:
         backup_dir.mkdir(exist_ok=True)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-        for name in ["output_domains", "output_adguard", "output_hosts"]:
-            src = FILES[name]
-            if src.exists():
-                dst = backup_dir / f"{src.stem}_{timestamp}{src.suffix}"
-                shutil.copy2(src, dst)
-
-    @staticmethod
-    def export_domain_list(domains: Set[str], path: Path):
-        with open(path, "w", encoding="utf-8") as f:
-            f.write(f"# DNS Blocklist Manager v{__version__}\n")
-            f.write(f"# Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')}\n")
-            f.write(f"# Total domains: {len(domains):,}\n")
-            f.write("# ==========================================\n\n")
-            for domain in sorted(domains):
-                f.write(f"{domain}\n")
-
-    @staticmethod
-    def export_adguard_format(domains: Set[str], path: Path):
-        with open(path, "w", encoding="utf-8") as f:
-            f.write("! Title: DNS Blocklist\n")
-            f.write(f"! Version: {__version__}\n")
-            f.write(f"! Last modified: {datetime.now().strftime('%c')}\n")
-            f.write(f"! Total entries: {len(domains):,}\n")
-            f.write("! ---------------------------------\n\n")
-            for domain in sorted(domains):
-                f.write(f"||{domain}^\n")
+        src = FILES["output_hosts"]
+        if src.exists():
+            dst = backup_dir / f"{src.stem}_{timestamp}{src.suffix}"
+            shutil.copy2(src, dst)
 
     @staticmethod
     def export_hosts_format(domains: Set[str], path: Path):
         with open(path, "w", encoding="utf-8") as f:
             f.write(f"# DNS Blocklist Manager v{__version__}\n")
+            f.write(f"# Source: hagezi (GEZiPRO)\n")
             f.write(f"# Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')}\n")
             f.write(f"# Total: {len(domains):,}\n")
             f.write("# ==========================================\n\n")
@@ -291,27 +260,25 @@ async def main():
     atexit.register(pid_manager.cleanup)
 
     logger = Logger(FILES["log"])
-    logger.info(f"DNS Blocklist Manager v{__version__} started")
+    logger.info(f"DNS Blocklist Manager v{__version__} started (GEZiPRO only)")
 
     print(f"\n🚀 DNS Blocklist Manager v{__version__}")
-    print("✅ MODERNIZED VERSION - NO FAKE AI\n")
+    print("✅ SOURCE: ONLY GEZiPRO -> hosts.txt\n")
 
     try:
         manager = BlocklistManager(logger)
         exporter = Exporter()
 
-        print("[1/4] 💾 Creating backup...")
+        print("[1/3] 💾 Creating backup...")
         exporter.backup()
 
-        print("[2/4] 📥 Downloading blocklists...")
+        print("[2/3] 📥 Downloading GEZiPRO blocklist...")
         await manager.fetch_all()
 
-        print("[3/4] 🔍 Applying whitelist/blacklist...")
+        print("[3/3] 🔍 Applying whitelist/blacklist...")
         filtered_domains = manager.apply_filters()
 
-        print("[4/4] 💾 Exporting to formats...")
-        exporter.export_domain_list(filtered_domains, FILES["output_domains"])
-        exporter.export_adguard_format(filtered_domains, FILES["output_adguard"])
+        print("[4/4] 💾 Exporting to hosts.txt...")
         exporter.export_hosts_format(filtered_domains, FILES["output_hosts"])
 
         print("\n" + "=" * 50)
@@ -320,14 +287,9 @@ async def main():
         print(f"Total blocked domains: {len(filtered_domains):,}")
         print("\nFiles created:")
 
-        for name, path in [
-            ("Domain list", FILES["output_domains"]),
-            ("AdGuard format", FILES["output_adguard"]),
-            ("Hosts format", FILES["output_hosts"]),
-        ]:
-            if path.exists():
-                size_mb = path.stat().st_size / 1024 / 1024
-                print(f"  • {name}: {size_mb:.2f} MB")
+        if FILES["output_hosts"].exists():
+            size_mb = FILES["output_hosts"].stat().st_size / 1024 / 1024
+            print(f"  • hosts.txt: {size_mb:.2f} MB")
 
         print("=" * 50)
 
