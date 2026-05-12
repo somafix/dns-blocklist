@@ -41,7 +41,7 @@ __status__ = "Production"
 __tested__ = "2026-05-12"
 
 # ─────────────────────────────────────────────
-# ✅ VALIDATED CONFIGURATION
+# ✅ VALIDATED CONFIGURATION (OISD REMOVED)
 CONFIG = {
     "urls": {
         "hagezi": {
@@ -49,15 +49,10 @@ CONFIG = {
             "enabled": True,
             "priority": 1,
         },
-        "oisd": {
-            "url": "https://big.oisd.nl/domains",
-            "enabled": True,
-            "priority": 2,
-        },
         "adguard": {
             "url": "https://adguardteam.github.io/AdGuardSDNSFilter/Filters/filter.txt",
             "enabled": True,
-            "priority": 3,
+            "priority": 2,
         },
     },
     "timeout": 30,
