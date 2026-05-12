@@ -19,18 +19,3 @@ A high-performance, asynchronous Python utility designed to aggregate, clean, an
     *   **Automatic Backups:** Existing lists are backed up to the `/backup` folder with timestamps before every run.
     *   **PID Locking:** Prevents multiple instances from running simultaneously.
     *   **Logging:** Detailed rotating logs stored in `/logs`.
-
-## 🛠 Project Structure
-
-```text
-.
-├── dns_manager.py       # Main script
-├── domains.txt          # Exported clean domains
-├── adguard_list.txt     # Exported AdGuard filter
-├── hosts.txt            # Exported Hosts format
-├── backup/              # Previous versions of lists
-├── lists/
-│   ├── whitelist.txt    # Domains to ALWAYS allow
-│   └── blacklist.txt    # Domains to ALWAYS block
-└── logs/
-    └── dns_blocker.log  # Activity and error logs
