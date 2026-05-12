@@ -6,41 +6,43 @@
 ![Status](https://img.shields.io/badge/status-production--ready-success.svg)
 ![AI](https://img.shields.io/badge/AI-Behavioral--Engine-blueviolet)
 
-An advanced, production-ready DNS blocklist manager that combines high-quality upstream sources with a **Behavioral AI engine**. It aggregates, validates, and enhances blocklists using reputation-based scoring and automated learning.
+An advanced, production-ready DNS blocklist manager that leverages a **Behavioral AI engine** to enhance traditional blocking. It intelligently aggregates upstream sources, validates domain integrity, and applies a dynamic reputation-based scoring system.
 
 ---
 
 ## 🚀 Key Features
 
-*   **🧠 Behavioral AI Engine**: Automatically calculates domain reputation based on query frequency, client diversity, and TLD analysis.
-*   **📡 Multi-Source Aggregation**: Integrates leading filters (HaGeZi, OISD, AdGuard) with priority handling.
-*   **🛡️ Robust Validation**: Strict domain sanitization and RFC-compliant validation logic.
-*   **💾 Triple-Format Export**: Generates lists in Plain Text, AdGuard/uBlock format (`||domain.com^`), and Standard Hosts format.
-*   **📊 Integrated Health Check**: Built-in system diagnostics to verify connectivity, permissions, and dependencies before execution.
-*   **🗄️ SQLite Backend**: High-performance persistence with WAL mode and automated schema migrations.
-*   **🔄 Safety First**: Automatic PID management to prevent concurrent runs and timestamped backups of all generated files.
+*   **🧠 Behavioral AI Engine**: Automatically calculates domain reputation based on query frequency, client diversity, TLD analysis, and CDN verification.
+*   **📡 Optimized Sources**: Integrates top-tier filtered lists from **HaGeZi** and **AdGuard** (OISD removed for v6.1.0 parity).
+*   **🛡️ Strict Validation**: RFC-compliant domain sanitization and comprehensive regex validation.
+*   **💾 Triple-Format Export**: Generates ready-to-use lists for:
+    *   **Plain Text**: `domains.txt`
+    *   **AdGuard/uBlock**: `adguard_list.txt` (using `||domain^` syntax)
+    *   **Hosts**: `hosts.txt` (using `0.0.0.0` prefix)
+*   **📊 Integrated Health Check**: Pre-flight system diagnostics to verify connectivity, library dependencies, and disk permissions.
+*   **🗄️ Persistence & Safety**: SQLite backend with WAL mode, automated PID management to prevent race conditions, and timestamped file backups.
 
 ---
 
-## 🛠️ Architecture Overview
+## ⚙️ How the AI Works
 
-The system operates in a linear, 5-stage pipeline:
+The behavioral engine assigns a reputation score between **-10 and +10** based on several factors:
 
-1.  **Environment Check**: Validates network connectivity and file system permissions.
-2.  **AI Training**: Simulates or processes DNS query logs to update the behavioral reputation database.
-3.  **Ingestion**: Asynchronously fetches upstream blocklists using `aiohttp`.
-4.  **Filtering**: Merges global lists with local `whitelist.txt`/`blacklist.txt` and applies AI-based blocking.
-5.  **Export**: Writes optimized lists to multiple formats for use in Pi-hole, AdGuard Home, or Unbound.
+| Factor | Impact | Logic |
+| :--- | :--- | :--- |
+| **Frequency** | 🔴 Negative | High-intensity query spikes. |
+| **Client Diversity** | 🔴 Negative | Multiple unique IPs requesting the same obscure domain. |
+| **TLD Analysis** | 🔴 Negative | Domains under suspicious TLDs (e.g., `.click`, `.top`, `.xyz`). |
+| **CDN/Major Org** | 🟢 Positive | Known legitimate infrastructure (Cloudflare, Google, etc.). |
+| **Age/Stability** | 🟢 Positive | Domains that have been "seen" consistently over 30 days. |
 
 ---
 
-## 📋 Requirements
+## 🛠️ Requirements & Setup
 
 *   **Python 3.8+**
-*   **Dependencies**:
-    *   `aiohttp` (Asynchronous HTTP)
-    *   `sqlite3` (Built-in)
-    *   `psutil` (Optional, for advanced process management)
+*   **Dependencies**: `aiohttp` for async fetching. `psutil` is recommended for advanced process management.
 
 ```bash
+# Install required dependencies
 pip install aiohttp psutil
