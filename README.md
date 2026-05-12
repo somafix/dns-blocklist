@@ -1,27 +1,33 @@
-# 🛡️ DNS Blocklist Manager `v6.0.0`
+# 🛡️ DNS Blocklist Manager v6.0.0
 
-A modern, high-performance Python tool for aggregating, cleaning, and managing DNS blocklists. Version 6.0 has been completely rewritten using **asyncio** for maximum efficiency—no "fake AI" fluff, just clean code and reliable filtering.
+![Python Version](https://img.shields.io/badge/python-3.8%2B-blue?logo=python&logoColor=white)
+![Version](https://img.shields.io/badge/version-6.0.0-green)
+![License](https://img.shields.io/badge/license-MIT-orange)
+![Asyncio](https://img.shields.io/badge/performance-asyncio-red)
+![No AI](https://img.shields.io/badge/AI-None-lightgrey)
+
+A high-performance, asynchronous Python tool designed to aggregate, clean, and export DNS blocklists. This **Modernized** version focuses on raw speed, reliability, and precision without the bloat of "fake AI" logic.
 
 ---
 
 ## ✨ Key Features
 
-*   🚀 **Asynchronous Engine:** Simultaneous downloads of multiple sources via `aiohttp`.
-*   🧹 **Smart Cleaning:** Automatic removal of duplicates, IP addresses, comments, and garbage prefixes (`0.0.0.0`, `||`, `https://`, etc.).
-*   📊 **Multi-Format Export:** Generates lists in three formats out of the box:
-    *   **Plain Domains:** A clean list of raw domains.
-    *   **AdGuard Home:** Compatible with `||domain.com^` syntax.
-    *   **Hosts File:** Classic `0.0.0.0 domain.com` format.
-*   🛡️ **Safety First:** Built-in **Whitelist** support to prevent false positives and automated backups of previous versions.
-*   📝 **Robust Logging:** Full operational history with automatic log rotation.
-*   🔒 **PID Management:** Prevents multiple instances from running simultaneously to avoid data corruption.
+*   🚀 **Fully Asynchronous:** Uses `asyncio` and `aiohttp` for lightning-fast concurrent downloads.
+*   🧹 **Intelligent Cleaning:** Automatically strips comments, IP addresses, protocol prefixes (`https://`), and AdGuard-specific syntax (`||`, `^`).
+*   📂 **Multi-Format Export:**
+    *   **Plain List:** Standard domain-per-line (`domains.txt`).
+    *   **AdGuard Home:** AdGuard-compatible format (`adguard_list.txt`).
+    *   **Hosts File:** Classic system hosts format (`hosts.txt`).
+*   🛡️ **Smart Filtering:** Built-in support for custom **Whitelists** and **Blacklists**.
+*   💾 **Safe Backups:** Automatically creates timestamped backups of your lists before every update.
+*   🔒 **Process Safety:** Uses PID file tracking to prevent multiple instances from running simultaneously.
 
 ---
 
 ## 🛠 Installation & Usage
 
-### 1. Requirements
-*   Python 3.8+
+### 📋 Prerequisites
+*   Python 3.8 or higher
 *   `aiohttp` library
 
 ```bash
