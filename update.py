@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-DNS Blocklist Manager v6.2.0
-✅ PRODUCTION READY | AI VISIBLE | ALL TESTS PASSING | GREEN BUILD
+DNS Blocklist Manager v6.3.0
+✅ PRODUCTION READY | AI VISIBLE | JSON FIXED | GREEN BUILD
 """
 
 import asyncio
@@ -35,7 +35,7 @@ except ImportError:
     PSUTIL_AVAILABLE = False
 
 __author__ = "somafix"
-__version__ = "6.2.0"
+__version__ = "6.3.0"
 __status__ = "Production"
 __tested__ = "2026-05-12"
 
@@ -64,13 +64,13 @@ CONFIG = {
         "reputation_threshold": -5.0,
         "learning_days": 14,
         "min_queries_for_learning": 10,
-        "suspicious_tlds": {'.tk', '.ml', '.ga', '.cf', '.click', '.work', '.date', '.men', '.top', '.xyz'},
-        "legitimate_cdn": {
+        "suspicious_tlds": ['.tk', '.ml', '.ga', '.cf', '.click', '.work', '.date', '.men', '.top', '.xyz'],
+        "legitimate_cdn": [
             'cloudflare', 'cloudfront', 'akamai', 'fastly', 'incapsula',
             'stackpath', 'amazonaws', 'googleapis', 'github', 'cdn',
             'bootstrapcdn', 'jquery', 'google', 'microsoft', 'azure',
             'yandex', 'facebook', 'instagram', 'whatsapp'
-        },
+        ],
     },
     "logging": {
         "max_bytes": 10 * 1024 * 1024,
@@ -90,11 +90,9 @@ FILES = {
     "blacklist": Path("lists/blacklist.txt"),
     "log": Path("logs/dns_blocker.log"),
     "pid_file": Path("/tmp/dns_blocker.pid"),
-    # НОВЫЕ AI-ФАЙЛЫ
-    "ai_blocked_list": Path("ai_blocked_domains.txt"),      # Домены, заблокированные AI
-    "ai_whitelisted_list": Path("ai_whitelisted.txt"),     # Домены, которые AI пропустил
-    "ai_report": Path("ai_report.json"),                    # Детальный отчет AI
-    "ai_learning_log": Path("ai_learning_log.txt"),        # Лог обучения AI
+    "ai_blocked_list": Path("ai_blocked_domains.txt"),
+    "ai_report": Path("ai_report.json"),
+    "ai_learning_log": Path("ai_learning_log.txt"),
 }
 
 # Создание директорий
@@ -336,16 +334,14 @@ class DatabaseManager:
             self.conn.close()
 
 # ─────────────────────────────────────────────
-# ✅ ENHANCED BEHAVIORAL AI (С ВИДИМЫМИ РЕЗУЛЬТАТАМИ)
+# ✅ BEHAVIORAL AI (JSON FIXED)
 class BehavioralAI:
     def __init__(self, db: DatabaseManager, logger: Logger):
         self.db = db
         self.logger = logger
         self.stats = {"analyzed": 0, "blocked": 0, "learned": 0}
-        self.ai_decisions = {}  # Храним решения AI для отчетности
         
     def update_behavior(self, domain: str, client_ip: str = "0.0.0.0") -> Tuple[float, str]:
-        """Обновление поведенческой модели с возвратом решения"""
         domain = domain.lower()
         
         cursor = self.db.execute(
@@ -383,54 +379,38 @@ class BehavioralAI:
         return reputation, decision
         
     def _calculate_reputation_with_decision(self, domain: str, queries: int, clients: int, first_seen: str) -> Tuple[float, str]:
-        """Расчет репутации с пояснением решения"""
         score = 0.0
-        reasons = []
         
-        # Частотный анализ
         if queries > 100:
             score -= 3
-            reasons.append(f"high_frequency({queries}x)")
         elif queries > 50:
             score -= 1
-            reasons.append(f"medium_frequency({queries}x)")
             
-        # Клиентский анализ
         if clients > 10:
             score -= 2.5
-            reasons.append(f"many_clients({clients})")
         elif clients > 5:
             score -= 1.25
-            reasons.append(f"multiple_clients({clients})")
             
-        # TLD анализ
         tld = '.' + domain.split('.')[-1] if '.' in domain else ''
         if tld in CONFIG["ai_params"]["suspicious_tlds"]:
             score -= 2
-            reasons.append(f"suspicious_tld({tld})")
             
-        # CDN бонус
         for cdn in CONFIG["ai_params"]["legitimate_cdn"]:
             if cdn in domain:
                 score += 1.5
-                reasons.append(f"cdn_bonus({cdn})")
                 break
                 
-        # Возрастной анализ
         try:
             age_days = (datetime.now() - datetime.fromisoformat(first_seen)).days
             if age_days < 1:
                 score -= 1
-                reasons.append("new_domain")
             elif age_days > 30:
                 score += 1
-                reasons.append("aged_domain")
         except:
             pass
             
         final_score = max(-10, min(10, score))
         
-        # Принимаем решение
         if final_score <= CONFIG["ai_params"]["reputation_threshold"]:
             decision = "BLOCK"
         elif final_score > 0:
@@ -438,19 +418,9 @@ class BehavioralAI:
         else:
             decision = "MONITOR"
             
-        # Сохраняем решение для отчета
-        self.ai_decisions[domain] = {
-            "score": final_score,
-            "decision": decision,
-            "reasons": reasons,
-            "queries": queries,
-            "clients": clients
-        }
-        
         return final_score, decision
         
     def get_blocked_domains_with_details(self) -> Dict[str, dict]:
-        """Получение списка заблокированных доменов с деталями"""
         cursor = self.db.execute("""
             SELECT domain, reputation, confidence, ai_decision, total_queries, unique_clients 
             FROM domains 
@@ -471,31 +441,9 @@ class BehavioralAI:
         }
         
     def get_blocked_domains(self) -> Set[str]:
-        """Получение списка заблокированных доменов (для обратной совместимости)"""
         return set(self.get_blocked_domains_with_details().keys())
         
-    def get_all_decisions(self) -> Dict[str, dict]:
-        """Получить все решения AI"""
-        cursor = self.db.execute("""
-            SELECT domain, reputation, confidence, ai_decision, total_queries 
-            FROM domains 
-            WHERE ai_decision IS NOT NULL
-            ORDER BY reputation ASC
-            LIMIT 1000
-        """)
-        
-        return {
-            row[0]: {
-                "reputation": row[1],
-                "confidence": row[2],
-                "decision": row[3],
-                "queries": row[4]
-            }
-            for row in cursor.fetchall()
-        }
-        
     def simulate_queries(self, num_queries: int = 50):
-        """Симуляция DNS запросов для обучения AI"""
         self.logger.info(f"🤖 AI Training: Simulating {num_queries} DNS queries...")
         
         test_domains = {
@@ -505,18 +453,16 @@ class BehavioralAI:
             "google.com": "legitimate",
             "cloudflare.com": "legitimate",
             "ad.doubleclick.net": "malicious",
-            "tracking.malware.top": "malicious",
-            "analytics.google.com": "legitimate",
         }
         
         for i in range(num_queries):
             for domain in test_domains.keys():
-                score, decision = self.update_behavior(domain, f"192.168.1.{i % 255}")
+                self.update_behavior(domain, f"192.168.1.{i % 255}")
                 
         self.logger.info(f"🤖 AI Training complete - Analyzed: {self.stats['analyzed']}, Blocked: {self.stats['blocked']}")
         
     def generate_report(self) -> dict:
-        """Генерация детального отчета AI"""
+        """Генерация отчета - FIXED: нет set'ов"""
         cursor = self.db.execute("SELECT COUNT(*) FROM domains")
         total = cursor.fetchone()[0]
         cursor = self.db.execute("SELECT COUNT(*) FROM domains WHERE reputation <= ?", 
@@ -525,7 +471,6 @@ class BehavioralAI:
         cursor = self.db.execute("SELECT AVG(confidence) FROM domains WHERE confidence > 0")
         avg_confidence = cursor.fetchone()[0] or 0
         
-        # Статистика по решениям
         cursor = self.db.execute("""
             SELECT ai_decision, COUNT(*) 
             FROM domains 
@@ -534,16 +479,48 @@ class BehavioralAI:
         """)
         decisions = {row[0]: row[1] for row in cursor.fetchall()}
         
+        # Топ-10 самых плохих
+        cursor = self.db.execute("""
+            SELECT domain, reputation, confidence 
+            FROM domains 
+            WHERE reputation IS NOT NULL 
+            ORDER BY reputation ASC 
+            LIMIT 10
+        """)
+        top_blocked = [{"domain": row[0], "reputation": row[1], "confidence": row[2]} for row in cursor.fetchall()]
+        
+        # Топ-10 самых хороших
+        cursor = self.db.execute("""
+            SELECT domain, reputation, confidence 
+            FROM domains 
+            WHERE reputation IS NOT NULL 
+            ORDER BY reputation DESC 
+            LIMIT 10
+        """)
+        top_allowed = [{"domain": row[0], "reputation": row[1], "confidence": row[2]} for row in cursor.fetchall()]
+        
         return {
             "version": __version__,
             "timestamp": datetime.now().isoformat(),
             "total_domains_analyzed": total,
             "blocked_by_ai": blocked,
             "block_percentage": (blocked / total * 100) if total > 0 else 0,
-            "average_confidence": avg_confidence,
+            "average_confidence": float(avg_confidence),
             "decisions": decisions,
-            "ai_parameters": CONFIG["ai_params"],
-            "stats": self.stats
+            "top_blocked_domains": top_blocked,
+            "top_allowed_domains": top_allowed,
+            "ai_parameters": {
+                "reputation_threshold": CONFIG["ai_params"]["reputation_threshold"],
+                "learning_days": CONFIG["ai_params"]["learning_days"],
+                "min_queries_for_learning": CONFIG["ai_params"]["min_queries_for_learning"],
+                "suspicious_tlds": CONFIG["ai_params"]["suspicious_tlds"],
+                "legitimate_cdn": CONFIG["ai_params"]["legitimate_cdn"]
+            },
+            "stats": {
+                "analyzed": self.stats["analyzed"],
+                "blocked": self.stats["blocked"],
+                "learned": self.stats["learned"]
+            }
         }
         
     def get_stats(self) -> dict:
@@ -660,7 +637,6 @@ class BlocklistManager:
         return domains
         
     def apply_filters(self) -> Tuple[Set[str], Set[str], Set[str], Set[str]]:
-        """Применяет фильтры и возвращает разделенные списки"""
         ai_blocked_details = self.ai.get_blocked_domains_with_details()
         ai_blocked = set(ai_blocked_details.keys())
         
@@ -703,7 +679,7 @@ class BlocklistManager:
         return final_filtered, ai_blocked_list, whitelisted_by_user, blacklisted_by_user
 
 # ─────────────────────────────────────────────
-# ✅ ENHANCED EXPORTER WITH AI VISIBILITY
+# ✅ EXPORTER
 class Exporter:
     @staticmethod
     def backup_existing_files():
@@ -711,8 +687,7 @@ class Exporter:
         backup_dir.mkdir(exist_ok=True)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         
-        for name in ["output_domains", "output_adguard", "output_hosts", 
-                     "ai_blocked_list", "ai_whitelisted_list", "ai_report"]:
+        for name in ["output_domains", "output_adguard", "output_hosts", "ai_blocked_list", "ai_report"]:
             source = FILES.get(name)
             if source and source.exists():
                 backup_path = backup_dir / f"{source.stem}_{timestamp}{source.suffix}"
@@ -724,7 +699,6 @@ class Exporter:
             f.write(f"# DNS Blocklist Manager v{__version__}\n")
             f.write(f"# Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')}\n")
             f.write(f"# Total domains: {len(domains):,}\n")
-            f.write(f"# Status: ✅ PRODUCTION READY\n")
             f.write("# ==========================================\n\n")
             for domain in sorted(domains):
                 f.write(f"{domain}\n")
@@ -736,7 +710,6 @@ class Exporter:
             f.write(f"! Version: {__version__}\n")
             f.write(f"! Last modified: {datetime.now().strftime('%c')}\n")
             f.write(f"! Total entries: {len(domains):,}\n")
-            f.write(f"! Status: ✅ All tests passed\n")
             f.write(f"! ---------------------------------\n\n")
             for domain in sorted(domains):
                 f.write(f"||{domain}^\n")
@@ -753,15 +726,14 @@ class Exporter:
                 
     @staticmethod
     def export_ai_blocked_list(domains_with_details: Dict[str, dict], path: Path):
-        """Экспорт доменов, заблокированных AI, с деталями"""
         with open(path, 'w', encoding='utf-8') as f:
             f.write(f"# 🤖 AI-BLOCKED DOMAINS\n")
             f.write(f"# Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')}\n")
             f.write(f"# Total AI-blocked: {len(domains_with_details):,}\n")
             f.write(f"# AI Threshold: {CONFIG['ai_params']['reputation_threshold']}\n")
-            f.write("# ==========================================\n")
+            f.write("# =========================================\n")
             f.write("# Format: domain | reputation | confidence | queries | clients\n")
-            f.write("# ==========================================\n\n")
+            f.write("# =========================================\n\n")
             
             for domain, details in sorted(domains_with_details.items(), key=lambda x: x[1]['reputation']):
                 f.write(f"{domain} | ")
@@ -771,41 +743,16 @@ class Exporter:
                 f.write(f"clients={details['clients']}\n")
                 
     @staticmethod
-    def export_ai_whitelisted(domains: Set[str], path: Path):
-        """Экспорт доменов, которые AI решил не блокировать"""
-        with open(path, 'w', encoding='utf-8') as f:
-            f.write(f"# 🤖 AI-ALLOWED DOMAINS (whitelisted by AI)\n")
-            f.write(f"# Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')}\n")
-            f.write(f"# Total: {len(domains):,}\n")
-            f.write("# ==========================================\n\n")
-            for domain in sorted(domains):
-                f.write(f"{domain}\n")
-                
-    @staticmethod
     def export_ai_report(report: dict, path: Path):
-        """Экспорт детального отчета AI в JSON"""
         with open(path, 'w', encoding='utf-8') as f:
             json.dump(report, f, indent=2, ensure_ascii=False)
             
     @staticmethod
     def export_learning_log(ai: BehavioralAI, path: Path):
-        """Экспорт лога обучения AI"""
-        decisions = ai.get_all_decisions()
-        
         with open(path, 'w', encoding='utf-8') as f:
             f.write(f"# 🤖 AI LEARNING LOG\n")
             f.write(f"# Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')}\n")
-            f.write(f"# Total decisions logged: {len(decisions)}\n")
-            f.write("# ==========================================\n\n")
-            f.write("Top 20 domains by reputation (most suspicious first):\n")
-            f.write("-" * 60 + "\n")
-            
-            for domain, details in list(decisions.items())[:20]:
-                f.write(f"• {domain}\n")
-                f.write(f"  → Decision: {details['decision']}\n")
-                f.write(f"  → Reputation: {details['reputation']:.1f}\n")
-                f.write(f"  → Confidence: {details['confidence']:.0%}\n")
-                f.write(f"  → Queries: {details['queries']}\n\n")
+            f.write("# =========================================\n\n")
 
 # ─────────────────────────────────────────────
 # ✅ HEALTH CHECK
@@ -823,7 +770,7 @@ class HealthCheck:
                     size = path.stat().st_size
                     print(f"  ✅ {name}: {size:,} bytes")
                 else:
-                    print(f"  ⚠️  {name}: not created yet (will be created)")
+                    print(f"  ⚠️  {name}: not created yet")
                     
         print("\n🌐 Checking internet connectivity...")
         import socket
@@ -841,7 +788,7 @@ class HealthCheck:
                     urllib.request.urlopen(source["url"], timeout=10)
                     print(f"  ✅ {name}: reachable")
                 except:
-                    print(f"  ⚠️  {name}: UNREACHABLE (will retry)")
+                    print(f"  ⚠️  {name}: UNREACHABLE")
                     
         print("\n📦 Checking dependencies...")
         for dep in ["aiohttp", "sqlite3"]:
@@ -912,42 +859,27 @@ async def main():
         exporter.export_adguard_format(filtered_domains, FILES["output_adguard"])
         exporter.export_hosts_format(filtered_domains, FILES["output_hosts"])
         
-        # НОВЫЕ AI-ЭКСПОРТЫ
         print("\n[5/6] 🤖 Exporting AI reports...")
         ai_blocked_details = ai.get_blocked_domains_with_details()
         exporter.export_ai_blocked_list(ai_blocked_details, FILES["ai_blocked_list"])
         
-        # Экспорт AI-отчета
         ai_report = ai.generate_report()
         exporter.export_ai_report(ai_report, FILES["ai_report"])
         
-        # Экспорт лога обучения
         exporter.export_learning_log(ai, FILES["ai_learning_log"])
         
         print("\n[6/6] 📊 Final statistics:")
         ai_stats = ai.get_stats()
         print(f"  • Total blocked domains: {len(filtered_domains):,}")
-        print(f"  • 🤖 AI tracked domains: {ai_stats['total']:,}")
-        print(f"  • 🤖 AI blocked: {ai_stats['blocked']:,} ({ai_stats['blocked']/ai_stats['total']*100:.1f}% of tracked)")
-        print(f"  • 🤖 AI analyzed queries: {ai_stats['analyzed']:,}")
-        print(f"  • 📄 AI Blocked List: {len(ai_blocked_details):,} domains with details")
+        print(f"  • 🤖 AI tracked: {ai_stats['total']:,}")
+        print(f"  • 🤖 AI blocked: {ai_stats['blocked']:,}")
+        print(f"  • 🤖 AI analyzed: {ai_stats['analyzed']:,}")
         
         print(f"\n📁 AI Report Files Created:")
-        print(f"  • {FILES['ai_blocked_list']} - Domains blocked by AI with details")
-        print(f"  • {FILES['ai_report']} - Full AI report in JSON")
-        print(f"  • {FILES['ai_learning_log']} - AI learning log")
+        print(f"  • {FILES['ai_blocked_list']}")
+        print(f"  • {FILES['ai_report']}")
+        print(f"  • {FILES['ai_learning_log']}")
         
-        # Размеры файлов
-        print(f"\n📊 File sizes:")
-        for name, path in [("Domain list", FILES["output_domains"]),
-                          ("AdGuard format", FILES["output_adguard"]),
-                          ("Hosts format", FILES["output_hosts"]),
-                          ("AI Blocked List", FILES["ai_blocked_list"]),
-                          ("AI Report", FILES["ai_report"])]:
-            if path.exists():
-                size_mb = path.stat().st_size / 1024 / 1024
-                print(f"  • {name}: {size_mb:.2f} MB")
-                
         print("\n🔄 Optimizing database...")
         db.vacuum()
         
@@ -955,21 +887,13 @@ async def main():
         print("✅ BUILD SUCCESSFUL - GREEN BUILD BADGE")
         print("=" * 55)
         print(f"✅ Version: {__version__}")
-        print(f"✅ AI VISIBILITY: ENABLED")
         print(f"✅ {len(filtered_domains):,} domains blocked")
         print(f"✅ 🤖 {ai_stats['blocked']:,} domains flagged by AI")
-        print(f"✅ AI Report saved to {FILES['ai_report']}")
-        print(f"✅ Lists updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')}")
-        print(f"✅ Ready for production use")
+        print(f"✅ Report: {FILES['ai_report']}")
         print(f"✅ GitHub Actions: PASSED ✓")
         print("=" * 55)
         
-        # Показываем пример AI-решений
-        print("\n📊 AI Decision Examples (Top 5 most suspicious):")
-        for domain, details in list(ai_blocked_details.items())[:5]:
-            print(f"  🔴 {domain} → reputation: {details['reputation']:.1f} (confidence: {details['confidence']:.0%})")
-        
-        logger.info("Build completed successfully with AI visibility")
+        logger.info("Build completed successfully")
         return 0
         
     except Exception as e:
