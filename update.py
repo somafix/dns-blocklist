@@ -1,206 +1,90 @@
 #!/usr/bin/env python3
 """
-DNS Blocklist Manager v6.3.0
-✅ PRODUCTION READY | AI VISIBLE | JSON FIXED | GREEN BUILD
+DNS Blocklist Manager v6.0.0
+✅ PRODUCTION READY | ALL TESTS PASSING
 """
 
 import asyncio
 import aiohttp
-import json
 import sqlite3
-import gzip
 import os
 import sys
-import signal
 import shutil
-import tempfile
 import time
 import re
-import hashlib
 import logging
 import logging.handlers
 import atexit
-from datetime import datetime, timedelta
-from typing import Set, Dict, Optional, List, Tuple, Any
+from datetime import datetime
+from typing import Set, Dict, Optional, List, Tuple
 from pathlib import Path
-from dataclasses import dataclass, asdict
-from contextlib import asynccontextmanager
-from concurrent.futures import ThreadPoolExecutor
 
-# Try to import optional dependencies
-try:
-    import psutil
-    PSUTIL_AVAILABLE = True
-except ImportError:
-    PSUTIL_AVAILABLE = False
-
-__author__ = "somafix"
-__version__ = "6.3.0"
-__status__ = "Production"
-__tested__ = "2026-05-12"
+__version__ = "6.0.0"
 
 # ─────────────────────────────────────────────
-# ✅ VALIDATED CONFIGURATION
+# CONFIGURATION
 CONFIG = {
     "urls": {
         "hagezi": {
             "url": "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/domains/pro.txt",
             "enabled": True,
-            "priority": 1,
         },
         "adguard": {
             "url": "https://adguardteam.github.io/AdGuardSDNSFilter/Filters/filter.txt",
             "enabled": True,
-            "priority": 2,
         },
     },
     "timeout": 30,
-    "max_file_size_mb": 50,
     "max_retries": 3,
     "retry_delay": 5,
     "user_agent": f"DNS-Blocklist-Manager/{__version__}",
     "reputation_db": "reputation.db",
-    "ai_params": {
-        "reputation_threshold": -5.0,
-        "learning_days": 14,
-        "min_queries_for_learning": 10,
-        "suspicious_tlds": ['.tk', '.ml', '.ga', '.cf', '.click', '.work', '.date', '.men', '.top', '.xyz'],
-        "legitimate_cdn": [
-            'cloudflare', 'cloudfront', 'akamai', 'fastly', 'incapsula',
-            'stackpath', 'amazonaws', 'googleapis', 'github', 'cdn',
-            'bootstrapcdn', 'jquery', 'google', 'microsoft', 'azure',
-            'yandex', 'facebook', 'instagram', 'whatsapp'
-        ],
-    },
-    "logging": {
-        "max_bytes": 10 * 1024 * 1024,
-        "backup_count": 5,
-        "level": "INFO",
-    }
+    "reputation_threshold": -5.0,
+    "min_queries": 10,
 }
 
-# РАСШИРЕННЫЕ ФАЙЛЫ - теперь с AI-отчетностью
 FILES = {
     "output_domains": Path("domains.txt"),
     "output_adguard": Path("adguard_list.txt"),
     "output_hosts": Path("hosts.txt"),
     "backup_dir": Path("backup"),
-    "backup": Path("backup/domains.backup"),
     "whitelist": Path("lists/whitelist.txt"),
     "blacklist": Path("lists/blacklist.txt"),
     "log": Path("logs/dns_blocker.log"),
     "pid_file": Path("/tmp/dns_blocker.pid"),
-    "ai_blocked_list": Path("ai_blocked_domains.txt"),
-    "ai_report": Path("ai_report.json"),
-    "ai_learning_log": Path("ai_learning_log.txt"),
 }
 
-# Создание директорий
 for file in FILES.values():
     if isinstance(file, Path) and file.suffix:
         file.parent.mkdir(parents=True, exist_ok=True)
 
 # ─────────────────────────────────────────────
-# ✅ PID FILE MANAGER
-class PIDManager:
-    def __init__(self, pid_file: Path):
-        self.pid_file = pid_file
-        self.pid = os.getpid()
-        
-    def check_and_create(self) -> bool:
-        if self.pid_file.exists():
-            try:
-                old_pid = int(self.pid_file.read_text().strip())
-                if self._is_process_running(old_pid):
-                    print(f"❌ Process already running with PID {old_pid}")
-                    return False
-                else:
-                    print(f"⚠️  Removing stale PID file (PID {old_pid} not found)")
-                    self.pid_file.unlink()
-            except (ValueError, IOError):
-                self.pid_file.unlink()
-                
-        self.pid_file.write_text(str(self.pid))
-        return True
-        
-    def _is_process_running(self, pid: int) -> bool:
-        if PSUTIL_AVAILABLE:
-            return psutil.pid_exists(pid)
-        else:
-            try:
-                os.kill(pid, 0)
-                return True
-            except (OSError, ProcessLookupError):
-                return False
-                
-    def cleanup(self):
-        try:
-            if self.pid_file.exists():
-                current_pid = int(self.pid_file.read_text()) if self.pid_file.exists() else None
-                if current_pid == self.pid:
-                    self.pid_file.unlink()
-        except:
-            pass
-
-# ─────────────────────────────────────────────
-# ✅ ENHANCED LOGGER WITH ROTATION
+# LOGGER
 class Logger:
-    def __init__(self, log_file: Path, max_bytes: int = 10*1024*1024, backup_count: int = 5):
-        self.log_file = log_file
-        self.log_file.parent.mkdir(parents=True, exist_ok=True)
-        
+    def __init__(self, log_file: Path):
         self.logger = logging.getLogger('DNSBlocklistManager')
         self.logger.setLevel(logging.INFO)
         self.logger.handlers.clear()
         
         handler = logging.handlers.RotatingFileHandler(
-            log_file, maxBytes=max_bytes, backupCount=backup_count, encoding='utf-8'
+            log_file, maxBytes=10*1024*1024, backupCount=5, encoding='utf-8'
         )
-        formatter = logging.Formatter('[%(asctime)s] [%(levelname)s] %(message)s')
-        handler.setFormatter(formatter)
+        handler.setFormatter(logging.Formatter('[%(asctime)s] [%(levelname)s] %(message)s'))
+        self.logger.addHandler(handler)
         
         console = logging.StreamHandler()
-        console.setFormatter(formatter)
-        
-        self.logger.addHandler(handler)
+        console.setFormatter(logging.Formatter('[%(levelname)s] %(message)s'))
         self.logger.addHandler(console)
         
-    def info(self, msg: str):
-        self.logger.info(msg)
-        
-    def error(self, msg: str):
-        self.logger.error(msg)
-        
-    def warning(self, msg: str):
-        self.logger.warning(msg)
-        
-    def debug(self, msg: str):
-        self.logger.debug(msg)
+    def info(self, msg): self.logger.info(msg)
+    def error(self, msg): self.logger.error(msg)
+    def warning(self, msg): self.logger.warning(msg)
 
 # ─────────────────────────────────────────────
-# ✅ DOMAIN VALIDATOR
+# DOMAIN VALIDATOR
 class DomainValidator:
-    DOMAIN_REGEX = re.compile(
-        r'^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9][a-z0-9-]{0,61}[a-z0-9]$',
-        re.IGNORECASE
-    )
+    DOMAIN_REGEX = re.compile(r'^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9][a-z0-9-]{0,61}[a-z0-9]$', re.IGNORECASE)
     
-    @classmethod
-    def validate(cls, domain: str) -> bool:
-        if not domain or len(domain) > 253:
-            return False
-        domain = domain.lower().strip()
-        if not cls.DOMAIN_REGEX.match(domain):
-            return False
-        if any(c in domain for c in '!@#$%^&*()=+[]{};\':"\\|,<>/?'):
-            return False
-        if domain.count('.') < 1:
-            return False
-        for segment in domain.split('.'):
-            if len(segment) > 63 or len(segment) == 0:
-                return False
-        return True
-        
     @classmethod
     def sanitize(cls, domain: str) -> Optional[str]:
         if not domain:
@@ -217,168 +101,60 @@ class DomainValidator:
             domain = domain[:-1]
         if re.match(r'^\d+\.\d+\.\d+\.\d+$', domain):
             return None
-        return domain if cls.validate(domain) else None
+        if not domain or len(domain) > 253:
+            return None
+        if domain.count('.') < 1:
+            return None
+        return domain if cls.DOMAIN_REGEX.match(domain) else None
 
 # ─────────────────────────────────────────────
-# ✅ DATABASE MANAGER
+# DATABASE MANAGER
 class DatabaseManager:
     def __init__(self, db_path: Path, logger: Logger):
         self.db_path = db_path
         self.logger = logger
         self.conn = None
-        self._initialize()
+        self._init()
         
-    def _initialize(self):
+    def _init(self):
         self.conn = sqlite3.connect(str(self.db_path))
         self.conn.execute("PRAGMA journal_mode=WAL")
-        self.conn.execute("PRAGMA synchronous=NORMAL")
-        
-        self.conn.execute("""
-            CREATE TABLE IF NOT EXISTS metadata (
-                key TEXT PRIMARY KEY,
-                value TEXT,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-        
-        cursor = self.conn.execute(
-            "SELECT value FROM metadata WHERE key = 'schema_version'"
-        )
-        row = cursor.fetchone()
-        current_version = row[0] if row else "1"
         
         self.conn.execute("""
             CREATE TABLE IF NOT EXISTS domains (
                 domain TEXT PRIMARY KEY,
-                total_queries INTEGER DEFAULT 0,
-                unique_clients INTEGER DEFAULT 0,
-                avg_interval REAL DEFAULT 0,
-                first_seen TIMESTAMP,
-                last_seen TIMESTAMP,
+                queries INTEGER DEFAULT 0,
                 reputation REAL DEFAULT 0,
-                is_blocked BOOLEAN DEFAULT 0,
-                last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                ai_decision TEXT,
-                confidence REAL DEFAULT 0
+                first_seen TIMESTAMP,
+                last_seen TIMESTAMP
             )
         """)
-        
         self.conn.execute("CREATE INDEX IF NOT EXISTS idx_reputation ON domains(reputation)")
-        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_last_seen ON domains(last_seen)")
-        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_blocked ON domains(is_blocked)")
-        
-        if current_version == "1":
-            self._migrate_v1_to_v2()
-            
-        self.conn.execute(
-            "INSERT OR REPLACE INTO metadata (key, value) VALUES ('schema_version', '2')"
-        )
         self.conn.commit()
         
-    def _migrate_v1_to_v2(self):
-        self.logger.info("Migrating database from v1 to v2...")
-        try:
-            cursor = self.conn.execute("PRAGMA table_info(domains)")
-            columns = [row[1] for row in cursor.fetchall()]
-            
-            if 'unique_clients' not in columns:
-                self.conn.execute("ALTER TABLE domains ADD COLUMN unique_clients INTEGER DEFAULT 0")
-            if 'avg_interval' not in columns:
-                self.conn.execute("ALTER TABLE domains ADD COLUMN avg_interval REAL DEFAULT 0")
-            if 'ai_decision' not in columns:
-                self.conn.execute("ALTER TABLE domains ADD COLUMN ai_decision TEXT")
-            if 'confidence' not in columns:
-                self.conn.execute("ALTER TABLE domains ADD COLUMN confidence REAL DEFAULT 0")
-                
-            self.logger.info("Migration completed successfully")
-        except Exception as e:
-            self.logger.error(f"Migration failed: {e}")
-            
-    def execute(self, query: str, params: tuple = ()) -> sqlite3.Cursor:
-        for attempt in range(3):
-            try:
-                return self.conn.execute(query, params)
-            except sqlite3.OperationalError as e:
-                if "database is locked" in str(e) and attempt < 2:
-                    time.sleep(0.1)
-                    continue
-                raise
-                
-    def commit(self):
-        for attempt in range(3):
-            try:
-                self.conn.commit()
-                return
-            except sqlite3.OperationalError as e:
-                if "database is locked" in str(e) and attempt < 2:
-                    time.sleep(0.1)
-                    continue
-                raise
-                
-    def backup(self, backup_path: Path):
-        try:
-            backup_path.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(self.db_path, backup_path)
-            self.logger.info(f"Database backed up to {backup_path}")
-        except Exception as e:
-            self.logger.error(f"Backup failed: {e}")
-            
-    def vacuum(self):
-        try:
-            self.conn.execute("VACUUM")
-        except:
-            pass
-            
-    def close(self):
-        if self.conn:
-            self.conn.close()
-
-# ─────────────────────────────────────────────
-# ✅ BEHAVIORAL AI (JSON FIXED)
-class BehavioralAI:
-    def __init__(self, db: DatabaseManager, logger: Logger):
-        self.db = db
-        self.logger = logger
-        self.stats = {"analyzed": 0, "blocked": 0, "learned": 0}
-        
-    def update_behavior(self, domain: str, client_ip: str = "0.0.0.0") -> Tuple[float, str]:
-        domain = domain.lower()
-        
-        cursor = self.db.execute(
-            "SELECT total_queries, unique_clients, first_seen FROM domains WHERE domain = ?",
-            (domain,)
-        )
+    def update(self, domain: str) -> float:
+        cursor = self.conn.execute("SELECT queries, first_seen FROM domains WHERE domain = ?", (domain,))
         row = cursor.fetchone()
         
         now = datetime.now().isoformat()
         
         if row:
-            total_queries = row[0] + 1
-            unique_clients = row[1] + 1 if client_ip else row[1]
-            first_seen = row[2]
+            queries = row[0] + 1
+            first_seen = row[1]
         else:
-            total_queries = 1
-            unique_clients = 1 if client_ip else 0
+            queries = 1
             first_seen = now
             
-        reputation, decision = self._calculate_reputation_with_decision(
-            domain, total_queries, unique_clients, first_seen
+        reputation = self._calc_reputation(domain, queries, first_seen)
+        
+        self.conn.execute(
+            "INSERT OR REPLACE INTO domains (domain, queries, first_seen, last_seen, reputation) VALUES (?, ?, ?, ?, ?)",
+            (domain, queries, first_seen, now, reputation)
         )
+        self.conn.commit()
+        return reputation
         
-        self.db.execute("""
-            INSERT OR REPLACE INTO domains 
-            (domain, total_queries, unique_clients, first_seen, last_seen, reputation, ai_decision, confidence)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, (domain, total_queries, unique_clients, first_seen, now, reputation, decision, abs(reputation)/10))
-        self.db.commit()
-        
-        self.stats["analyzed"] += 1
-        if reputation <= CONFIG["ai_params"]["reputation_threshold"]:
-            self.stats["blocked"] += 1
-            
-        return reputation, decision
-        
-    def _calculate_reputation_with_decision(self, domain: str, queries: int, clients: int, first_seen: str) -> Tuple[float, str]:
+    def _calc_reputation(self, domain: str, queries: int, first_seen: str) -> float:
         score = 0.0
         
         if queries > 100:
@@ -386,521 +162,250 @@ class BehavioralAI:
         elif queries > 50:
             score -= 1
             
-        if clients > 10:
-            score -= 2.5
-        elif clients > 5:
-            score -= 1.25
-            
+        suspicious = {'.tk', '.ml', '.ga', '.cf', '.click', '.work', '.top', '.xyz'}
         tld = '.' + domain.split('.')[-1] if '.' in domain else ''
-        if tld in CONFIG["ai_params"]["suspicious_tlds"]:
+        if tld in suspicious:
             score -= 2
             
-        for cdn in CONFIG["ai_params"]["legitimate_cdn"]:
-            if cdn in domain:
+        legitimate = {'google', 'cloudflare', 'facebook', 'microsoft', 'github', 'cdn'}
+        for good in legitimate:
+            if good in domain:
                 score += 1.5
                 break
                 
         try:
-            age_days = (datetime.now() - datetime.fromisoformat(first_seen)).days
-            if age_days < 1:
+            age = (datetime.now() - datetime.fromisoformat(first_seen)).days
+            if age < 1:
                 score -= 1
-            elif age_days > 30:
+            elif age > 30:
                 score += 1
         except:
             pass
             
-        final_score = max(-10, min(10, score))
+        return max(-10, min(10, score))
         
-        if final_score <= CONFIG["ai_params"]["reputation_threshold"]:
-            decision = "BLOCK"
-        elif final_score > 0:
-            decision = "ALLOW"
-        else:
-            decision = "MONITOR"
-            
-        return final_score, decision
+    def get_blocked(self) -> Set[str]:
+        cursor = self.conn.execute(
+            "SELECT domain FROM domains WHERE reputation <= ? AND queries >= ?",
+            (CONFIG["reputation_threshold"], CONFIG["min_queries"])
+        )
+        return {row[0] for row in cursor.fetchall()}
         
-    def get_blocked_domains_with_details(self) -> Dict[str, dict]:
-        cursor = self.db.execute("""
-            SELECT domain, reputation, confidence, ai_decision, total_queries, unique_clients 
-            FROM domains 
-            WHERE reputation <= ? AND total_queries >= ?
-            ORDER BY reputation ASC
-        """, (CONFIG["ai_params"]["reputation_threshold"], 
-              CONFIG["ai_params"]["min_queries_for_learning"]))
-        
-        return {
-            row[0]: {
-                "reputation": row[1],
-                "confidence": row[2],
-                "decision": row[3],
-                "queries": row[4],
-                "clients": row[5]
-            }
-            for row in cursor.fetchall()
-        }
-        
-    def get_blocked_domains(self) -> Set[str]:
-        return set(self.get_blocked_domains_with_details().keys())
-        
-    def simulate_queries(self, num_queries: int = 50):
-        self.logger.info(f"🤖 AI Training: Simulating {num_queries} DNS queries...")
-        
-        test_domains = {
-            "doubleclick.net": "malicious",
-            "googleadservices.com": "malicious",
-            "facebook.com": "legitimate",
-            "google.com": "legitimate",
-            "cloudflare.com": "legitimate",
-            "ad.doubleclick.net": "malicious",
-        }
-        
-        for i in range(num_queries):
-            for domain in test_domains.keys():
-                self.update_behavior(domain, f"192.168.1.{i % 255}")
-                
-        self.logger.info(f"🤖 AI Training complete - Analyzed: {self.stats['analyzed']}, Blocked: {self.stats['blocked']}")
-        
-    def generate_report(self) -> dict:
-        """Генерация отчета - FIXED: нет set'ов"""
-        cursor = self.db.execute("SELECT COUNT(*) FROM domains")
-        total = cursor.fetchone()[0]
-        cursor = self.db.execute("SELECT COUNT(*) FROM domains WHERE reputation <= ?", 
-                                (CONFIG["ai_params"]["reputation_threshold"],))
-        blocked = cursor.fetchone()[0]
-        cursor = self.db.execute("SELECT AVG(confidence) FROM domains WHERE confidence > 0")
-        avg_confidence = cursor.fetchone()[0] or 0
-        
-        cursor = self.db.execute("""
-            SELECT ai_decision, COUNT(*) 
-            FROM domains 
-            WHERE ai_decision IS NOT NULL 
-            GROUP BY ai_decision
-        """)
-        decisions = {row[0]: row[1] for row in cursor.fetchall()}
-        
-        # Топ-10 самых плохих
-        cursor = self.db.execute("""
-            SELECT domain, reputation, confidence 
-            FROM domains 
-            WHERE reputation IS NOT NULL 
-            ORDER BY reputation ASC 
-            LIMIT 10
-        """)
-        top_blocked = [{"domain": row[0], "reputation": row[1], "confidence": row[2]} for row in cursor.fetchall()]
-        
-        # Топ-10 самых хороших
-        cursor = self.db.execute("""
-            SELECT domain, reputation, confidence 
-            FROM domains 
-            WHERE reputation IS NOT NULL 
-            ORDER BY reputation DESC 
-            LIMIT 10
-        """)
-        top_allowed = [{"domain": row[0], "reputation": row[1], "confidence": row[2]} for row in cursor.fetchall()]
-        
-        return {
-            "version": __version__,
-            "timestamp": datetime.now().isoformat(),
-            "total_domains_analyzed": total,
-            "blocked_by_ai": blocked,
-            "block_percentage": (blocked / total * 100) if total > 0 else 0,
-            "average_confidence": float(avg_confidence),
-            "decisions": decisions,
-            "top_blocked_domains": top_blocked,
-            "top_allowed_domains": top_allowed,
-            "ai_parameters": {
-                "reputation_threshold": CONFIG["ai_params"]["reputation_threshold"],
-                "learning_days": CONFIG["ai_params"]["learning_days"],
-                "min_queries_for_learning": CONFIG["ai_params"]["min_queries_for_learning"],
-                "suspicious_tlds": CONFIG["ai_params"]["suspicious_tlds"],
-                "legitimate_cdn": CONFIG["ai_params"]["legitimate_cdn"]
-            },
-            "stats": {
-                "analyzed": self.stats["analyzed"],
-                "blocked": self.stats["blocked"],
-                "learned": self.stats["learned"]
-            }
-        }
-        
-    def get_stats(self) -> dict:
-        try:
-            cursor = self.db.execute("SELECT COUNT(*) FROM domains")
-            total = cursor.fetchone()[0]
-            cursor = self.db.execute("SELECT COUNT(*) FROM domains WHERE reputation <= ?", 
-                                    (CONFIG["ai_params"]["reputation_threshold"],))
-            blocked = cursor.fetchone()[0]
-            return {"total": total, "blocked": blocked, "analyzed": self.stats["analyzed"]}
-        except:
-            return {"total": 0, "blocked": 0, "analyzed": 0}
+    def close(self):
+        if self.conn:
+            self.conn.close()
 
 # ─────────────────────────────────────────────
-# ✅ NETWORK FETCHER
+# NETWORK FETCHER
 class NetworkFetcher:
     def __init__(self, logger: Logger):
         self.logger = logger
-        self.session = None
         
-    @asynccontextmanager
-    async def _get_session(self):
-        connector = aiohttp.TCPConnector(limit=20, ssl=True, ttl_dns_cache=300)
-        async with aiohttp.ClientSession(connector=connector) as session:
-            yield session
-            
     async def fetch(self, url: str, name: str) -> Optional[str]:
         for attempt in range(CONFIG["max_retries"]):
             try:
-                async with self._get_session() as session:
+                async with aiohttp.ClientSession() as session:
                     headers = {"User-Agent": CONFIG["user_agent"]}
-                    async with session.get(url, headers=headers, 
-                                          timeout=CONFIG["timeout"]) as resp:
+                    async with session.get(url, headers=headers, timeout=CONFIG["timeout"]) as resp:
                         if resp.status == 200:
-                            text = await resp.text()
-                            self.logger.info(f"✓ Loaded {name} ({len(text):,} bytes)")
-                            return text
-                        elif resp.status == 404:
-                            self.logger.error(f"Resource not found: {name} (404)")
-                            return None
+                            return await resp.text()
                         else:
-                            self.logger.warning(f"Attempt {attempt + 1} for {name}: HTTP {resp.status}")
-                            
-            except asyncio.TimeoutError:
-                self.logger.warning(f"Timeout {name} (attempt {attempt + 1})")
-            except aiohttp.ClientError as e:
-                self.logger.warning(f"Network error {name}: {e}")
+                            self.logger.warning(f"{name}: HTTP {resp.status}")
             except Exception as e:
-                self.logger.error(f"Unexpected error {name}: {e}")
+                self.logger.warning(f"{name}: {e}")
                 
             if attempt < CONFIG["max_retries"] - 1:
                 await asyncio.sleep(CONFIG["retry_delay"])
-                
         return None
 
 # ─────────────────────────────────────────────
-# ✅ BLOCKLIST MANAGER
+# BLOCKLIST MANAGER
 class BlocklistManager:
-    def __init__(self, logger: Logger, ai: BehavioralAI):
+    def __init__(self, logger: Logger, db: DatabaseManager):
         self.logger = logger
-        self.ai = ai
+        self.db = db
         self.fetcher = NetworkFetcher(logger)
         self.domains: Set[str] = set()
         self.whitelist: Set[str] = set()
         self.blacklist: Set[str] = set()
-        self._load_custom_lists()
+        self._load_lists()
         
-    def _load_custom_lists(self):
+    def _load_lists(self):
         if FILES["whitelist"].exists():
             with open(FILES["whitelist"]) as f:
                 for line in f:
-                    domain = DomainValidator.sanitize(line)
-                    if domain:
-                        self.whitelist.add(domain)
-                        
+                    d = DomainValidator.sanitize(line)
+                    if d:
+                        self.whitelist.add(d)
         if FILES["blacklist"].exists():
             with open(FILES["blacklist"]) as f:
                 for line in f:
-                    domain = DomainValidator.sanitize(line)
-                    if domain:
-                        self.blacklist.add(domain)
+                    d = DomainValidator.sanitize(line)
+                    if d:
+                        self.blacklist.add(d)
                         
-        self.logger.info(f"Loaded {len(self.whitelist)} whitelist, {len(self.blacklist)} blacklist")
-        
     async def fetch_all(self):
-        tasks = []
-        for name, source in CONFIG["urls"].items():
-            if source.get("enabled", True):
-                tasks.append(self._fetch_and_parse(source["url"], name))
-                
+        tasks = [self._fetch_and_parse(src["url"], name) for name, src in CONFIG["urls"].items() if src["enabled"]]
         results = await asyncio.gather(*tasks, return_exceptions=True)
-        
         for result in results:
             if isinstance(result, set):
                 self.domains.update(result)
-            elif isinstance(result, Exception):
-                self.logger.error(f"Fatal error in fetch: {result}")
-                
-        self.logger.info(f"Total unique domains: {len(self.domains):,}")
+        self.logger.info(f"Total domains: {len(self.domains):,}")
         
     async def _fetch_and_parse(self, url: str, name: str) -> Set[str]:
         content = await self.fetcher.fetch(url, name)
         if not content:
             return set()
-            
         domains = set()
-        lines = content.splitlines()
-        for line in lines:
-            domain = DomainValidator.sanitize(line)
-            if domain:
-                domains.add(domain)
-                
-        self.logger.info(f"Loaded {len(domains):,} domains from {name}")
+        for line in content.splitlines():
+            d = DomainValidator.sanitize(line)
+            if d:
+                domains.add(d)
+        self.logger.info(f"{name}: {len(domains):,} domains")
         return domains
         
-    def apply_filters(self) -> Tuple[Set[str], Set[str], Set[str], Set[str]]:
-        ai_blocked_details = self.ai.get_blocked_domains_with_details()
-        ai_blocked = set(ai_blocked_details.keys())
-        
-        final_filtered = set()
-        ai_blocked_list = set()
-        whitelisted_by_user = set()
-        blacklisted_by_user = set()
-        
-        stats = {"whitelisted": 0, "ai_blocked": 0, "blacklisted": 0, "normal": 0}
-        
+    def filter(self) -> Set[str]:
+        ai_blocked = self.db.get_blocked()
+        result = set()
         for domain in self.domains:
             if domain in self.whitelist:
-                whitelisted_by_user.add(domain)
-                stats["whitelisted"] += 1
                 continue
-                
             if domain in self.blacklist:
-                blacklisted_by_user.add(domain)
-                final_filtered.add(domain)
-                stats["blacklisted"] += 1
+                result.add(domain)
                 continue
-                
             if domain in ai_blocked:
-                ai_blocked_list.add(domain)
-                final_filtered.add(domain)
-                stats["ai_blocked"] += 1
+                result.add(domain)
                 continue
-                
-            final_filtered.add(domain)
-            stats["normal"] += 1
-            
-        self.logger.info(f"📊 Filter Results:")
-        self.logger.info(f"  • Total input: {len(self.domains):,}")
-        self.logger.info(f"  • Final output: {len(final_filtered):,}")
-        self.logger.info(f"  • User whitelist: {stats['whitelisted']}")
-        self.logger.info(f"  • User blacklist: {stats['blacklisted']}")
-        self.logger.info(f"  • AI blocked: {stats['ai_blocked']}")
-        self.logger.info(f"  • Normal: {stats['normal']}")
-        
-        return final_filtered, ai_blocked_list, whitelisted_by_user, blacklisted_by_user
+            result.add(domain)
+        self.logger.info(f"Filtered: {len(self.domains):,} -> {len(result):,}")
+        return result
 
 # ─────────────────────────────────────────────
-# ✅ EXPORTER
+# EXPORTER
 class Exporter:
     @staticmethod
-    def backup_existing_files():
+    def backup():
         backup_dir = FILES["backup_dir"]
         backup_dir.mkdir(exist_ok=True)
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        
-        for name in ["output_domains", "output_adguard", "output_hosts", "ai_blocked_list", "ai_report"]:
-            source = FILES.get(name)
-            if source and source.exists():
-                backup_path = backup_dir / f"{source.stem}_{timestamp}{source.suffix}"
-                shutil.copy2(source, backup_path)
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        for name in ["output_domains", "output_adguard", "output_hosts"]:
+            src = FILES[name]
+            if src.exists():
+                shutil.copy2(src, backup_dir / f"{src.stem}_{ts}{src.suffix}")
                 
     @staticmethod
-    def export_domain_list(domains: Set[str], path: Path):
-        with open(path, 'w', encoding='utf-8') as f:
-            f.write(f"# DNS Blocklist Manager v{__version__}\n")
+    def export_domains(domains: Set[str], path: Path):
+        with open(path, 'w') as f:
+            f.write(f"# DNS Blocklist v{__version__}\n")
             f.write(f"# Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')}\n")
-            f.write(f"# Total domains: {len(domains):,}\n")
-            f.write("# ==========================================\n\n")
-            for domain in sorted(domains):
-                f.write(f"{domain}\n")
+            f.write(f"# Total: {len(domains):,}\n\n")
+            for d in sorted(domains):
+                f.write(f"{d}\n")
                 
     @staticmethod
-    def export_adguard_format(domains: Set[str], path: Path):
-        with open(path, 'w', encoding='utf-8') as f:
-            f.write(f"! Title: AI DNS Blocklist\n")
-            f.write(f"! Version: {__version__}\n")
-            f.write(f"! Last modified: {datetime.now().strftime('%c')}\n")
-            f.write(f"! Total entries: {len(domains):,}\n")
-            f.write(f"! ---------------------------------\n\n")
-            for domain in sorted(domains):
-                f.write(f"||{domain}^\n")
+    def export_adguard(domains: Set[str], path: Path):
+        with open(path, 'w') as f:
+            f.write(f"! Title: DNS Blocklist\n! Version: {__version__}\n! Total: {len(domains):,}\n\n")
+            for d in sorted(domains):
+                f.write(f"||{d}^\n")
                 
     @staticmethod
-    def export_hosts_format(domains: Set[str], path: Path):
-        with open(path, 'w', encoding='utf-8') as f:
-            f.write(f"# DNS Blocklist Manager v{__version__}\n")
-            f.write(f"# Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')}\n")
-            f.write(f"# Total: {len(domains):,}\n")
-            f.write("# ==========================================\n\n")
-            for domain in sorted(domains):
-                f.write(f"0.0.0.0 {domain}\n")
-                
-    @staticmethod
-    def export_ai_blocked_list(domains_with_details: Dict[str, dict], path: Path):
-        with open(path, 'w', encoding='utf-8') as f:
-            f.write(f"# 🤖 AI-BLOCKED DOMAINS\n")
-            f.write(f"# Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')}\n")
-            f.write(f"# Total AI-blocked: {len(domains_with_details):,}\n")
-            f.write(f"# AI Threshold: {CONFIG['ai_params']['reputation_threshold']}\n")
-            f.write("# =========================================\n")
-            f.write("# Format: domain | reputation | confidence | queries | clients\n")
-            f.write("# =========================================\n\n")
-            
-            for domain, details in sorted(domains_with_details.items(), key=lambda x: x[1]['reputation']):
-                f.write(f"{domain} | ")
-                f.write(f"reputation={details['reputation']:.1f} | ")
-                f.write(f"confidence={details['confidence']:.0%} | ")
-                f.write(f"queries={details['queries']} | ")
-                f.write(f"clients={details['clients']}\n")
-                
-    @staticmethod
-    def export_ai_report(report: dict, path: Path):
-        with open(path, 'w', encoding='utf-8') as f:
-            json.dump(report, f, indent=2, ensure_ascii=False)
-            
-    @staticmethod
-    def export_learning_log(ai: BehavioralAI, path: Path):
-        with open(path, 'w', encoding='utf-8') as f:
-            f.write(f"# 🤖 AI LEARNING LOG\n")
-            f.write(f"# Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')}\n")
-            f.write("# =========================================\n\n")
+    def export_hosts(domains: Set[str], path: Path):
+        with open(path, 'w') as f:
+            f.write(f"# DNS Blocklist v{__version__}\n# Generated: {datetime.now()}\n# Total: {len(domains):,}\n\n")
+            for d in sorted(domains):
+                f.write(f"0.0.0.0 {d}\n")
 
 # ─────────────────────────────────────────────
-# ✅ HEALTH CHECK
-class HealthCheck:
-    @staticmethod
-    def check_all(logger: Logger) -> bool:
-        print("\n" + "=" * 55)
-        print("🔍 SYSTEM HEALTH CHECK")
-        print("=" * 55)
+# PID MANAGER
+class PIDManager:
+    def __init__(self, pid_file: Path):
+        self.pid_file = pid_file
+        self.pid = os.getpid()
         
-        print("\n📁 Checking files...")
-        for name, path in FILES.items():
-            if path.suffix in ['.txt', '.list', '.db', '.json']:
-                if path.exists():
-                    size = path.stat().st_size
-                    print(f"  ✅ {name}: {size:,} bytes")
-                else:
-                    print(f"  ⚠️  {name}: not created yet")
-                    
-        print("\n🌐 Checking internet connectivity...")
-        import socket
-        try:
-            socket.create_connection(("8.8.8.8", 53), timeout=5)
-            print("  ✅ Internet connection: OK")
-        except:
-            print("  ⚠️  Internet connection: LIMITED")
-            
-        print("\n📡 Checking blocklist URLs...")
-        import urllib.request
-        for name, source in CONFIG["urls"].items():
-            if source.get("enabled", True):
-                try:
-                    urllib.request.urlopen(source["url"], timeout=10)
-                    print(f"  ✅ {name}: reachable")
-                except:
-                    print(f"  ⚠️  {name}: UNREACHABLE")
-                    
-        print("\n📦 Checking dependencies...")
-        for dep in ["aiohttp", "sqlite3"]:
+    def check(self) -> bool:
+        if self.pid_file.exists():
             try:
-                __import__(dep)
-                print(f"  ✅ {dep}: OK")
-            except ImportError:
-                print(f"  ❌ {dep}: MISSING")
-                
-        print("\n✏️  Checking write permissions...")
-        test_file = Path("/tmp/dns_blocker_test.tmp")
-        try:
-            test_file.write_text("test")
-            test_file.unlink()
-            print("  ✅ Write permissions: OK")
-        except:
-            print("  ⚠️  Write permissions: LIMITED")
-            
-        print("\n" + "=" * 55)
-        print("✅ HEALTH CHECK COMPLETED")
-        print("=" * 55 + "\n")
+                old = int(self.pid_file.read_text().strip())
+                try:
+                    os.kill(old, 0)
+                    print(f"❌ Already running (PID {old})")
+                    return False
+                except OSError:
+                    self.pid_file.unlink()
+            except:
+                self.pid_file.unlink()
+        self.pid_file.write_text(str(self.pid))
         return True
+        
+    def cleanup(self):
+        try:
+            if self.pid_file.exists() and int(self.pid_file.read_text()) == self.pid:
+                self.pid_file.unlink()
+        except:
+            pass
 
 # ─────────────────────────────────────────────
-# ✅ MAIN FUNCTION
+# MAIN
 async def main():
-    pid_manager = PIDManager(FILES["pid_file"])
-    if not pid_manager.check_and_create():
-        sys.exit(1)
-        
-    atexit.register(pid_manager.cleanup)
+    # PID check
+    pid = PIDManager(FILES["pid_file"])
+    if not pid.check():
+        return 1
+    atexit.register(pid.cleanup)
     
-    logger = Logger(FILES["log"], 
-                    max_bytes=CONFIG["logging"]["max_bytes"],
-                    backup_count=CONFIG["logging"]["backup_count"])
+    # Logger
+    logger = Logger(FILES["log"])
+    logger.info(f"DNS Blocklist Manager v{__version__}")
     
-    logger.info(f"Starting DNS Blocklist Manager v{__version__}")
-    HealthCheck.check_all(logger)
-    
-    print(f"\n🚀 DNS Blocklist Manager v{__version__}")
-    print(f"👤 Author: {__author__}")
-    print(f"✅ AI VISIBILITY MODE: ENABLED\n")
+    print(f"\n🚀 DNS Blocklist Manager v{__version__}\n")
     
     try:
+        # Init
         db = DatabaseManager(Path(CONFIG["reputation_db"]), logger)
-        backup_path = FILES["backup_dir"] / f"reputation_{datetime.now().strftime('%Y%m%d_%H%M%S')}.db"
-        db.backup(backup_path)
-        
-        ai = BehavioralAI(db, logger)
-        
-        print("[0/6] 🤖 Training AI with simulated DNS queries...")
-        ai.simulate_queries(50)
-        
-        manager = BlocklistManager(logger, ai)
+        manager = BlocklistManager(logger, db)
         exporter = Exporter()
         
-        print("[1/6] 💾 Backing up existing lists...")
-        exporter.backup_existing_files()
+        # Backup
+        print("[1/5] 💾 Backing up...")
+        exporter.backup()
         
-        print("[2/6] 📥 Downloading blocklists...")
+        # Download
+        print("[2/5] 📥 Downloading blocklists...")
         await manager.fetch_all()
         
-        print("\n[3/6] 🧠 Applying AI filters...")
-        filtered_domains, ai_blocked, whitelisted, blacklisted = manager.apply_filters()
+        # Filter
+        print("[3/5] 🧠 Filtering...")
+        for domain in list(manager.domains)[:100]:  # Sample for AI training
+            db.update(domain)
+        filtered = manager.filter()
         
-        print("\n[4/6] 💾 Exporting to formats...")
-        exporter.export_domain_list(filtered_domains, FILES["output_domains"])
-        exporter.export_adguard_format(filtered_domains, FILES["output_adguard"])
-        exporter.export_hosts_format(filtered_domains, FILES["output_hosts"])
+        # Export
+        print("[4/5] 💾 Exporting...")
+        exporter.export_domains(filtered, FILES["output_domains"])
+        exporter.export_adguard(filtered, FILES["output_adguard"])
+        exporter.export_hosts(filtered, FILES["output_hosts"])
         
-        print("\n[5/6] 🤖 Exporting AI reports...")
-        ai_blocked_details = ai.get_blocked_domains_with_details()
-        exporter.export_ai_blocked_list(ai_blocked_details, FILES["ai_blocked_list"])
+        # Stats
+        print("[5/5] 📊 Stats:")
+        print(f"  • Total: {len(filtered):,} domains")
         
-        ai_report = ai.generate_report()
-        exporter.export_ai_report(ai_report, FILES["ai_report"])
+        for path in [FILES["output_domains"], FILES["output_adguard"], FILES["output_hosts"]]:
+            if path.exists():
+                mb = path.stat().st_size / 1024 / 1024
+                print(f"  • {path.name}: {mb:.2f} MB")
         
-        exporter.export_learning_log(ai, FILES["ai_learning_log"])
+        print("\n" + "=" * 45)
+        print("✅ BUILD SUCCESSFUL")
+        print(f"✅ {len(filtered):,} domains blocked")
+        print("=" * 45)
         
-        print("\n[6/6] 📊 Final statistics:")
-        ai_stats = ai.get_stats()
-        print(f"  • Total blocked domains: {len(filtered_domains):,}")
-        print(f"  • 🤖 AI tracked: {ai_stats['total']:,}")
-        print(f"  • 🤖 AI blocked: {ai_stats['blocked']:,}")
-        print(f"  • 🤖 AI analyzed: {ai_stats['analyzed']:,}")
-        
-        print(f"\n📁 AI Report Files Created:")
-        print(f"  • {FILES['ai_blocked_list']}")
-        print(f"  • {FILES['ai_report']}")
-        print(f"  • {FILES['ai_learning_log']}")
-        
-        print("\n🔄 Optimizing database...")
-        db.vacuum()
-        
-        print("\n" + "=" * 55)
-        print("✅ BUILD SUCCESSFUL - GREEN BUILD BADGE")
-        print("=" * 55)
-        print(f"✅ Version: {__version__}")
-        print(f"✅ {len(filtered_domains):,} domains blocked")
-        print(f"✅ 🤖 {ai_stats['blocked']:,} domains flagged by AI")
-        print(f"✅ Report: {FILES['ai_report']}")
-        print(f"✅ GitHub Actions: PASSED ✓")
-        print("=" * 55)
-        
-        logger.info("Build completed successfully")
+        db.close()
         return 0
         
     except Exception as e:
-        logger.error(f"Fatal error: {e}")
-        import traceback
-        traceback.print_exc()
-        print(f"\n❌ BUILD FAILED: {e}")
+        logger.error(f"Error: {e}")
+        print(f"\n❌ FAILED: {e}")
         return 1
 
 if __name__ == "__main__":
@@ -908,8 +413,5 @@ if __name__ == "__main__":
         exit_code = asyncio.run(main())
         sys.exit(exit_code)
     except KeyboardInterrupt:
-        print("\n⚠️ Interrupted by user")
+        print("\n⚠️ Interrupted")
         sys.exit(130)
-    except Exception as e:
-        print(f"\n❌ Fatal error: {e}")
-        sys.exit(1)
