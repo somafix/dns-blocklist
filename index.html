@@ -1,334 +1,97 @@
 <!DOCTYPE html>
-<html lang="ru-RU" dir="ltr">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>DNS Blocklist Manager | hosts.txt генератор на основе Hagezi PRO</title>
-    <meta name="description" content="Загрузка Hagezi PRO блоклиста, применение whitelist/blacklist фильтров, экспорт в формате hosts.txt. Полная совместимость с оригинальным Python-скриптом.">
-    <meta name="keywords" content="DNS, блоклист, hosts, Hagezi, whitelist, blacklist, фильтрация доменов">
-    <meta name="author" content="DNS Blocklist Manager">
-    <meta name="robots" content="index, follow">
+    <title>DNS Blocklist Manager | hosts.txt на основе Hagezi PRO</title>
+    <meta name="description" content="Загрузка Hagezi PRO блоклиста, whitelist/blacklist фильтрация, экспорт hosts.txt. Рабочий инструмент.">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="canonical" href="https://example.com/dns-blocklist-manager">
-    <link rel="alternate" hreflang="ru" href="https://example.com/dns-blocklist-manager">
     
     <meta property="og:title" content="DNS Blocklist Manager">
-    <meta property="og:description" content="Генератор hosts.txt на основе Hagezi PRO с поддержкой белых и чёрных списков.">
+    <meta property="og:description" content="Генератор hosts.txt с фильтрацией доменов">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://example.com/dns-blocklist-manager">
-    <meta property="og:image" content="https://example.com/og-image.png">
-    <meta property="og:locale" content="ru_RU">
-    
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="DNS Blocklist Manager">
-    <meta name="twitter:description" content="Инструмент для управления DNS-блоклистами.">
-    
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "SoftwareApplication",
-      "name": "DNS Blocklist Manager",
-      "version": "6.0.0",
-      "description": "Веб-инструмент для управления DNS-блоклистами с поддержкой Hagezi PRO",
-      "applicationCategory": "SecurityApplication",
-      "operatingSystem": "Any",
-      "offers": {
-        "@type": "Offer",
-        "price": "0",
-        "priceCurrency": "RUB"
-      }
-    }
-    </script>
     
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
-            background: #0f172a;
-            min-height: 100vh;
-            padding: 2rem 1rem;
-            color: #f1f5f9;
-        }
-        
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-        
-        .header {
-            text-align: center;
-            margin-bottom: 2rem;
-        }
-        
-        .header h1 {
-            font-size: 2rem;
-            color: #60a5fa;
-            margin-bottom: 0.5rem;
-        }
-        
-        .version {
-            background: #334155;
-            padding: 0.25rem 0.75rem;
-            border-radius: 20px;
-            font-family: monospace;
-            font-size: 0.8rem;
-        }
-        
-        .badge {
-            background: #22c55e;
-            color: #000;
-            padding: 0.25rem 0.75rem;
-            border-radius: 20px;
-            font-size: 0.75rem;
-            font-weight: bold;
-            margin-left: 0.5rem;
-        }
-        
-        .card {
-            background: #1e293b;
-            border-radius: 16px;
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
-            border: 1px solid #334155;
-        }
-        
-        .card h2 {
-            font-size: 1.3rem;
-            margin-bottom: 1rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            border-left: 4px solid #3b82f6;
-            padding-left: 0.75rem;
-        }
-        
-        .btn {
-            background: #3b82f6;
-            border: none;
-            padding: 0.7rem 1.3rem;
-            border-radius: 40px;
-            font-size: 0.9rem;
-            font-weight: 600;
-            color: white;
-            cursor: pointer;
-            transition: opacity 0.2s;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        
-        .btn:hover {
-            opacity: 0.9;
-        }
-        
-        .btn:disabled {
-            background: #475569;
-            cursor: not-allowed;
-            opacity: 0.6;
-        }
-        
-        .btn-secondary {
-            background: #475569;
-        }
-        
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-            gap: 1rem;
-            margin: 1rem 0;
-        }
-        
-        .stat-card {
-            background: #0f172a;
-            border-radius: 12px;
-            padding: 1rem;
-            text-align: center;
-        }
-        
-        .stat-number {
-            font-size: 2rem;
-            font-weight: bold;
-            color: #3b82f6;
-        }
-        
-        .stat-label {
-            font-size: 0.75rem;
-            color: #94a3b8;
-        }
-        
-        .log-panel {
-            background: #0f172a;
-            border-radius: 12px;
-            padding: 1rem;
-            font-family: 'Courier New', monospace;
-            font-size: 0.8rem;
-            height: 250px;
-            overflow-y: auto;
-        }
-        
-        .log-entry {
-            padding: 0.2rem 0;
-            border-bottom: 1px solid #334155;
-        }
-        
-        .log-info { color: #60a5fa; }
-        .log-success { color: #4ade80; }
-        .log-warning { color: #fbbf24; }
-        .log-error { color: #f87171; }
-        
-        .progress-bar {
-            height: 6px;
-            background: #334155;
-            border-radius: 3px;
-            overflow: hidden;
-            margin: 1rem 0;
-        }
-        
-        .progress-fill {
-            height: 100%;
-            background: #3b82f6;
-            width: 0%;
-            transition: width 0.3s;
-        }
-        
-        .domains-container {
-            max-height: 300px;
-            overflow-y: auto;
-        }
-        
-        .domains-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.8rem;
-        }
-        
-        .domains-table th,
-        .domains-table td {
-            padding: 0.5rem;
-            text-align: left;
-            border-bottom: 1px solid #334155;
-        }
-        
-        .domains-table th {
-            background: #0f172a;
-            color: #94a3b8;
-            font-weight: 600;
-        }
-        
-        footer {
-            text-align: center;
-            padding: 2rem 0 1rem;
-            color: #64748b;
-            font-size: 0.75rem;
-        }
-        
-        a {
-            color: #60a5fa;
-            text-decoration: none;
-        }
-        
-        a:hover {
-            text-decoration: underline;
-        }
-        
-        @media (max-width: 640px) {
-            body { padding: 1rem; }
-            .stats-grid { grid-template-columns: repeat(2, 1fr); }
-        }
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:system-ui,-apple-system,Roboto,sans-serif;background:#0f172a;padding:2rem 1rem;color:#f1f5f9}
+        .container{max-width:1400px;margin:0 auto}
+        h1{font-size:2rem;color:#60a5fa;margin-bottom:0.5rem;text-align:center}
+        .version{background:#334155;padding:0.25rem 0.75rem;border-radius:20px;font-family:monospace;font-size:0.8rem;display:inline-block}
+        .badge{background:#22c55e;color:#000;padding:0.25rem 0.75rem;border-radius:20px;font-size:0.75rem;margin-left:0.5rem;display:inline-block}
+        .card{background:#1e293b;border-radius:16px;padding:1.5rem;margin-bottom:1.5rem;border:1px solid #334155}
+        .card h2{font-size:1.3rem;margin-bottom:1rem;border-left:4px solid #3b82f6;padding-left:0.75rem}
+        .btn{background:#3b82f6;border:none;padding:0.7rem 1.3rem;border-radius:40px;font-size:0.9rem;font-weight:600;color:#fff;cursor:pointer;display:inline-flex;align-items:center;gap:0.5rem}
+        .btn:hover{opacity:0.9}
+        .btn:disabled{background:#475569;cursor:not-allowed}
+        .btn-secondary{background:#475569}
+        .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1rem;margin:1rem 0}
+        .stat-card{background:#0f172a;border-radius:12px;padding:1rem;text-align:center}
+        .stat-number{font-size:2rem;font-weight:bold;color:#3b82f6}
+        .stat-label{font-size:0.75rem;color:#94a3b8}
+        .log-panel{background:#0f172a;border-radius:12px;padding:1rem;font-family:monospace;font-size:0.8rem;height:250px;overflow-y:auto}
+        .log-info{color:#60a5fa}
+        .log-success{color:#4ade80}
+        .log-warning{color:#fbbf24}
+        .log-error{color:#f87171}
+        .progress-bar{height:6px;background:#334155;border-radius:3px;overflow:hidden;margin:1rem 0}
+        .progress-fill{height:100%;background:#3b82f6;width:0%}
+        .domains-container{max-height:300px;overflow-y:auto}
+        .domains-table{width:100%;border-collapse:collapse;font-size:0.8rem}
+        .domains-table th,.domains-table td{padding:0.5rem;text-align:left;border-bottom:1px solid #334155}
+        footer{text-align:center;padding:2rem 0 1rem;color:#64748b;font-size:0.75rem}
+        a{color:#60a5fa}
+        @media (max-width:640px){body{padding:1rem}}
     </style>
 </head>
 <body>
-<div class="container">
-    <div class="header">
+<main class="container">
+    <div style="text-align:center; margin-bottom:2rem">
         <h1>DNS Blocklist Manager</h1>
-        <div>
+        <div style="margin-top:0.5rem">
             <span class="version">v6.0.0</span>
             <span class="badge">Hagezi PRO</span>
-            <span class="badge" style="background: #8b5cf6;">whitelist / blacklist</span>
+            <span class="badge" style="background:#8b5cf6">whitelist/blacklist</span>
         </div>
-        <p style="margin-top: 1rem; max-width: 600px; margin-left: auto; margin-right: auto; color: #cbd5e1;">
-            Загрузка → парсинг → фильтрация → экспорт в формате hosts.txt
-        </p>
+        <p style="margin-top:1rem; color:#cbd5e1">Загрузка → парсинг → фильтрация → экспорт hosts.txt</p>
     </div>
 
     <div class="card">
         <h2>Управление</h2>
-        <div style="display: flex; gap: 0.8rem; flex-wrap: wrap;">
+        <div style="display:flex; gap:0.8rem; flex-wrap:wrap">
             <button class="btn" id="runBtn">▶ Запустить сборку</button>
             <button class="btn btn-secondary" id="downloadBtn" disabled>📥 Скачать hosts.txt</button>
-            <label class="btn btn-secondary" style="cursor: pointer;">📋 Загрузить whitelist.txt
-                <input type="file" id="whitelistFile" accept=".txt" style="display: none;">
-            </label>
-            <label class="btn btn-secondary" style="cursor: pointer;">⬛ Загрузить blacklist.txt
-                <input type="file" id="blacklistFile" accept=".txt" style="display: none;">
-            </label>
+            <label class="btn btn-secondary" style="cursor:pointer">📋 Загрузить whitelist.txt<input type="file" id="whitelistFile" accept=".txt" style="display:none"></label>
+            <label class="btn btn-secondary" style="cursor:pointer">⬛ Загрузить blacklist.txt<input type="file" id="blacklistFile" accept=".txt" style="display:none"></label>
             <button class="btn btn-secondary" id="demoListsBtn">📝 Демо-списки</button>
             <button class="btn btn-secondary" id="clearListsBtn">🗑 Сбросить списки</button>
         </div>
-        <div class="progress-bar">
-            <div class="progress-fill" id="progressFill"></div>
-        </div>
+        <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
     </div>
 
     <div class="stats-grid">
-        <div class="stat-card">
-            <div class="stat-number" id="totalDomains">0</div>
-            <div class="stat-label">Всего доменов</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-number" id="afterFilter">0</div>
-            <div class="stat-label">После фильтрации</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-number" id="whitelistedCount">0</div>
-            <div class="stat-label">Исключено (whitelist)</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-number" id="blacklistedCount">0</div>
-            <div class="stat-label">Добавлено (blacklist)</div>
-        </div>
+        <div class="stat-card"><div class="stat-number" id="totalDomains">0</div><div class="stat-label">Всего доменов</div></div>
+        <div class="stat-card"><div class="stat-number" id="afterFilter">0</div><div class="stat-label">После фильтрации</div></div>
+        <div class="stat-card"><div class="stat-number" id="whitelistedCount">0</div><div class="stat-label">Исключено (whitelist)</div></div>
+        <div class="stat-card"><div class="stat-number" id="blacklistedCount">0</div><div class="stat-label">Добавлено (blacklist)</div></div>
     </div>
 
     <div class="card">
         <h2>Лог выполнения</h2>
-        <div class="log-panel" id="logPanel">
-            <div class="log-entry log-info">[INFO] DNS Blocklist Manager v6.0.0 готов</div>
-        </div>
+        <div class="log-panel" id="logPanel"><div class="log-info">[INFO] DNS Blocklist Manager готов</div></div>
     </div>
 
     <div class="card">
         <h2>Пример доменов (первые 50)</h2>
-        <div class="domains-container">
-            <table class="domains-table">
-                <thead>
-                    <tr><th>#</th><th>Формат hosts</th></tr>
-                </thead>
-                <tbody id="domainsTableBody">
-                    <tr><td colspan="2" style="text-align: center; color: #64748b;">— Домены появятся после сборки —</td></tr>
-                </tbody>
-            </table>
-        </div>
+        <div class="domains-container"><table class="domains-table"><thead><tr><th>#</th><th>Формат hosts</th></tr></thead><tbody id="domainsTableBody"><tr><td colspan="2" style="text-align:center">— Домены появятся после сборки —</td></tr></tbody></table></div>
     </div>
 
-    <footer>
-        <p>Источник: <a href="https://github.com/hagezi/dns-blocklists" target="_blank">Hagezi DNS Blocklists (PRO)</a></p>
-        <p><a href="#" id="shareLink">Поделиться ссылкой</a> | <a href="/sitemap.xml">Карта сайта</a></p>
-    </footer>
-</div>
+    <footer><p>Источник: <a href="https://github.com/hagezi/dns-blocklists" target="_blank">Hagezi DNS Blocklists (PRO)</a></p></footer>
+</main>
 
 <script>
-    const VERSION = "6.0.0";
     const HAGEZI_URL = "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/domains/pro.txt";
-    
-    let rawDomains = new Set();
-    let whitelistSet = new Set();
-    let blacklistSet = new Set();
-    let filteredDomains = new Set();
-    let isRunning = false;
+    let rawDomains = new Set(), whitelistSet = new Set(), blacklistSet = new Set(), filteredDomains = new Set(), isRunning = false;
     
     const logPanel = document.getElementById('logPanel');
     const progressFill = document.getElementById('progressFill');
@@ -343,278 +106,143 @@
     const blacklistInput = document.getElementById('blacklistFile');
     const clearBtn = document.getElementById('clearListsBtn');
     const demoBtn = document.getElementById('demoListsBtn');
-    const shareLink = document.getElementById('shareLink');
     
     function addLog(msg, type = 'info') {
         const div = document.createElement('div');
-        div.className = `log-entry log-${type}`;
+        div.className = `log-${type}`;
         div.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
         logPanel.appendChild(div);
         logPanel.scrollTop = logPanel.scrollHeight;
     }
     
-    function setProgress(percent) {
-        progressFill.style.width = `${percent}%`;
-    }
+    function setProgress(p) { progressFill.style.width = `${p}%`; }
     
     function cleanDomain(line) {
         if (!line) return null;
-        let cleaned = line;
-        if (cleaned.includes('#')) {
-            cleaned = cleaned.substring(0, cleaned.indexOf('#'));
-        }
-        cleaned = cleaned.trim().toLowerCase();
-        
-        const prefixes = ["0.0.0.0 ", "127.0.0.1 ", "::1 ", "||", "https://", "http://"];
-        for (const prefix of prefixes) {
-            if (cleaned.startsWith(prefix)) {
-                cleaned = cleaned.substring(prefix.length);
-            }
-        }
-        
-        if (cleaned.endsWith('^') || cleaned.endsWith('/')) {
-            cleaned = cleaned.slice(0, -1);
-        }
-        
-        if (/^\d+\.\d+\.\d+\.\d+$/.test(cleaned)) {
-            return null;
-        }
-        
-        if (cleaned && cleaned.includes('.') && cleaned.length < 253) {
-            return cleaned;
-        }
+        let c = line;
+        if (c.includes('#')) c = c.substring(0, c.indexOf('#'));
+        c = c.trim().toLowerCase();
+        for (const p of ["0.0.0.0 ", "127.0.0.1 ", "::1 ", "||", "https://", "http://"])
+            if (c.startsWith(p)) c = c.substring(p.length);
+        if (c.endsWith('^') || c.endsWith('/')) c = c.slice(0, -1);
+        if (/^\d+\.\d+\.\d+\.\d+$/.test(c)) return null;
+        if (c && c.includes('.') && c.length < 253) return c;
         return null;
     }
     
     function updateStats() {
         totalSpan.textContent = rawDomains.size.toLocaleString();
         afterSpan.textContent = filteredDomains.size.toLocaleString();
-        
-        let whitelisted = 0;
-        let blacklistedExtra = 0;
-        for (const d of rawDomains) {
-            if (whitelistSet.has(d)) whitelisted++;
-            else if (blacklistSet.has(d)) blacklistedExtra++;
+        let wl = 0, bl = 0;
+        for (let d of rawDomains) {
+            if (whitelistSet.has(d)) wl++;
+            else if (blacklistSet.has(d)) bl++;
         }
-        whitelistedSpan.textContent = whitelisted.toLocaleString();
-        blacklistedSpan.textContent = blacklistedExtra.toLocaleString();
+        whitelistedSpan.textContent = wl.toLocaleString();
+        blacklistedSpan.textContent = bl.toLocaleString();
     }
     
     function applyFilters() {
-        const result = new Set();
-        for (const domain of rawDomains) {
-            if (whitelistSet.has(domain)) continue;
-            if (blacklistSet.has(domain)) {
-                result.add(domain);
-                continue;
-            }
-            result.add(domain);
+        const res = new Set();
+        for (let d of rawDomains) {
+            if (whitelistSet.has(d)) continue;
+            if (blacklistSet.has(d)) { res.add(d); continue; }
+            res.add(d);
         }
-        return result;
+        return res;
     }
     
     function applyAndRender() {
         filteredDomains = applyFilters();
         updateStats();
-        
-        const domainsArray = Array.from(filteredDomains).sort();
-        const preview = domainsArray.slice(0, 50);
-        
-        if (preview.length === 0) {
-            domainsBody.innerHTML = '<tr><td colspan="2" style="text-align: center; color: #64748b;">— Нет доменов для отображения —</td></tr>';
-        } else {
-            domainsBody.innerHTML = preview.map((domain, idx) => `
-                <tr>
-                    <td style="width: 50px;">${idx + 1}</td>
-                    <td><code>0.0.0.0 ${domain}</code></td>
-                </tr>
-            `).join('');
-        }
-        
-        downloadBtn.disabled = (filteredDomains.size === 0);
+        const arr = Array.from(filteredDomains).sort().slice(0, 50);
+        if (!arr.length) domainsBody.innerHTML = '<tr><td colspan="2" style="text-align:center">— Нет доменов —</td></tr>';
+        else domainsBody.innerHTML = arr.map((d,i)=>`<tr><td>${i+1}</td><td><code>0.0.0.0 ${d}</code></td></tr>`).join('');
+        downloadBtn.disabled = filteredDomains.size === 0;
     }
     
-    function exportHosts(domainsSet) {
-        const sorted = Array.from(domainsSet).sort();
-        const header = `# DNS Blocklist Manager v${VERSION}
-# Source: Hagezi PRO
-# Generated: ${new Date().toISOString().replace('T', ' ').slice(0, 19)} UTC
-# Total: ${sorted.length.toLocaleString()}
-# ==========================================
-
-`;
+    function exportHosts(set) {
+        const sorted = Array.from(set).sort();
+        const header = `# DNS Blocklist Manager v6.0.0\n# Source: Hagezi PRO\n# Generated: ${new Date().toISOString().slice(0,19).replace('T',' ')} UTC\n# Total: ${sorted.length.toLocaleString()}\n# ==========================================\n\n`;
         return header + sorted.map(d => `0.0.0.0 ${d}`).join('\n');
     }
     
-    async function fetchHageziList() {
+    async function fetchHagezi() {
         addLog('Загрузка Hagezi PRO...', 'info');
         setProgress(10);
-        
         try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 30000);
-            
-            const response = await fetch(HAGEZI_URL, {
-                headers: { 'User-Agent': `DNS-Blocklist-Manager/${VERSION}` },
-                signal: controller.signal
-            });
-            
-            clearTimeout(timeoutId);
-            
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-            }
-            
-            const text = await response.text();
-            addLog(`Загружено ${(text.length / 1024).toFixed(0)} KB`, 'success');
+            const ctrl = new AbortController();
+            setTimeout(() => ctrl.abort(), 30000);
+            const resp = await fetch(HAGEZI_URL, { headers: { 'User-Agent': 'DNS-Blocklist-Manager/6.0.0' }, signal: ctrl.signal });
+            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+            const text = await resp.text();
+            addLog(`Загружено ${(text.length/1024).toFixed(0)} KB`, 'success');
             setProgress(40);
-            
-            addLog('Парсинг и валидация доменов...', 'info');
+            addLog('Парсинг...', 'info');
             const lines = text.split(/\r?\n/);
             const domains = new Set();
-            let validCount = 0;
-            
+            let cnt = 0;
             for (let i = 0; i < lines.length; i++) {
-                const domain = cleanDomain(lines[i]);
-                if (domain) {
-                    domains.add(domain);
-                    validCount++;
-                }
-                if (i % 10000 === 0) {
-                    setProgress(40 + (i / lines.length) * 40);
-                }
+                const d = cleanDomain(lines[i]);
+                if (d) { domains.add(d); cnt++; }
+                if (i % 10000 === 0) setProgress(40 + (i/lines.length)*40);
             }
-            
-            addLog(`Получено ${validCount.toLocaleString()} валидных доменов`, 'success');
+            addLog(`Получено ${cnt.toLocaleString()} валидных доменов`, 'success');
             setProgress(80);
             return domains;
-            
-        } catch (error) {
-            addLog(`Ошибка загрузки: ${error.message}`, 'error');
-            throw error;
-        }
+        } catch(e) { addLog(`Ошибка: ${e.message}`, 'error'); throw e; }
     }
     
     async function runBuild() {
-        if (isRunning) {
-            addLog('Сборка уже выполняется', 'warning');
-            return;
-        }
-        
+        if (isRunning) { addLog('Сборка уже выполняется', 'warning'); return; }
         isRunning = true;
         runBtn.disabled = true;
         setProgress(0);
-        
         try {
-            const fetched = await fetchHageziList();
-            rawDomains = fetched;
+            rawDomains = await fetchHagezi();
             addLog(`Уникальных доменов: ${rawDomains.size.toLocaleString()}`, 'success');
-            
             applyAndRender();
             setProgress(100);
             addLog(`Готово: ${filteredDomains.size.toLocaleString()} доменов`, 'success');
-            
-        } catch (error) {
-            addLog(`Ошибка: ${error.message}`, 'error');
-            setProgress(0);
-        } finally {
-            isRunning = false;
-            runBtn.disabled = false;
-        }
+        } catch(e) { addLog(`Ошибка: ${e.message}`, 'error'); setProgress(0); }
+        finally { isRunning = false; runBtn.disabled = false; }
     }
     
-    function loadListFromFile(file, targetSet, name) {
-        return new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const content = e.target.result;
-                const lines = content.split(/\r?\n/);
-                let count = 0;
-                for (const line of lines) {
-                    const domain = cleanDomain(line);
-                    if (domain) {
-                        targetSet.add(domain);
-                        count++;
-                    }
-                }
-                addLog(`Загружен ${name}: ${count} доменов`, 'success');
-                updateStats();
-                if (rawDomains.size > 0) {
-                    applyAndRender();
-                }
-                resolve();
-            };
-            reader.onerror = () => {
-                addLog(`Ошибка загрузки ${name}`, 'error');
-                resolve();
-            };
-            reader.readAsText(file, 'UTF-8');
-        });
+    function loadList(file, target, name) {
+        const r = new FileReader();
+        r.onload = e => {
+            let cnt = 0;
+            for (let line of e.target.result.split(/\r?\n/)) {
+                const d = cleanDomain(line);
+                if (d) { target.add(d); cnt++; }
+            }
+            addLog(`Загружен ${name}: ${cnt} доменов`, 'success');
+            updateStats();
+            if (rawDomains.size) applyAndRender();
+        };
+        r.readAsText(file, 'UTF-8');
     }
     
-    whitelistInput.addEventListener('change', (e) => {
-        if (e.target.files.length) {
-            loadListFromFile(e.target.files[0], whitelistSet, 'whitelist.txt');
-            whitelistInput.value = '';
-        }
-    });
-    
-    blacklistInput.addEventListener('change', (e) => {
-        if (e.target.files.length) {
-            loadListFromFile(e.target.files[0], blacklistSet, 'blacklist.txt');
-            blacklistInput.value = '';
-        }
-    });
-    
-    clearBtn.addEventListener('click', () => {
-        whitelistSet.clear();
-        blacklistSet.clear();
-        addLog('Белый и чёрный списки сброшены', 'warning');
-        updateStats();
-        if (rawDomains.size > 0) {
-            applyAndRender();
-        }
-    });
-    
+    whitelistInput.addEventListener('change', e => { if(e.target.files.length) { loadList(e.target.files[0], whitelistSet, 'whitelist.txt'); whitelistInput.value = ''; } });
+    blacklistInput.addEventListener('change', e => { if(e.target.files.length) { loadList(e.target.files[0], blacklistSet, 'blacklist.txt'); blacklistInput.value = ''; } });
+    clearBtn.addEventListener('click', () => { whitelistSet.clear(); blacklistSet.clear(); addLog('Списки сброшены', 'warning'); updateStats(); if(rawDomains.size) applyAndRender(); });
     demoBtn.addEventListener('click', () => {
-        const demoWhitelist = ['doubleclick.net', 'googleadservices.com', 'facebook.com', 'googlesyndication.com'];
-        const demoBlacklist = ['very-bad-domain.com', 'malware.test', 'extra-blocked.com'];
-        
-        for (const d of demoWhitelist) whitelistSet.add(d);
-        for (const d of demoBlacklist) blacklistSet.add(d);
-        
-        addLog(`Демо-списки: whitelist (${demoWhitelist.length}), blacklist (${demoBlacklist.length})`, 'success');
+        ['doubleclick.net','googleadservices.com','facebook.com'].forEach(d=>whitelistSet.add(d));
+        ['very-bad-domain.com','malware.test'].forEach(d=>blacklistSet.add(d));
+        addLog('Демо-списки: whitelist(3) blacklist(2)', 'success');
         updateStats();
-        if (rawDomains.size > 0) {
-            applyAndRender();
-        }
+        if(rawDomains.size) applyAndRender();
     });
-    
     downloadBtn.addEventListener('click', () => {
-        if (filteredDomains.size === 0) {
-            addLog('Нет данных для экспорта', 'warning');
-            return;
-        }
-        
-        const content = exportHosts(filteredDomains);
-        const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
+        if(!filteredDomains.size) { addLog('Нет данных', 'warning'); return; }
+        const blob = new Blob([exportHosts(filteredDomains)], {type:'text/plain'});
         const a = document.createElement('a');
-        a.href = url;
+        a.href = URL.createObjectURL(blob);
         a.download = 'hosts.txt';
-        document.body.appendChild(a);
         a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        URL.revokeObjectURL(a.href);
         addLog(`Скачан hosts.txt (${filteredDomains.size.toLocaleString()} доменов)`, 'success');
     });
-    
-    shareLink.addEventListener('click', (e) => {
-        e.preventDefault();
-        navigator.clipboard.writeText(window.location.href);
-        addLog('Ссылка скопирована', 'success');
-    });
-    
     runBtn.addEventListener('click', runBuild);
     updateStats();
 </script>
