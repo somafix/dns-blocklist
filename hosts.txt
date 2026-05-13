@@ -1,6 +1,6 @@
 # DNS Blocklist Manager v6.0.0
 # Source: hagezi (NORMAL - recommended)
-# Generated: 2026-05-13 07:20:50 UTC
+# Generated: 2026-05-13 07:23:31 UTC
 # Total: 0
 # ==========================================
 
