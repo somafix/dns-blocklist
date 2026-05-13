@@ -18,7 +18,7 @@ __version__ = "6.0.0"
 CONFIG = {
     "urls": {
         "hagezi": {
-            "url": "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/hosts/normal.txt",
+            "url": "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/domains/pro.txt",
             "enabled": True,
         },
     },
@@ -154,7 +154,7 @@ class BlocklistManager:
     async def fetch_all(self):
         src = CONFIG["urls"]["hagezi"]
         if src.get("enabled", True):
-            domains_set = await self._fetch_and_parse(src["url"], "HaGeZi NORMAL (hosts format)")
+            domains_set = await self._fetch_and_parse(src["url"], "HaGeZi PRO")
             if domains_set:
                 self.domains.update(domains_set)
 
@@ -214,7 +214,7 @@ class Exporter:
     def export_hosts_format(domains: Set[str], path: Path):
         with open(path, "w", encoding="utf-8") as f:
             f.write(f"# DNS Blocklist Manager v{__version__}\n")
-            f.write(f"# Source: HaGeZi NORMAL (hosts format)\n")
+            f.write(f"# Source: HaGeZi PRO\n")
             f.write(f"# Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')}\n")
             f.write(f"# Total: {len(domains):,}\n")
             f.write("# ==========================================\n\n")
@@ -260,10 +260,10 @@ async def main():
     atexit.register(pid_manager.cleanup)
 
     logger = Logger(FILES["log"])
-    logger.info(f"DNS Blocklist Manager v{__version__} started (HaGeZi NORMAL)")
+    logger.info(f"DNS Blocklist Manager v{__version__} started (HaGeZi PRO)")
 
     print(f"\n🚀 DNS Blocklist Manager v{__version__}")
-    print("✅ SOURCE: HaGeZi NORMAL (hosts format) -> hosts.txt\n")
+    print("✅ SOURCE: HaGeZi PRO -> hosts.txt\n")
 
     try:
         manager = BlocklistManager(logger)
@@ -272,7 +272,7 @@ async def main():
         print("[1/4] 💾 Creating backup...")
         exporter.backup()
 
-        print("[2/4] 📥 Downloading HaGeZi NORMAL blocklist...")
+        print("[2/4] 📥 Downloading HaGeZi PRO blocklist...")
         await manager.fetch_all()
 
         print("[3/4] 🔍 Applying whitelist/blacklist...")
