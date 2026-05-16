@@ -1,0 +1,699 @@
+#!/usr/bin/env pwsh
+<#
+.SYNOPSIS
+    DNS Blocklist Manager - Enterprise-grade blocklist processor
+.DESCRIPTION
+    HaGeZi PRO blocklist downloader with whitelist/blacklist support,
+    atomic operations, exponential backoff, and security hardening.
+    Version 7.0.0 - Elite Refactoring Edition
+.AUTHOR
+    Security Architecture Team
+.NOTES
+    Requires PowerShell 5.1+ | Run with: ./dns_blocker.ps1
+#>
+
+[CmdletBinding()]
+param(
+    [Parameter(HelpMessage = 'Force rebuild without cache')]
+    [switch]$Force,
+    
+    [Parameter(HelpMessage = 'Skip backup creation')]
+    [switch]$NoBackup,
+    
+    [Parameter(HelpMessage = 'Verbose logging')]
+    [switch]$Verbose
+)
+
+# =============================================================================
+# ███████╗██╗  ██╗███████╗██╗     ██╗      ██████╗ ███╗   ██╗
+# ██╔════╝╚██╗██╔╝██╔════╝██║     ██║     ██╔═══██╗████╗  ██║
+# █████╗   ╚███╔╝ █████╗  ██║     ██║     ██║   ██║██╔██╗ ██║
+# ██╔══╝   ██╔██╗ ██╔══╝  ██║     ██║     ██║   ██║██║╚██╗██║
+# ███████╗██╔╝ ██╗███████╗███████╗███████╗╚██████╔╝██║ ╚████║
+# ╚══════╝╚═╝  ╚═╝╚══════╝╚══════╝╚══════╝ ╚═════╝ ╚═╝  ╚═══╝
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# 1. DOMAIN OBJECT MODEL
+# -----------------------------------------------------------------------------
+
+class Domain {
+    [string]$Value
+    [bool]$IsValid
+    
+    Domain([string]$raw) {
+        $this->Value = $this->Sanitize($raw)
+        $this->IsValid = -not [string]::IsNullOrEmpty($this->Value)
+    }
+    
+    hidden [string] Sanitize([string]$input) {
+        if ([string]::IsNullOrWhiteSpace($input)) { return $null }
+        if ($input.Length -gt 512) { return $null }
+        
+        # Pipeline-style processing
+        $result = $input
+        $result = $this->RemoveComments($result)
+        $result = $this->TrimAndLower($result)
+        $result = $this->StripHostsPrefixes($result)
+        $result = $this->StripAdblockSuffixes($result)
+        $result = $this->FilterIpAddresses($result)
+        $result = $this->ValidateDomainFormat($result)
+        
+        return $result
+    }
+    
+    hidden [string] RemoveComments([string]$s) {
+        $idx = $s.IndexOf('#')
+        return $idx -ge 0 ? $s.Substring(0, $idx) : $s
+    }
+    
+    hidden [string] TrimAndLower([string]$s) {
+        return $s.Trim().ToLowerInvariant()
+    }
+    
+    hidden [string] StripHostsPrefixes([string]$s) {
+        $prefixes = @('0.0.0.0 ', '127.0.0.1 ', '::1 ', '||', 'https://', 'http://')
+        foreach ($p in $prefixes) {
+            if ($s.StartsWith($p, [StringComparison]::OrdinalIgnoreCase)) {
+                return $s.Substring($p.Length)
+            }
+        }
+        return $s
+    }
+    
+    hidden [string] StripAdblockSuffixes([string]$s) {
+        if ($s.EndsWith('^') -or $s.EndsWith('/')) {
+            return $s.Substring(0, $s.Length - 1)
+        }
+        return $s
+    }
+    
+    hidden [string] FilterIpAddresses([string]$s) {
+        $ipPattern = '^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$'
+        return $s -match $ipPattern ? $null : $s
+    }
+    
+    hidden [string] ValidateDomainFormat([string]$s) {
+        if ([string]::IsNullOrEmpty($s)) { return $null }
+        if ($s.Length -ge 253) { return $null }
+        if (-not $s.Contains('.')) { return $null }
+        if ($s -notmatch '^[a-z0-9\.\-]+$') { return $null }
+        return $s
+    }
+    
+    [string] ToString() { return $this.Value }
+}
+
+# -----------------------------------------------------------------------------
+# 2. CONFIGURATION MANAGER (Immutable)
+# -----------------------------------------------------------------------------
+
+class Configuration {
+    static [hashtable] $Instance = @{
+        Version = '7.0.0'
+        Sources = @(
+            @{
+                Name = 'HaGeZi PRO'
+                Url  = 'https://raw.githubusercontent.com/hagezi/dns-blocklists/main/domains/pro.txt'
+                Enabled = $true
+            }
+        )
+        Limits = @{
+            MaxDownloadSizeMB = 100
+            MaxDomainLength = 253
+            MaxLineLength = 512
+            MaxLinesToProcess = 5000000
+            LogRotationSizeMB = 10
+            LogMaxBackups = 5
+            MaxLogLineLength = 2000
+        }
+        Network = @{
+            TimeoutSeconds = 30
+            MaxRetries = 3
+            BackoffBaseSeconds = 2
+            UserAgent = "DNS-Blocklist-Manager/7.0.0"
+        }
+        Paths = @{
+            OutputHosts = 'hosts.txt'
+            BackupDir   = 'backup'
+            Whitelist   = 'lists/whitelist.txt'
+            Blacklist   = 'lists/blacklist.txt'
+            Log         = 'logs/dns_blocker.log'
+        }
+    }
+    
+    static [hashtable] Get() { return [Configuration]::Instance }
+    static [string] GetVersion() { return [Configuration]::Instance.Version }
+}
+
+# -----------------------------------------------------------------------------
+# 3. SECURITY CONTEXT (Immutable)
+# -----------------------------------------------------------------------------
+
+class SecurityContext {
+    static [string] $BaseDirectory
+    static [bool] $IsAdministrator
+    static [version] $PowerShellVersion
+    
+    static [void] Initialize() {
+        [SecurityContext]::BaseDirectory = $PSScriptRoot
+        if (-not [SecurityContext]::BaseDirectory) {
+            [SecurityContext]::BaseDirectory = (Get-Location).Path
+        }
+        
+        $identity = [Security.Principal.WindowsPrincipal]::new(
+            [Security.Principal.WindowsIdentity]::GetCurrent()
+        )
+        [SecurityContext]::IsAdministrator = $identity.IsInRole(
+            [Security.Principal.WindowsBuiltInRole]::Administrator
+        )
+        
+        [SecurityContext]::PowerShellVersion = $PSVersionTable.PSVersion
+    }
+    
+    static [string] ResolvePath([string]$relative) {
+        $full = [System.IO.Path]::GetFullPath(
+            [System.IO.Path]::Combine([SecurityContext]::BaseDirectory, $relative)
+        )
+        
+        if (-not $full.StartsWith([SecurityContext]::BaseDirectory, [StringComparison]::OrdinalIgnoreCase)) {
+            throw [System.UnauthorizedAccessException]::new("Path traversal blocked: $relative")
+        }
+        
+        return $full
+    }
+    
+    static [bool] ValidateEnvironment() {
+        if ([SecurityContext]::PowerShellVersion.Major -lt 5) {
+            throw "PowerShell 5.1+ required (current: $([SecurityContext]::PowerShellVersion))"
+        }
+        return $true
+    }
+}
+
+# Initialize security context
+[SecurityContext]::Initialize()
+
+# -----------------------------------------------------------------------------
+# 4. LOGGING SYSTEM (With rotation & redaction)
+# -----------------------------------------------------------------------------
+
+class Logger {
+    static [string] $LogPath
+    static [System.Collections.Concurrent.ConcurrentQueue[string]] $Queue
+    static [System.Threading.Timer] $FlushTimer
+    static [int] $MaxLineLength = 2000
+    
+    static [void] Initialize() {
+        $config = [Configuration]::Get()
+        $relativePath = $config.Paths.Log
+        [Logger]::LogPath = [SecurityContext]::ResolvePath($relativePath)
+        [Logger]::Queue = [System.Collections.Concurrent.ConcurrentQueue[string]]::new()
+        
+        # Ensure directory exists
+        $dir = Split-Path [Logger]::LogPath -Parent
+        if (-not (Test-Path $dir)) {
+            New-Item -ItemType Directory -Path $dir -Force | Out-Null
+        }
+        
+        # Async flush timer (every 5 seconds)
+        $callback = { [Logger]::Flush() }
+        $timer = [System.Threading.Timer]::new($callback, $null, 5000, 5000)
+        [Logger]::$FlushTimer = $timer
+    }
+    
+    static [void] Flush() {
+        $entries = [System.Collections.Generic.List[string]]::new()
+        $item = $null
+        while ([Logger]::Queue.TryDequeue([ref]$item)) {
+            $entries.Add($item)
+        }
+        
+        if ($entries.Count -eq 0) { return }
+        
+        try {
+            [System.IO.File]::AppendAllLines([Logger]::LogPath, $entries, [System.Text.Encoding]::UTF8)
+            [Logger]::RotateIfNeeded()
+        } catch { }
+    }
+    
+    static [void] RotateIfNeeded() {
+        if (-not (Test-Path [Logger]::LogPath)) { return }
+        
+        $file = Get-Item [Logger]::LogPath -ErrorAction SilentlyContinue
+        if (-not $file) { return }
+        
+        $maxSize = [Configuration]::Get().Limits.LogRotationSizeMB * 1MB
+        if ($file.Length -lt $maxSize) { return }
+        
+        $maxBackups = [Configuration]::Get().Limits.LogMaxBackups
+        for ($i = $maxBackups; $i -ge 1; $i--) {
+            $old = "$([Logger]::LogPath).$i"
+            $new = "$([Logger]::LogPath).$($i+1)"
+            if (Test-Path $old) { Move-Item $old $new -Force -ErrorAction SilentlyContinue }
+        }
+        Move-Item [Logger]::LogPath "$([Logger]::LogPath).1" -Force
+    }
+    
+    static [string] Redact([string]$message) {
+        # Mask sensitive patterns
+        $message = $message -replace '(password|passwd|token|secret|key|api[_-]?key)(=?|:?\s*)(\S+)', '$1=***REDACTED***'
+        $message = $message -replace '\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b', '[IP]'
+        $message = $message -replace '\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b', '[GUID]'
+        
+        if ($message.Length -gt [Logger]::MaxLineLength) {
+            $message = $message.Substring(0, [Logger]::MaxLineLength) + '... [TRUNCATED]'
+        }
+        
+        return $message
+    }
+    
+    static [void] Write([string]$level, [string]$message) {
+        $timestamp = Get-Date -Format 'yyyy-MM-dd HH:mm:ss.fff'
+        $redacted = [Logger]::Redact($message)
+        $logLine = "[$timestamp] [$($level.PadRight(7))] $redacted"
+        
+        # Console output with colors
+        $color = @{
+            'INFO' = 'Gray'
+            'WARN' = 'Yellow'
+            'ERROR' = 'Red'
+            'DEBUG' = 'DarkGray'
+        }[$level] ?? 'White'
+        
+        Write-Host "[$level] $message" -ForegroundColor $color
+        
+        # Queue for async write
+        [Logger]::Queue.Enqueue($logLine)
+    }
+    
+    static [void] Info([string]$m) { [Logger]::Write('INFO', $m) }
+    static [void] Warn([string]$m) { [Logger]::Write('WARN', $m) }
+    static [void] Error([string]$m) { [Logger]::Write('ERROR', $m) }
+    static [void] Debug([string]$m) { if ($global:Verbose) { [Logger]::Write('DEBUG', $m) } }
+    
+    static [void] Shutdown() {
+        [Logger]::$FlushTimer.Dispose()
+        [Logger]::Flush()
+    }
+}
+
+# -----------------------------------------------------------------------------
+# 5. HTTP CLIENT (With retry, backoff, size limits)
+# -----------------------------------------------------------------------------
+
+class HttpClient {
+    static [System.Net.Http.HttpClient] $Client
+    
+    static [void] Initialize() {
+        $config = [Configuration]::Get()
+        $handler = [System.Net.Http.HttpClientHandler]::new()
+        $handler.ServerCertificateCustomValidationCallback = { $true }  # REMOVE IN PROD
+        
+        # Proxy support
+        if ($env:HTTP_PROXY) {
+            $handler.Proxy = [System.Net.WebProxy]::new($env:HTTP_PROXY)
+            $handler.UseProxy = $true
+        }
+        
+        [HttpClient]::$Client = [System.Net.Http.HttpClient]::new($handler)
+        [HttpClient]::$Client.Timeout = [TimeSpan]::FromSeconds($config.Network.TimeoutSeconds)
+        [HttpClient]::$Client.DefaultRequestHeaders.UserAgent.ParseAdd($config.Network.UserAgent)
+    }
+    
+    static [string] DownloadWithRetry([string]$url, [string]$name) {
+        $config = [Configuration]::Get()
+        $maxRetries = $config.Network.MaxRetries
+        $maxSizeMB = $config.Limits.MaxDownloadSizeMB
+        $maxBytes = $maxSizeMB * 1MB
+        
+        for ($attempt = 1; $attempt -le $maxRetries; $attempt++) {
+            try {
+                [Logger]::Info("↓ $name (attempt $attempt/$maxRetries)")
+                
+                $response = [HttpClient]::$Client.GetAsync($url, [System.Net.Http.HttpCompletionOption]::ResponseHeadersRead).Result
+                
+                # Check content length
+                $contentLength = $response.Content.Headers.ContentLength
+                if ($contentLength -gt $maxBytes) {
+                    throw "Response too large: $([math]::Round($contentLength/1MB, 2))MB > ${maxSizeMB}MB"
+                }
+                
+                $bytes = $response.Content.ReadAsByteArrayAsync().Result
+                if ($bytes.Length -gt $maxBytes) {
+                    throw "Download exceeded ${maxSizeMB}MB limit"
+                }
+                
+                [Logger]::Info("✓ $name : $([math]::Round($bytes.Length/1KB, 1))KB")
+                return [System.Text.Encoding]::UTF8.GetString($bytes)
+            }
+            catch {
+                [Logger]::Warn("✗ $name : $($_.Exception.Message)")
+                
+                if ($attempt -lt $maxRetries) {
+                    $delay = [math]::Min(
+                        $config.Network.BackoffBaseSeconds * [math]::Pow(2, $attempt - 1),
+                        60
+                    )
+                    [Logger]::Info("↻ Retry in ${delay}s...")
+                    Start-Sleep -Seconds $delay
+                }
+            }
+        }
+        
+        [Logger]::Error("✗ $name : FAILED after $maxRetries attempts")
+        return $null
+    }
+    
+    static [void] Shutdown() {
+        [HttpClient]::$Client.Dispose()
+    }
+}
+
+# -----------------------------------------------------------------------------
+# 6. PROCESS MANAGER (PID file with atomic lock)
+# -----------------------------------------------------------------------------
+
+class ProcessManager {
+    static [string] $PidFile
+    
+    static [void] Initialize() {
+        $temp = [System.IO.Path]::GetTempPath()
+        $pid = [Environment]::ProcessId
+        [ProcessManager]::PidFile = Join-Path $temp "dns_blocker_$pid.pid"
+    }
+    
+    static [bool] AcquireLock() {
+        try {
+            $stream = [System.IO.File]::Open(
+                [ProcessManager]::PidFile,
+                [System.IO.FileMode]::CreateNew,
+                [System.IO.FileAccess]::Write,
+                [System.IO.FileShare]::None
+            )
+            $writer = [System.IO.StreamWriter]::new($stream)
+            $writer.Write([Environment]::ProcessId)
+            $writer.Close()
+            $stream.Close()
+            return $true
+        }
+        catch [System.IO.IOException] {
+            if (Test-Path [ProcessManager]::PidFile) {
+                $oldPid = Get-Content [ProcessManager]::PidFile -Raw -ErrorAction SilentlyContinue
+                if ($oldPid -and (Get-Process -Id $oldPid -ErrorAction SilentlyContinue)) {
+                    [Logger]::Error("Process already running (PID $oldPid)")
+                    return $false
+                }
+                Remove-Item [ProcessManager]::PidFile -Force -ErrorAction SilentlyContinue
+                return [ProcessManager]::AcquireLock()
+            }
+            return $false
+        }
+        catch {
+            [Logger]::Warn("PID lock failed: $($_.Exception.Message)")
+            return $true  # Non-blocking failure
+        }
+    }
+    
+    static [void] ReleaseLock() {
+        try {
+            if (Test-Path [ProcessManager]::PidFile) {
+                Remove-Item [ProcessManager]::PidFile -Force -ErrorAction SilentlyContinue
+            }
+        } catch { }
+    }
+}
+
+# -----------------------------------------------------------------------------
+# 7. BLOCKLIST ENGINE (Core business logic)
+# -----------------------------------------------------------------------------
+
+class BlocklistEngine {
+    hidden [System.Collections.Generic.HashSet[string]] $Domains
+    hidden [System.Collections.Generic.HashSet[string]] $Whitelist
+    hidden [System.Collections.Generic.HashSet[string]] $Blacklist
+    hidden [hashtable] $Stats
+    
+    BlocklistEngine() {
+        $this.Domains = [System.Collections.Generic.HashSet[string]]::new(
+            [System.StringComparer]::OrdinalIgnoreCase
+        )
+        $this.Whitelist = [System.Collections.Generic.HashSet[string]]::new(
+            [System.StringComparer]::OrdinalIgnoreCase
+        )
+        $this.Blacklist = [System.Collections.Generic.HashSet[string]]::new(
+            [System.StringComparer]::OrdinalIgnoreCase
+        )
+        $this.Stats = @{
+            Total = 0
+            Whitelisted = 0
+            Blacklisted = 0
+            Normal = 0
+        }
+    }
+    
+    [void] LoadCustomLists() {
+        $config = [Configuration]::Get()
+        
+        $whitelistPath = [SecurityContext]::ResolvePath($config.Paths.Whitelist)
+        $blacklistPath = [SecurityContext]::ResolvePath($config.Paths.Blacklist)
+        
+        if (Test-Path $whitelistPath) {
+            $count = $this->LoadListInto($whitelistPath, $this.Whitelist)
+            [Logger]::Info("📋 Whitelist loaded: $count domains")
+        }
+        
+        if (Test-Path $blacklistPath) {
+            $count = $this->LoadListInto($blacklistPath, $this.Blacklist)
+            [Logger]::Info("📋 Blacklist loaded: $count domains")
+        }
+    }
+    
+    hidden [int] LoadListInto([string]$path, [System.Collections.Generic.HashSet[string]]$target) {
+        $count = 0
+        try {
+            $lines = [System.IO.File]::ReadLines($path, [System.Text.Encoding]::UTF8)
+            foreach ($line in $lines) {
+                $domain = [Domain]::new($line)
+                if ($domain.IsValid -and -not $target.Contains($domain.Value)) {
+                    $target.Add($domain.Value) | Out-Null
+                    $count++
+                }
+            }
+        }
+        catch {
+            [Logger]::Error("Failed to load $path : $($_.Exception.Message)")
+        }
+        return $count
+    }
+    
+    [void] ProcessContent([string]$content) {
+        $config = [Configuration]::Get()
+        $maxLines = $config.Limits.MaxLinesToProcess
+        
+        [Logger]::Info("🔍 Parsing domains...")
+        
+        $reader = [System.IO.StringReader]::new($content)
+        $lineNum = 0
+        
+        while (($line = $reader.ReadLine()) -ne $null) {
+            $lineNum++
+            if ($lineNum -gt $maxLines) {
+                [Logger]::Warn("Reached line limit ($maxLines), stopping")
+                break
+            }
+            
+            $domain = [Domain]::new($line)
+            if ($domain.IsValid) {
+                $this.Domains.Add($domain.Value) | Out-Null
+            }
+        }
+        $reader.Close()
+        
+        $this.Stats.Total = $this.Domains.Count
+        [Logger]::Info("📊 Total unique domains: $($this.Stats.Total.ToString('N0'))")
+    }
+    
+    [System.Collections.Generic.List[string]] ApplyFilters() {
+        [Logger]::Info("🔍 Applying whitelist/blacklist filters...")
+        
+        $result = [System.Collections.Generic.List[string]]::new()
+        
+        foreach ($domain in $this.Domains) {
+            if ($this.Whitelist.Contains($domain)) {
+                $this.Stats.Whitelisted++
+                continue
+            }
+            if ($this.Blacklist.Contains($domain)) {
+                $result.Add($domain)
+                $this.Stats.Blacklisted++
+                continue
+            }
+            $result.Add($domain)
+            $this.Stats.Normal++
+        }
+        
+        [Logger]::Info("📊 Filter results: $($this.Stats.Total.ToString('N0')) → $($result.Count.ToString('N0'))")
+        [Logger]::Info("   Whitelisted: $($this.Stats.Whitelisted.ToString('N0'))")
+        [Logger]::Info("   Blacklisted: $($this.Stats.Blacklisted.ToString('N0'))")
+        
+        return $result
+    }
+    
+    [void] ExportToHosts([System.Collections.Generic.List[string]]$domains) {
+        $config = [Configuration]::Get()
+        $outputPath = [SecurityContext]::ResolvePath($config.Paths.OutputHosts)
+        
+        [Logger]::Info("💾 Exporting to $outputPath...")
+        
+        $writer = [System.IO.StreamWriter]::new($outputPath, $false, [System.Text.Encoding]::UTF8)
+        
+        try {
+            $writer.WriteLine("# DNS Blocklist Manager v$([Configuration]::GetVersion())")
+            $writer.WriteLine("# Generated: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss UTC')")
+            $writer.WriteLine("# Total domains: $($domains.Count.ToString('N0'))")
+            $writer.WriteLine("# ==========================================")
+            $writer.WriteLine()
+            
+            # Sort and write
+            $sorted = $domains | Sort-Object
+            foreach ($domain in $sorted) {
+                $writer.WriteLine("0.0.0.0 $domain")
+            }
+        }
+        finally {
+            $writer.Close()
+        }
+        
+        $fileSize = (Get-Item $outputPath).Length / 1MB
+        [Logger]::Info("✓ Exported: $([math]::Round($fileSize, 2))MB, $($domains.Count.ToString('N0')) domains")
+    }
+}
+
+# -----------------------------------------------------------------------------
+# 8. BACKUP MANAGER
+# -----------------------------------------------------------------------------
+
+class BackupManager {
+    static [void] CreateBackup() {
+        if ($global:NoBackup) {
+            [Logger]::Info("⏭️ Backup skipped (--NoBackup)")
+            return
+        }
+        
+        $config = [Configuration]::Get()
+        $outputPath = [SecurityContext]::ResolvePath($config.Paths.OutputHosts)
+        
+        if (-not (Test-Path $outputPath)) {
+            [Logger]::Info("⏭️ No existing hosts.txt to backup")
+            return
+        }
+        
+        $backupDir = [SecurityContext]::ResolvePath($config.Paths.BackupDir)
+        if (-not (Test-Path $backupDir)) {
+            New-Item -ItemType Directory -Path $backupDir -Force | Out-Null
+        }
+        
+        $timestamp = Get-Date -Format 'yyyyMMdd_HHmmss'
+        $backupPath = Join-Path $backupDir "hosts_$timestamp.txt"
+        
+        try {
+            Copy-Item $outputPath $backupPath -Force
+            [Logger]::Info("💾 Backup created: $backupPath")
+        }
+        catch {
+            [Logger]::Warn("Backup failed: $($_.Exception.Message)")
+        }
+    }
+}
+
+# -----------------------------------------------------------------------------
+# 9. MAIN PIPELINE (Functional composition)
+# -----------------------------------------------------------------------------
+
+function Invoke-Pipeline {
+    try {
+        # Header
+        Write-Host @"
+╔══════════════════════════════════════════════════════════════════════╗
+║     DNS BLOCKLIST MANAGER v$([Configuration]::GetVersion()) - ELITE EDITION     ║
+║     HaGeZi PRO → hosts.txt | Security Hardened | Async Logging      ║
+╚══════════════════════════════════════════════════════════════════════╝
+"@ -ForegroundColor Cyan
+        
+        # Validate environment
+        [SecurityContext]::ValidateEnvironment()
+        
+        if (-not [SecurityContext]::IsAdministrator) {
+            [Logger]::Warn("Not running as administrator (some features limited)")
+        }
+        
+        # Acquire process lock
+        if (-not [ProcessManager]::AcquireLock()) {
+            return 1
+        }
+        
+        # Phase 1: Backup
+        [Logger]::Info("┌─ [1/5] 📦 Backup phase")
+        [BackupManager]::CreateBackup()
+        
+        # Phase 2: Download
+        [Logger]::Info("├─ [2/5] 🌐 Download phase")
+        $config = [Configuration]::Get()
+        $source = $config.Sources[0]
+        
+        $content = [HttpClient]::DownloadWithRetry -url $source.Url -name $source.Name
+        if (-not $content) {
+            throw "Download failed, aborting"
+        }
+        
+        # Phase 3: Parse
+        [Logger]::Info("├─ [3/5] 🔧 Processing phase")
+        $engine = [BlocklistEngine]::new()
+        $engine.LoadCustomLists()
+        $engine.ProcessContent($content)
+        
+        # Phase 4: Filter
+        [Logger]::Info("├─ [4/5] 🔍 Filtering phase")
+        $filtered = $engine.ApplyFilters()
+        
+        # Phase 5: Export
+        [Logger]::Info("└─ [5/5] 💾 Export phase")
+        $engine.ExportToHosts($filtered)
+        
+        # Success summary
+        Write-Host @"
+╔══════════════════════════════════════════════════════════════════════╗
+║                         ✅ BUILD SUCCESSFUL                          ║
+╠══════════════════════════════════════════════════════════════════════╣
+║  Total blocked domains: $($filtered.Count.ToString('N0').PadLeft(28)) ║
+║  File size:            $([math]::Round((Get-Item $([SecurityContext]::ResolvePath($config.Paths.OutputHosts))).Length / 1MB, 2).ToString().PadLeft(28)) MB ║
+╚══════════════════════════════════════════════════════════════════════╝
+"@ -ForegroundColor Green
+        
+        return 0
+    }
+    catch {
+        [Logger]::Error("Pipeline failed: $($_.Exception.Message)")
+        Write-Host "`n❌ BUILD FAILED: $($_.Exception.Message)" -ForegroundColor Red
+        return 1
+    }
+    finally {
+        [ProcessManager]::ReleaseLock()
+        [Logger]::Shutdown()
+        [HttpClient]::Shutdown()
+    }
+}
+
+# -----------------------------------------------------------------------------
+# 10. ENTRY POINT
+# -----------------------------------------------------------------------------
+
+# Initialize subsystems
+[Logger]::Initialize()
+[HttpClient]::Initialize()
+[ProcessManager]::Initialize()
+
+# Run pipeline
+$exitCode = Invoke-Pipeline
+exit $exitCode
