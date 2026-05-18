@@ -32,6 +32,304 @@ __version__ = "7.1.0-evolution"
 
 
 # ============================================================================
+# Конфигурация с типизацией и валидацией
+# ============================================================================
+
+@dataclass(frozen=True)
+class SourceConfig:
+    """Конфигурация источника блоклиста"""
+    name: str
+    url: str
+    enabled: bool = True
+    priority: int = 0  # Чем выше, тем важнее
+    max_size_mb: int = 500
+    expected_format: str = "hosts"  # hosts, domains, adblock
+
+
+@dataclass(frozen=True)
+class AppConfig:
+    """Главная конфигурация приложения"""
+    timeout: int = 30
+    max_retries: int = 3
+    retry_delay: int = 5
+    user_agent: str = f"DNS-Blocklist-Manager/{__version__}"
+    max_domains: int = 10_000_000
+    enable_cache: bool = True
+    cache_ttl_hours: int = 24
+    parallel_downloads: int = 3
+    sources: List[SourceConfig] = field(default_factory=lambda: [
+        SourceConfig(
+            name="HaGeZi PRO",
+            url="https://raw.githubusercontent.com/hagezi/dns-blocklists/main/domains/pro.txt",
+            priority=100
+        ),
+    ])
+    
+    @classmethod
+    def from_env(cls) -> 'AppConfig':
+        """Загрузка конфигурации из переменных окружения"""
+        config = cls()
+        with suppress(Exception):
+            if os.getenv("BLOCKLIST_TIMEOUT"):
+                config = config._replace(timeout=int(os.getenv("BLOCKLIST_TIMEOUT")))
+        return config
+
+
+CONFIG = AppConfig.from_env()
+
+
+# ============================================================================
+# Пути к файлам с использованием Path API
+# ============================================================================
+
+@dataclass(frozen=True)
+class FilePaths:
+    """Централизованное управление путями"""
+    output_hosts: Path = Path("hosts.txt")
+    backup_dir: Path = Path("backup")
+    whitelist: Path = Path("lists/whitelist.txt")
+    blacklist: Path = Path("lists/blacklist.txt")
+    wildcard_whitelist: Path = Path("lists/wildcard_whitelist.txt")
+    log_dir: Path = Path("logs")
+    log_file: Path = Path("logs/dns_blocker.log")
+    cache_dir: Path = Path(".cache")
+    cache_file: Path = Path(".cache/domains_cache.json")
+    stats_file: Path = Path("stats.json")
+    pid_file: Path = Path("/tmp/dns_blocker.pid")
+    
+    def __post_init__(self):
+        """Создание необходимых директорий"""
+        for dir_path in {self.backup_dir, self.log_dir, self.cache_dir}:
+            dir_path.mkdir(parents=True, exist_ok=True)
+
+
+FILES = FilePaths()
+
+
+# ============================================================================
+# Кастомные исключения
+# ============================================================================
+
+class BlocklistError(Exception):
+    """Базовое исключение для блоклиста"""
+    pass
+
+
+class FetchError(BlocklistError):
+    """Ошибка загрузки данных"""
+    pass
+
+
+class ValidationError(BlocklistError):
+    """Ошибка валидации домена"""
+    pass
+
+
+# ============================================================================
+# Логирование с ротацией и форматированием (ДОЛЖНО БЫТЬ ПЕРВЫМ)
+# ============================================================================
+
+class EliteLogger:
+    """Профессиональный логгер с цветным выводом и структурированным логированием"""
+    
+    _COLORS = {
+        "INFO": "\033[92m",    # Green
+        "WARNING": "\033[93m", # Yellow
+        "ERROR": "\033[91m",   # Red
+        "DEBUG": "\033[96m",   # Cyan
+        "RESET": "\033[0m",
+    }
+    
+    def __init__(self, log_file: Path, verbose: bool = False):
+        self.logger = logging.getLogger("DNSBlocklistManager")
+        self.logger.setLevel(logging.DEBUG if verbose else logging.INFO)
+        self.logger.handlers.clear()
+        
+        # Файловый хендлер с ротацией
+        file_handler = logging.handlers.RotatingFileHandler(
+            log_file, maxBytes=10 * 1024 * 1024, backupCount=10, encoding="utf-8"
+        )
+        file_handler.setFormatter(logging.Formatter(
+            "[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S"
+        ))
+        self.logger.addHandler(file_handler)
+        
+        # Консольный хендлер с цветами
+        console_handler = logging.StreamHandler()
+        console_handler.setFormatter(self._ColoredFormatter())
+        self.logger.addHandler(console_handler)
+    
+    class _ColoredFormatter(logging.Formatter):
+        def format(self, record):
+            color = EliteLogger._COLORS.get(record.levelname, EliteLogger._COLORS["RESET"])
+            record.levelname = f"{color}{record.levelname}{EliteLogger._COLORS['RESET']}"
+            return super().format(record)
+    
+    def _log(self, level: str, msg: str, emoji: str = ""):
+        getattr(self.logger, level.lower())(f"{emoji} {msg}" if emoji else msg)
+    
+    def info(self, msg: str): self._log("INFO", msg, "ℹ️")
+    def warning(self, msg: str): self._log("WARNING", msg, "⚠️")
+    def error(self, msg: str): self._log("ERROR", msg, "❌")
+    def debug(self, msg: str): self._log("DEBUG", msg, "🐛")
+    def success(self, msg: str): self._log("INFO", msg, "✅")
+    def progress(self, msg: str): self._log("INFO", msg, "📊")
+
+
+# ============================================================================
+# Продвинутый валидатор доменов
+# ============================================================================
+
+class DomainValidator:
+    """Валидация доменов с поддержкой wildcard и regex"""
+    
+    # TLD проверка (примерные, для реального использования нужен полный список)
+    _VALID_TLDS: Set[str] = {
+        'com', 'org', 'net', 'io', 'app', 'dev', 'xyz', 'info', 'biz',
+        'ru', 'ua', 'by', 'kz', 'pl', 'de', 'fr', 'uk', 'us', 'ca', 'au',
+        'jp', 'cn', 'in', 'br', 'mx', 'za', 'eg', 'sa', 'ae', 'tr'
+    }
+    
+    # Паттерны для очистки
+    _CLEAN_PATTERNS: List[re.Pattern] = [
+        re.compile(r'^https?://'),
+        re.compile(r'^[0-9.]+ '),
+        re.compile(r'^\|\|'),
+        re.compile(r'\^$'),
+        re.compile(r'/+\s*$'),
+        re.compile(r'^[0-9a-f:]+ '),
+    ]
+    
+    @classmethod
+    def clean(cls, line: str) -> Optional[str]:
+        """
+        Очистка и извлечение домена из строки
+        Возвращает None если строка не является валидным доменом
+        """
+        if not line or not isinstance(line, str):
+            return None
+        
+        # Удаление комментариев
+        if "#" in line:
+            line = line[:line.index("#")]
+        
+        # Очистка от лишних символов
+        line = line.strip().lower()
+        if not line:
+            return None
+        
+        # Применение паттернов очистки
+        for pattern in cls._CLEAN_PATTERNS:
+            line = pattern.sub('', line)
+        
+        # Проверка на IP-адреса
+        if re.match(r'^\d+(\.\d+){3}$', line) or re.match(r'^[0-9a-f:]+$', line):
+            return None
+        
+        # Базовая валидация домена
+        if not cls._is_valid_domain(line):
+            return None
+        
+        return line
+    
+    @classmethod
+    def _is_valid_domain(cls, domain: str) -> bool:
+        """Строгая валидация домена"""
+        if len(domain) > 253:
+            return False
+        
+        if domain.startswith('.') or domain.endswith('.'):
+            return False
+        
+        if '..' in domain:
+            return False
+        
+        # Проверка допустимых символов
+        if not re.match(r'^[a-z0-9][a-z0-9.-]*[a-z0-9]$', domain):
+            return False
+        
+        # Проверка TLD
+        parts = domain.split('.')
+        if len(parts) >= 2:
+            tld = parts[-1]
+            # Не блокируем если TLD не в списке (может быть новый домен)
+            if tld not in cls._VALID_TLDS and len(tld) > 6:
+                return False
+        
+        return True
+    
+    @classmethod
+    def match_wildcard(cls, domain: str, patterns: Set[str]) -> bool:
+        """Проверка соответствия домена wildcard паттернам"""
+        for pattern in patterns:
+            if pattern.endswith('*'):
+                if domain.startswith(pattern[:-1]):
+                    return True
+            elif pattern.startswith('*'):
+                if domain.endswith(pattern[1:]):
+                    return True
+            elif '*' in pattern:
+                regex = pattern.replace('.', r'\.').replace('*', '.*')
+                if re.match(f"^{regex}$", domain):
+                    return True
+            elif domain == pattern:
+                return True
+        return False
+
+
+# ============================================================================
+# Кэширование результатов
+# ============================================================================
+
+class DomainCache:
+    """Кэширование доменов с TTL"""
+    
+    def __init__(self, cache_file: Path, ttl_hours: int = 24):
+        self.cache_file = cache_file
+        self.ttl = timedelta(hours=ttl_hours)
+        self._cache: Dict[str, Dict] = {}
+        self._load()
+    
+    def _load(self):
+        """Загрузка кэша из файла"""
+        if not self.cache_file.exists():
+            return
+        
+        try:
+            with open(self.cache_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                timestamp = datetime.fromisoformat(data.get('timestamp', '2000-01-01'))
+                
+                if datetime.now() - timestamp < self.ttl:
+                    self._cache = data.get('domains', {})
+                    return
+        except (json.JSONDecodeError, KeyError, ValueError):
+            pass
+        
+        self._cache = {}
+    
+    def save(self):
+        """Сохранение кэша в файл"""
+        data = {
+            'timestamp': datetime.now().isoformat(),
+            'domains': self._cache
+        }
+        with open(self.cache_file, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=2)
+    
+    def get(self, source: str) -> Optional[Set[str]]:
+        """Получение доменов из кэша"""
+        if source in self._cache:
+            return set(self._cache[source])
+        return None
+    
+    def set(self, source: str, domains: Set[str]):
+        """Сохранение доменов в кэш"""
+        self._cache[source] = list(domains)
+
+
+# ============================================================================
 # ENHANCEMENT 1: Потоковый процессор для экономии памяти
 # ============================================================================
 
@@ -413,6 +711,39 @@ class AsyncFetcher:
             
             self.logger.error(f"{name}: Failed after {CONFIG.max_retries} attempts")
             return None
+    
+    async def fetch_all(self, sources: List[SourceConfig]) -> Dict[str, Set[str]]:
+        """Параллельная загрузка всех источников"""
+        tasks = []
+        for source in sources:
+            if source.enabled:
+                tasks.append(self._fetch_with_parse(source))
+        
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        
+        domains_by_source = {}
+        for result in results:
+            if isinstance(result, tuple):
+                name, domains = result
+                if domains:
+                    domains_by_source[name] = domains
+        
+        return domains_by_source
+    
+    async def _fetch_with_parse(self, source: SourceConfig) -> tuple[str, Set[str]]:
+        """Загрузка и парсинг одного источника"""
+        content = await self.fetch(source.url, source.name)
+        if not content:
+            return source.name, set()
+        
+        domains = set()
+        for line in content.splitlines():
+            domain = DomainValidator.clean(line)
+            if domain:
+                domains.add(domain)
+        
+        self.logger.info(f"  📥 {source.name}: {len(domains):,} domains")
+        return source.name, domains
 
 
 # ============================================================================
@@ -555,7 +886,82 @@ class BlocklistManager:
 
 
 # ============================================================================
-# ENHANCEMENT 7: Обновленная main с новыми возможностями
+# Экспорт в различные форматы (оригинальный для бэкапа)
+# ============================================================================
+
+class Exporter:
+    """Экспорт блоклиста в различные форматы"""
+    
+    @staticmethod
+    def backup():
+        """Создание бэкапа существующего файла"""
+        if FILES.output_hosts.exists():
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            backup_path = FILES.backup_dir / f"hosts_{timestamp}.txt"
+            shutil.copy2(FILES.output_hosts, backup_path)
+            return backup_path
+        return None
+
+
+# ============================================================================
+# PID менеджер для предотвращения дублирования
+# ============================================================================
+
+class PIDManager:
+    """Управление PID файлом для предотвращения множественных запусков"""
+    
+    def __init__(self, pid_file: Path):
+        self.pid_file = pid_file
+        self.pid = os.getpid()
+    
+    def acquire(self) -> bool:
+        """Захват блокировки"""
+        if self.pid_file.exists():
+            try:
+                old_pid = int(self.pid_file.read_text().strip())
+                # Проверка, жив ли процесс
+                os.kill(old_pid, 0)
+                print(f"❌ Процесс уже запущен (PID: {old_pid})")
+                return False
+            except (OSError, ValueError):
+                # Процесс мертв, можно удалить файл
+                self.pid_file.unlink()
+        
+        self.pid_file.write_text(str(self.pid))
+        return True
+    
+    def release(self):
+        """Освобождение блокировки"""
+        try:
+            if self.pid_file.exists() and int(self.pid_file.read_text().strip()) == self.pid:
+                self.pid_file.unlink()
+        except (OSError, ValueError):
+            pass
+
+
+# ============================================================================
+# Обработчики сигналов
+# ============================================================================
+
+class SignalHandler:
+    """Грациозная обработка сигналов"""
+    
+    def __init__(self):
+        self.shutdown_event = asyncio.Event()
+        
+    def setup(self):
+        """Установка обработчиков"""
+        loop = asyncio.get_running_loop()
+        for sig in (signal.SIGTERM, signal.SIGINT):
+            loop.add_signal_handler(sig, lambda: self.shutdown_event.set())
+    
+    async def wait_for_shutdown(self):
+        """Ожидание сигнала завершения"""
+        await self.shutdown_event.wait()
+
+
+# ============================================================================
+# Основная функция с прогресс-баром
 # ============================================================================
 
 async def main() -> int:
@@ -594,7 +1000,7 @@ async def main() -> int:
         
         # Шаг 1: Бэкап
         logger.progress("Step 1/4: Creating backup")
-        exporter = Exporter()  # Используем статический экспортер для бэкапа
+        exporter = Exporter()
         backup_path = exporter.backup()
         if backup_path:
             logger.info(f"Backup created: {backup_path}")
@@ -654,3 +1060,20 @@ async def main() -> int:
             import traceback
             traceback.print_exc()
         return 1
+
+
+def cli_entry():
+    """Точка входа для CLI"""
+    try:
+        exit_code = asyncio.run(main())
+        sys.exit(exit_code)
+    except KeyboardInterrupt:
+        print("\n⚠️ Прервано пользователем")
+        sys.exit(130)
+    except Exception as e:
+        print(f"❌ Фатальная ошибка: {e}")
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    cli_entry()
