@@ -71,7 +71,18 @@ class AppConfig:
         config = cls()
         with suppress(Exception):
             if os.getenv("BLOCKLIST_TIMEOUT"):
-                config = config._replace(timeout=int(os.getenv("BLOCKLIST_TIMEOUT")))
+                # Для frozen dataclass нужно создать новый объект
+                return cls(
+                    timeout=int(os.getenv("BLOCKLIST_TIMEOUT")),
+                    max_retries=config.max_retries,
+                    retry_delay=config.retry_delay,
+                    user_agent=config.user_agent,
+                    max_domains=config.max_domains,
+                    enable_cache=config.enable_cache,
+                    cache_ttl_hours=config.cache_ttl_hours,
+                    parallel_downloads=config.parallel_downloads,
+                    sources=config.sources
+                )
         return config
 
 
@@ -126,7 +137,7 @@ class ValidationError(BlocklistError):
 
 
 # ============================================================================
-# Логирование с ротацией и форматированием (ДОЛЖНО БЫТЬ ПЕРВЫМ)
+# Логирование с ротацией и форматированием
 # ============================================================================
 
 class EliteLogger:
@@ -184,7 +195,7 @@ class EliteLogger:
 class DomainValidator:
     """Валидация доменов с поддержкой wildcard и regex"""
     
-    # TLD проверка (примерные, для реального использования нужен полный список)
+    # TLD проверка
     _VALID_TLDS: Set[str] = {
         'com', 'org', 'net', 'io', 'app', 'dev', 'xyz', 'info', 'biz',
         'ru', 'ua', 'by', 'kz', 'pl', 'de', 'fr', 'uk', 'us', 'ca', 'au',
@@ -253,7 +264,6 @@ class DomainValidator:
         parts = domain.split('.')
         if len(parts) >= 2:
             tld = parts[-1]
-            # Не блокируем если TLD не в списке (может быть новый домен)
             if tld not in cls._VALID_TLDS and len(tld) > 6:
                 return False
         
@@ -414,14 +424,6 @@ class RateLimiter:
                 await asyncio.sleep(wait_time)
             
             self.last_request_time = time.time()
-    
-    def __call__(self, func):
-        """Декоратор для применения rate limiting"""
-        @wraps(func)
-        async def wrapper(*args, **kwargs):
-            await self.acquire()
-            return await func(*args, **kwargs)
-        return wrapper
 
 
 # ============================================================================
@@ -660,10 +662,12 @@ class AsyncFetcher:
         if self.session:
             await self.session.close()
     
-    @RateLimiter(2.0)  # Декоратор для ограничения запросов
     async def fetch(self, url: str, name: str) -> Optional[str]:
         """Загрузка одного источника с поддержкой сжатия"""
         async with self.semaphore:
+            # Применяем rate limiting перед запросом
+            await self.rate_limiter.acquire()
+            
             for attempt in range(CONFIG.max_retries):
                 try:
                     async with self.session.get(url) as resp:
@@ -673,7 +677,7 @@ class AsyncFetcher:
                             
                             # Логирование размера сжатого vs распакованного
                             content_encoding = resp.headers.get('Content-Encoding', 'none')
-                            if content_encoding != 'none':
+                            if content_encoding != 'none' and hasattr(resp, '_body'):
                                 compressed_size = len(resp._body or b'')
                                 self.logger.debug(
                                     f"{name}: {len(text):,} bytes "
@@ -727,6 +731,8 @@ class AsyncFetcher:
                 name, domains = result
                 if domains:
                     domains_by_source[name] = domains
+            elif isinstance(result, Exception):
+                self.logger.error(f"Error in fetch: {result}")
         
         return domains_by_source
     
@@ -788,7 +794,7 @@ class BlocklistManager:
         self.logger.progress("Starting streaming blocklist build")
         
         # Загрузка всех источников
-        all_domains = set()
+        all_domains = None
         
         if use_cache:
             cache = DomainCache(FILES.cache_file, CONFIG.cache_ttl_hours)
@@ -797,7 +803,7 @@ class BlocklistManager:
                 self.logger.info(f"📀 Using cache: {len(cached):,} domains")
                 all_domains = cached
         
-        if not all_domains:
+        if all_domains is None:
             async with AsyncFetcher(
                 self.logger, 
                 CONFIG.parallel_downloads,
@@ -807,22 +813,31 @@ class BlocklistManager:
                 
                 # Объединение с прогресс-трекингом
                 total_sources = len(domains_by_source)
-                progress = ProgressTracker(
-                    self.logger, total_sources, "Merging sources"
-                )
-                
-                for source_name, domains in domains_by_source.items():
-                    all_domains.update(domains)
-                    self.stats[f"from_{source_name}"] = len(domains)
-                    progress.update()
-                
-                progress.finish()
+                if total_sources > 0:
+                    progress = ProgressTracker(
+                        self.logger, total_sources, "Merging sources"
+                    )
+                    
+                    all_domains = set()
+                    for source_name, domains in domains_by_source.items():
+                        all_domains.update(domains)
+                        self.stats[f"from_{source_name}"] = len(domains)
+                        progress.update()
+                    
+                    progress.finish()
+                else:
+                    self.logger.error("No sources loaded successfully")
+                    return iter([])
             
             # Сохранение в кэш
-            if use_cache:
+            if use_cache and all_domains:
                 cache = DomainCache(FILES.cache_file, CONFIG.cache_ttl_hours)
                 cache.set("combined", all_domains)
                 cache.save()
+        
+        if not all_domains:
+            self.logger.error("No domains collected")
+            return iter([])
         
         self.stats["total_raw"] = len(all_domains)
         self.logger.info(f"📊 Total unique domains collected: {len(all_domains):,}")
@@ -838,34 +853,25 @@ class BlocklistManager:
             self.wildcard_whitelist
         )
         
-        # Счетчик для прогресса (без загрузки в память)
-        processed = 0
-        for domain in filtered_stream:
-            processed += 1
-            if processed % 10000 == 0:
-                self.logger.debug(f"Streamed {processed:,} domains...")
-            yield domain
-        
-        # Логируем финальную статистику
+        # Возвращаем генератор
+        return filtered_stream
+    
+    def get_final_stats(self, total_domains: int):
+        """Логирование финальной статистики"""
         final_stats = self.stream_processor.get_stats()
         self.stats.update(final_stats)
-        self._log_stats()
         
-        self.logger.success(f"Streaming complete: {processed:,} domains")
-    
-    def _log_stats(self):
-        """Вывод статистики"""
-        total_output = self.stats['normal'] + self.stats['blacklisted']
+        total_output = self.stats.get('normal', 0) + self.stats.get('blacklisted', 0)
         
         self.logger.info("📈 Processing statistics:")
-        self.logger.info(f"   ├─ Input domains: {self.stats['total_raw']:,}")
+        self.logger.info(f"   ├─ Input domains: {self.stats.get('total_raw', 0):,}")
         self.logger.info(f"   ├─ Output domains: {total_output:,}")
-        self.logger.info(f"   ├─ Whitelisted: {self.stats['whitelisted']}")
-        self.logger.info(f"   ├─ Wildcard whitelisted: {self.stats['wildcard_whitelisted']}")
-        self.logger.info(f"   └─ Blacklisted (forced): {self.stats['blacklisted']}")
+        self.logger.info(f"   ├─ Whitelisted: {self.stats.get('whitelisted', 0)}")
+        self.logger.info(f"   ├─ Wildcard whitelisted: {self.stats.get('wildcard_whitelisted', 0)}")
+        self.logger.info(f"   └─ Blacklisted (forced): {self.stats.get('blacklisted', 0)}")
         
         # Расчет эффективности фильтрации
-        if self.stats['total_raw'] > 0:
+        if self.stats.get('total_raw', 0) > 0:
             reduction = (1 - total_output / self.stats['total_raw']) * 100
             self.logger.info(f"   └─ Reduction: {reduction:.1f}%")
     
@@ -1017,9 +1023,12 @@ async def main() -> int:
         # Шаг 3: Экспорт в несколько форматов
         logger.progress("Step 3/4: Exporting to multiple formats")
         
-        # Для экспорта нам нужен iterable, который можно использовать дважды
-        # Поэтому сохраняем в список ТОЛЬКО если нужно несколько форматов
-        domains_list = list(domain_stream)  # Здесь происходит полная загрузка в память
+        # Для экспорта сохраняем в список
+        domains_list = list(domain_stream)
+        
+        if not domains_list:
+            logger.error("No domains to export!")
+            return 1
         
         # Экспорт во все форматы
         exports = registry.export_all(
@@ -1039,6 +1048,7 @@ async def main() -> int:
         
         # Шаг 4: Статистика
         logger.progress("Step 4/4: Saving statistics")
+        manager.get_final_stats(len(domains_list))
         manager.save_stats()
         
         # Финальный вывод
