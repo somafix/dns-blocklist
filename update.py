@@ -41,9 +41,9 @@ class SourceConfig:
     name: str
     url: str
     enabled: bool = True
-    priority: int = 0  # Чем выше, тем важнее
+    priority: int = 0
     max_size_mb: int = 500
-    expected_format: str = "hosts"  # hosts, domains, adblock
+    expected_format: str = "hosts"
 
 
 @dataclass(frozen=True)
@@ -68,22 +68,21 @@ class AppConfig:
     @classmethod
     def from_env(cls) -> 'AppConfig':
         """Загрузка конфигурации из переменных окружения"""
-        config = cls()
+        timeout = cls().timeout
         with suppress(Exception):
             if os.getenv("BLOCKLIST_TIMEOUT"):
-                # Для frozen dataclass нужно создать новый объект
-                return cls(
-                    timeout=int(os.getenv("BLOCKLIST_TIMEOUT")),
-                    max_retries=config.max_retries,
-                    retry_delay=config.retry_delay,
-                    user_agent=config.user_agent,
-                    max_domains=config.max_domains,
-                    enable_cache=config.enable_cache,
-                    cache_ttl_hours=config.cache_ttl_hours,
-                    parallel_downloads=config.parallel_downloads,
-                    sources=config.sources
-                )
-        return config
+                timeout = int(os.getenv("BLOCKLIST_TIMEOUT"))
+        return cls(
+            timeout=timeout,
+            max_retries=cls().max_retries,
+            retry_delay=cls().retry_delay,
+            user_agent=cls().user_agent,
+            max_domains=cls().max_domains,
+            enable_cache=cls().enable_cache,
+            cache_ttl_hours=cls().cache_ttl_hours,
+            parallel_downloads=cls().parallel_downloads,
+            sources=cls().sources
+        )
 
 
 CONFIG = AppConfig.from_env()
@@ -144,10 +143,10 @@ class EliteLogger:
     """Профессиональный логгер с цветным выводом и структурированным логированием"""
     
     _COLORS = {
-        "INFO": "\033[92m",    # Green
-        "WARNING": "\033[93m", # Yellow
-        "ERROR": "\033[91m",   # Red
-        "DEBUG": "\033[96m",   # Cyan
+        "INFO": "\033[92m",
+        "WARNING": "\033[93m",
+        "ERROR": "\033[91m",
+        "DEBUG": "\033[96m",
         "RESET": "\033[0m",
     }
     
@@ -195,14 +194,12 @@ class EliteLogger:
 class DomainValidator:
     """Валидация доменов с поддержкой wildcard и regex"""
     
-    # TLD проверка
     _VALID_TLDS: Set[str] = {
         'com', 'org', 'net', 'io', 'app', 'dev', 'xyz', 'info', 'biz',
         'ru', 'ua', 'by', 'kz', 'pl', 'de', 'fr', 'uk', 'us', 'ca', 'au',
         'jp', 'cn', 'in', 'br', 'mx', 'za', 'eg', 'sa', 'ae', 'tr'
     }
     
-    # Паттерны для очистки
     _CLEAN_PATTERNS: List[re.Pattern] = [
         re.compile(r'^https?://'),
         re.compile(r'^[0-9.]+ '),
@@ -214,31 +211,23 @@ class DomainValidator:
     
     @classmethod
     def clean(cls, line: str) -> Optional[str]:
-        """
-        Очистка и извлечение домена из строки
-        Возвращает None если строка не является валидным доменом
-        """
+        """Очистка и извлечение домена из строки"""
         if not line or not isinstance(line, str):
             return None
         
-        # Удаление комментариев
         if "#" in line:
             line = line[:line.index("#")]
         
-        # Очистка от лишних символов
         line = line.strip().lower()
         if not line:
             return None
         
-        # Применение паттернов очистки
         for pattern in cls._CLEAN_PATTERNS:
             line = pattern.sub('', line)
         
-        # Проверка на IP-адреса
         if re.match(r'^\d+(\.\d+){3}$', line) or re.match(r'^[0-9a-f:]+$', line):
             return None
         
-        # Базовая валидация домена
         if not cls._is_valid_domain(line):
             return None
         
@@ -256,11 +245,9 @@ class DomainValidator:
         if '..' in domain:
             return False
         
-        # Проверка допустимых символов
         if not re.match(r'^[a-z0-9][a-z0-9.-]*[a-z0-9]$', domain):
             return False
         
-        # Проверка TLD
         parts = domain.split('.')
         if len(parts) >= 2:
             tld = parts[-1]
@@ -298,7 +285,7 @@ class DomainCache:
     def __init__(self, cache_file: Path, ttl_hours: int = 24):
         self.cache_file = cache_file
         self.ttl = timedelta(hours=ttl_hours)
-        self._cache: Dict[str, Dict] = {}
+        self._cache: Dict[str, List[str]] = {}
         self._load()
     
     def _load(self):
@@ -340,14 +327,11 @@ class DomainCache:
 
 
 # ============================================================================
-# ENHANCEMENT 1: Потоковый процессор для экономии памяти
+# Потоковый процессор для экономии памяти
 # ============================================================================
 
 class StreamingDomainProcessor:
-    """
-    Потоковая обработка доменов без загрузки всех в память
-    Использует генераторы для экономии RAM при больших списках
-    """
+    """Потоковая обработка доменов без загрузки всех в память"""
     
     def __init__(self, chunk_size: int = 10000):
         self.chunk_size = chunk_size
@@ -357,24 +341,18 @@ class StreamingDomainProcessor:
                       whitelist: Set[str],
                       blacklist: Set[str],
                       wildcard_whitelist: Set[str]) -> Iterator[str]:
-        """
-        Потоковая фильтрация - возвращает генератор
-        Память: O(chunk_size) вместо O(total_domains)
-        """
+        """Потоковая фильтрация - возвращает генератор"""
         chunk = []
         
         for domain in domains:
-            # Проверка wildcard whitelist
             if DomainValidator.match_wildcard(domain, wildcard_whitelist):
                 self.stats["wildcard_whitelisted"] += 1
                 continue
             
-            # Обычный whitelist
             if domain in whitelist:
                 self.stats["whitelisted"] += 1
                 continue
             
-            # Blacklist (force include)
             if domain in blacklist:
                 self.stats["blacklisted"] += 1
                 chunk.append(domain)
@@ -382,16 +360,13 @@ class StreamingDomainProcessor:
                 self.stats["normal"] += 1
                 chunk.append(domain)
             
-            # Yield chunk когда накопили
             if len(chunk) >= self.chunk_size:
                 yield from chunk
                 chunk = []
                 
-                # Опционально: принудительная сборка мусора
                 if len(chunk) == 0:
                     gc.collect()
         
-        # Последний чанк
         if chunk:
             yield from chunk
     
@@ -401,7 +376,7 @@ class StreamingDomainProcessor:
 
 
 # ============================================================================
-# ENHANCEMENT 2: Rate Limiter для защиты источников
+# Rate Limiter для защиты источников
 # ============================================================================
 
 class RateLimiter:
@@ -427,7 +402,7 @@ class RateLimiter:
 
 
 # ============================================================================
-# ENHANCEMENT 3: Прогресс-бар для длительных операций
+# Прогресс-бар для длительных операций
 # ============================================================================
 
 class ProgressTracker:
@@ -440,14 +415,11 @@ class ProgressTracker:
         self.processed = 0
         self.start_time = time.time()
         self.last_log_time = 0
-        self.last_processed = 0
-        self.eta_seconds = 0
     
     def update(self, increment: int = 1):
         """Обновление прогресса"""
         self.processed += increment
         
-        # Логируем каждые 5 секунд или каждые 10%
         now = time.time()
         if now - self.last_log_time >= 5.0:
             self._log_progress()
@@ -469,7 +441,7 @@ class ProgressTracker:
             self.logger.info(
                 f"📊 {self.description}: {percent:.1f}% "
                 f"({self.processed:,}/{self.total:,}) "
-                f"| {rate:.0f} domains/s | ETA: {self._format_time(eta)}"
+                f"| {rate:.0f} items/s | ETA: {self._format_time(eta)}"
             )
     
     @staticmethod
@@ -494,7 +466,7 @@ class ProgressTracker:
 
 
 # ============================================================================
-# ENHANCEMENT 4: Плагинная система экспортеров
+# Плагинная система экспортеров
 # ============================================================================
 
 class BaseExporter(ABC):
@@ -533,7 +505,6 @@ class HostsExporter(BaseExporter):
     
     def export(self, domains: Iterable[str], output_path: Path) -> None:
         with open(output_path, 'w', encoding='utf-8') as f:
-            # Заголовок
             f.write(
                 f"# ================================================================\n"
                 f"# DNS Blocklist Manager v{__version__}\n"
@@ -541,7 +512,6 @@ class HostsExporter(BaseExporter):
                 f"# ================================================================\n\n"
             )
             
-            # Потоковая запись
             for domain in domains:
                 f.write(f"0.0.0.0 {domain}\n")
 
@@ -603,7 +573,6 @@ class ExporterRegistry:
         """Экспорт всеми зарегистрированными экспортерами"""
         results = {}
         
-        # Если не указаны, используем все
         if enabled is None:
             enabled = list(self._exporters.keys())
         
@@ -618,7 +587,7 @@ class ExporterRegistry:
 
 
 # ============================================================================
-# ENHANCEMENT 5: Обновленный AsyncFetcher с rate limiting
+# Асинхронный загрузчик с rate limiting
 # ============================================================================
 
 class AsyncFetcher:
@@ -631,7 +600,6 @@ class AsyncFetcher:
         self.rate_limiter = RateLimiter(rate_limit)
         self.session: Optional[aiohttp.ClientSession] = None
         
-        # Поддержка сжатия
         self.headers = {
             "User-Agent": CONFIG.user_agent,
             "Accept-Encoding": "gzip, deflate",
@@ -663,35 +631,21 @@ class AsyncFetcher:
             await self.session.close()
     
     async def fetch(self, url: str, name: str) -> Optional[str]:
-        """Загрузка одного источника с поддержкой сжатия"""
+        """Загрузка одного источника"""
         async with self.semaphore:
-            # Применяем rate limiting перед запросом
             await self.rate_limiter.acquire()
             
             for attempt in range(CONFIG.max_retries):
                 try:
                     async with self.session.get(url) as resp:
                         if resp.status == 200:
-                            # Автоматическая распаковка gzip/deflate
                             text = await resp.text()
-                            
-                            # Логирование размера сжатого vs распакованного
-                            content_encoding = resp.headers.get('Content-Encoding', 'none')
-                            if content_encoding != 'none' and hasattr(resp, '_body'):
-                                compressed_size = len(resp._body or b'')
-                                self.logger.debug(
-                                    f"{name}: {len(text):,} bytes "
-                                    f"(compressed: {compressed_size:,})"
-                                )
-                            
                             return text
                             
-                        elif resp.status == 429:  # Too Many Requests
+                        elif resp.status == 429:
                             retry_after = resp.headers.get('Retry-After', '5')
                             wait = int(retry_after) if retry_after.isdigit() else 5
-                            self.logger.warning(
-                                f"{name}: Rate limited, waiting {wait}s..."
-                            )
+                            self.logger.warning(f"{name}: Rate limited, waiting {wait}s...")
                             await asyncio.sleep(wait)
                             continue
                             
@@ -709,7 +663,6 @@ class AsyncFetcher:
                     self.logger.warning(f"{name}: {type(e).__name__} - {e}")
                 
                 if attempt < CONFIG.max_retries - 1:
-                    # Exponential backoff
                     delay = CONFIG.retry_delay * (2 ** attempt)
                     await asyncio.sleep(delay)
             
@@ -731,8 +684,6 @@ class AsyncFetcher:
                 name, domains = result
                 if domains:
                     domains_by_source[name] = domains
-            elif isinstance(result, Exception):
-                self.logger.error(f"Error in fetch: {result}")
         
         return domains_by_source
     
@@ -753,7 +704,7 @@ class AsyncFetcher:
 
 
 # ============================================================================
-# ENHANCEMENT 6: Улучшенный BlocklistManager с потоковой обработкой
+# Улучшенный BlocklistManager с потоковой обработкой
 # ============================================================================
 
 class BlocklistManager:
@@ -763,18 +714,16 @@ class BlocklistManager:
         self.logger = logger
         self.stats = defaultdict(int)
         
-        # Загрузка пользовательских списков
         self.whitelist = self._load_domain_list(FILES.whitelist, "whitelist")
         self.blacklist = self._load_domain_list(FILES.blacklist, "blacklist")
         self.wildcard_whitelist = self._load_domain_list(
             FILES.wildcard_whitelist, "wildcard whitelist"
         )
         
-        # Потоковый процессор
         self.stream_processor = StreamingDomainProcessor(chunk_size=10000)
     
     def _load_domain_list(self, path: Path, name: str) -> Set[str]:
-        """Загрузка списка доменов (остается в памяти, т.к. списки маленькие)"""
+        """Загрузка списка доменов"""
         domains = set()
         if path.exists():
             with open(path, 'r', encoding='utf-8') as f:
@@ -786,14 +735,12 @@ class BlocklistManager:
         return domains
     
     async def build_streaming(self, sources: List[SourceConfig], 
-                              use_cache: bool = True) -> Iterator[str]:
+                              use_cache: bool = True) -> List[str]:
         """
-        Потоковая сборка - возвращает генератор вместо полного сета
-        Экономит память при больших объемах
+        Сборка блоклиста - возвращает список доменов
         """
         self.logger.progress("Starting streaming blocklist build")
         
-        # Загрузка всех источников
         all_domains = None
         
         if use_cache:
@@ -811,7 +758,6 @@ class BlocklistManager:
             ) as fetcher:
                 domains_by_source = await fetcher.fetch_all(sources)
                 
-                # Объединение с прогресс-трекингом
                 total_sources = len(domains_by_source)
                 if total_sources > 0:
                     progress = ProgressTracker(
@@ -827,9 +773,8 @@ class BlocklistManager:
                     progress.finish()
                 else:
                     self.logger.error("No sources loaded successfully")
-                    return iter([])
+                    return []
             
-            # Сохранение в кэш
             if use_cache and all_domains:
                 cache = DomainCache(FILES.cache_file, CONFIG.cache_ttl_hours)
                 cache.set("combined", all_domains)
@@ -837,27 +782,25 @@ class BlocklistManager:
         
         if not all_domains:
             self.logger.error("No domains collected")
-            return iter([])
+            return []
         
         self.stats["total_raw"] = len(all_domains)
         self.logger.info(f"📊 Total unique domains collected: {len(all_domains):,}")
         
-        # Потоковая фильтрация
         self.logger.progress("Applying filters (streaming mode)")
         
-        # Создаем генератор
-        filtered_stream = self.stream_processor.process_stream(
+        # Применяем фильтрацию
+        filtered_domains = list(self.stream_processor.process_stream(
             all_domains,
             self.whitelist,
             self.blacklist,
             self.wildcard_whitelist
-        )
+        ))
         
-        # Возвращаем генератор
-        return filtered_stream
+        return filtered_domains
     
-    def get_final_stats(self, total_domains: int):
-        """Логирование финальной статистики"""
+    def update_stats(self, total_domains: int):
+        """Обновление статистики"""
         final_stats = self.stream_processor.get_stats()
         self.stats.update(final_stats)
         
@@ -870,7 +813,6 @@ class BlocklistManager:
         self.logger.info(f"   ├─ Wildcard whitelisted: {self.stats.get('wildcard_whitelisted', 0)}")
         self.logger.info(f"   └─ Blacklisted (forced): {self.stats.get('blacklisted', 0)}")
         
-        # Расчет эффективности фильтрации
         if self.stats.get('total_raw', 0) > 0:
             reduction = (1 - total_output / self.stats['total_raw']) * 100
             self.logger.info(f"   └─ Reduction: {reduction:.1f}%")
@@ -892,7 +834,7 @@ class BlocklistManager:
 
 
 # ============================================================================
-# Экспорт в различные форматы (оригинальный для бэкапа)
+# Экспорт в различные форматы
 # ============================================================================
 
 class Exporter:
@@ -914,7 +856,7 @@ class Exporter:
 # ============================================================================
 
 class PIDManager:
-    """Управление PID файлом для предотвращения множественных запусков"""
+    """Управление PID файлом"""
     
     def __init__(self, pid_file: Path):
         self.pid_file = pid_file
@@ -925,12 +867,10 @@ class PIDManager:
         if self.pid_file.exists():
             try:
                 old_pid = int(self.pid_file.read_text().strip())
-                # Проверка, жив ли процесс
                 os.kill(old_pid, 0)
                 print(f"❌ Процесс уже запущен (PID: {old_pid})")
                 return False
             except (OSError, ValueError):
-                # Процесс мертв, можно удалить файл
                 self.pid_file.unlink()
         
         self.pid_file.write_text(str(self.pid))
@@ -967,22 +907,19 @@ class SignalHandler:
 
 
 # ============================================================================
-# Основная функция с прогресс-баром
+# Основная функция
 # ============================================================================
 
 async def main() -> int:
-    """Главная функция с улучшенной обработкой"""
+    """Главная функция"""
     
-    # Проверка PID
     pid_manager = PIDManager(FILES.pid_file)
     if not pid_manager.acquire():
         return 1
     atexit.register(pid_manager.release)
     
-    # Логгер
     logger = EliteLogger(FILES.log_file, verbose=os.getenv("DEBUG", "0") == "1")
     
-    # Приветствие
     print(f"\n{'='*60}")
     print(f"🚀 DNS BLOCKLIST MANAGER v{__version__}")
     print(f"🔧 Streaming mode: ENABLED (memory optimized)")
@@ -992,45 +929,36 @@ async def main() -> int:
     print(f"{'='*60}\n")
     
     try:
-        # Обработка сигналов
         signal_handler = SignalHandler()
         signal_handler.setup()
         
         manager = BlocklistManager(logger)
         
-        # Регистрация экспортеров
         registry = ExporterRegistry()
         registry.register(HostsExporter())
         registry.register(DomainsExporter())
         registry.register(AdBlockExporter())
         
-        # Шаг 1: Бэкап
         logger.progress("Step 1/4: Creating backup")
         exporter = Exporter()
         backup_path = exporter.backup()
         if backup_path:
             logger.info(f"Backup created: {backup_path}")
         
-        # Шаг 2: Потоковая сборка
         logger.progress("Step 2/4: Building blocklist (streaming mode)")
         
-        # Собираем домены в потоковом режиме
-        domain_stream = await manager.build_streaming(
+        # Получаем список доменов
+        domains_list = await manager.build_streaming(
             CONFIG.sources, 
             use_cache=CONFIG.enable_cache
         )
         
-        # Шаг 3: Экспорт в несколько форматов
         logger.progress("Step 3/4: Exporting to multiple formats")
-        
-        # Для экспорта сохраняем в список
-        domains_list = list(domain_stream)
         
         if not domains_list:
             logger.error("No domains to export!")
             return 1
         
-        # Экспорт во все форматы
         exports = registry.export_all(
             domains_list, 
             FILES.output_hosts.parent,
@@ -1046,12 +974,10 @@ async def main() -> int:
                     size_str = f"{size / 1024:.2f} KB"
                 logger.info(f"   • {fmt}.txt: {size_str}")
         
-        # Шаг 4: Статистика
         logger.progress("Step 4/4: Saving statistics")
-        manager.get_final_stats(len(domains_list))
+        manager.update_stats(len(domains_list))
         manager.save_stats()
         
-        # Финальный вывод
         print(f"\n{'='*60}")
         print(f"✅ BUILD COMPLETED SUCCESSFULLY")
         print(f"{'='*60}")
