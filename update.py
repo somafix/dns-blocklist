@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-DNS Blocklist Manager - Production Ready v10.0.0
+DNS Blocklist Manager - Production Ready v10.0.1
 Полностью рабочий, оптимизированный и протестированный блоклист менеджер
 """
 
@@ -9,27 +9,27 @@ import sys
 import shutil
 import re
 import json
+import os  # ИСПРАВЛЕНО: добавлен импорт os
 from datetime import datetime
 from pathlib import Path
 from typing import Set, List, Dict, Optional
 import logging
 import logging.handlers
 
-# Исправлено: явный импорт aiohttp с проверкой наличия
+# Проверка наличия aiohttp
 try:
     import aiohttp
 except ImportError:
     print("❌ Ошибка: Установите aiohttp: pip install aiohttp")
     sys.exit(1)
 
-__version__ = "10.0.0-production"
+__version__ = "10.0.1-production"
 
 
 # ============================================================================
-# КОНФИГУРАЦИЯ (упрощена до статических переменных)
+# КОНФИГУРАЦИЯ
 # ============================================================================
 
-# Константы вместо класса Config (убрана избыточность)
 TIMEOUT = 30
 MAX_RETRIES = 3
 PARALLEL_DOWNLOADS = 2
@@ -42,7 +42,7 @@ SOURCES = [
     }
 ]
 
-# Пути к файлам (константы)
+# Пути к файлам
 HOSTS_OUTPUT = Path("hosts.txt")
 BACKUP_DIR = Path("backup")
 WHITELIST_FILE = Path("whitelist.txt")
@@ -57,7 +57,7 @@ Path("logs").mkdir(exist_ok=True)
 
 
 # ============================================================================
-# ЛОГГЕР (упрощён, удалён мёртвый код)
+# ЛОГГЕР
 # ============================================================================
 
 class Logger:
@@ -121,7 +121,7 @@ class DomainValidator:
         # Удаление суффиксов
         line = line.rstrip('/^')
         
-        # Исправлено: валидация IP (упрощена)
+        # Проверка на IP адреса
         if re.match(r'^\d+(\.\d+){3}$', line):
             return None
         
@@ -133,7 +133,7 @@ class DomainValidator:
         if '..' in line:
             return None
         
-        # Исправлено: упрощённая валидация символов
+        # Проверка допустимых символов
         if not re.match(r'^[a-z0-9][a-z0-9.-]*[a-z0-9]$', line):
             return None
         
@@ -141,7 +141,7 @@ class DomainValidator:
     
     @staticmethod
     def match_wildcard(domain: str, patterns: Set[str]) -> bool:
-        """Проверка wildcard паттернов (исправлена логика)"""
+        """Проверка wildcard паттернов"""
         for pattern in patterns:
             if pattern.endswith('*'):
                 if domain.startswith(pattern[:-1]):
@@ -155,11 +155,11 @@ class DomainValidator:
 
 
 # ============================================================================
-# ЗАГРУЗЧИК (исправлены race conditions и утечки)
+# ЗАГРУЗЧИК
 # ============================================================================
 
 class Fetcher:
-    """Асинхронный загрузчик с правильным управлением сессией"""
+    """Асинхронный загрузчик"""
     
     def __init__(self, logger: Logger):
         self.logger = logger
@@ -176,10 +176,10 @@ class Fetcher:
     async def __aexit__(self, *args):
         if self.session:
             await self.session.close()
-            self.session = None  # Исправлено: предотвращает повторное закрытие
+            self.session = None
     
     async def fetch_source(self, name: str, url: str) -> Set[str]:
-        """Загрузка одного источника с корректной обработкой ошибок"""
+        """Загрузка одного источника"""
         if not self.session:
             raise RuntimeError("Сессия не инициализирована")
         
@@ -200,11 +200,10 @@ class Fetcher:
             except Exception as e:
                 self.logger.warning(f"  {name}: Unexpected error - {str(e)[:50]}")
             
-            # Исправлено: корректная задержка между попытками
             if attempt < MAX_RETRIES - 1:
                 await asyncio.sleep(2 ** attempt)
         
-        return set()  # Исправлено: возвращаем пустое множество вместо None
+        return set()
     
     def _parse_domains(self, content: str) -> Set[str]:
         """Парсинг доменов из контента"""
@@ -225,7 +224,6 @@ class Fetcher:
             async with semaphore:
                 return await self.fetch_source(source["name"], source["url"])
         
-        # Исправлено: корректная обработка результатов
         results = await asyncio.gather(*[fetch_one(src) for src in SOURCES])
         
         # Объединение результатов
@@ -238,7 +236,7 @@ class Fetcher:
 
 
 # ============================================================================
-# МЕНЕДЖЕР БЛОКЛИСТА (исправлена логика фильтрации)
+# МЕНЕДЖЕР БЛОКЛИСТА
 # ============================================================================
 
 class BlocklistManager:
@@ -286,7 +284,7 @@ class BlocklistManager:
         self.stats['total'] = len(all_domains)
         self.logger.info(f"📊 Total unique: {len(all_domains):,}")
         
-        # Исправлено: оптимизированная фильтрация
+        # Фильтрация
         self.logger.progress("Filtering domains...")
         filtered_domains = []
         whitelisted = 0
@@ -349,7 +347,7 @@ class BlocklistManager:
 
 
 # ============================================================================
-# ЭКСПОРТЕР (исправлена запись файлов)
+# ЭКСПОРТЕР
 # ============================================================================
 
 class HostsExporter:
@@ -359,7 +357,7 @@ class HostsExporter:
     def export(domains: List[str], output_path: Path) -> bool:
         """Экспорт доменов в hosts файл"""
         try:
-            # Исправлено: гарантированная запись с flush
+            # Запись файла
             with open(output_path, 'w', encoding='utf-8') as f:
                 f.write(f"# DNS Blocklist v{__version__}\n")
                 f.write(f"# Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')}\n")
@@ -369,10 +367,13 @@ class HostsExporter:
                     f.write(f"0.0.0.0 {domain}\n")
                 
                 f.flush()
-                # Исправлено: принудительный сброс на диск
-                os.fsync(f.fileno())
+                # Принудительная запись на диск
+                os.fsync(f.fileno())  # ИСПРАВЛЕНО: os теперь импортирован
             
-            return output_path.exists() and output_path.stat().st_size > 0
+            # Проверка результата
+            if output_path.exists() and output_path.stat().st_size > 0:
+                return True
+            return False
             
         except Exception as e:
             print(f"Error writing hosts file: {e}")
@@ -380,7 +381,7 @@ class HostsExporter:
 
 
 # ============================================================================
-# ОСНОВНАЯ ФУНКЦИЯ (исправлена обработка сигналов)
+# ОСНОВНАЯ ФУНКЦИЯ
 # ============================================================================
 
 async def main() -> int:
@@ -451,7 +452,7 @@ async def main() -> int:
 # ============================================================================
 
 def main_cli():
-    """CLI точка входа с корректной обработкой сигналов"""
+    """CLI точка входа"""
     try:
         exit_code = asyncio.run(main())
         sys.exit(exit_code)
