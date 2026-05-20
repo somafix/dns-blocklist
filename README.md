@@ -1,38 +1,36 @@
-# DNS Blocklist Manager — Elite Edition
+# DNS Blocklist Manager
 
-[![Python Version](https://img.shields.io/badge/python-3.8+-blue.svg?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
-[![Version](https://img.shields.io/badge/version-7.1.0--evolution-orange.svg?style=flat-square)](https://github.com/)
-[![License](https://img.shields.io/badge/license-MIT-green.svg?style=flat-square)](LICENSE)
-[![Code Style](https://img.shields.io/badge/code%20style-black-000000.svg?style=flat-square)](https://github.com/psf/black)
+[![Python Version](https://img.shields.io/badge/python-3.8+-blue.svg?style=flat-square)](https://www.python.org/)
+[![Version](https://img.shields.io/badge/version-8.1.0--production-green.svg?style=flat-square)](https://github.com/)
+[![License](https://img.shields.io/badge/license-MIT-purple.svg?style=flat-square)](LICENSE)
+[![Platform](https://img.shields.io/badge/platform-linux%20%7C%20macos-lightgrey.svg?style=flat-square)](https://apple.com)
 
-An evolutionary, high-performance **DNS Blocklist Manager** written in asynchronous Python. It provides memory-optimized streaming compilation, smart rate limiting, automatic domain validation, and multi-format exporters (Hosts, Plain Domains, AdBlock Plus).
-
----
-
-## ✨ Features
-
-*   **⚡ Asynchronous Architecture:** Leverages `asyncio` and `aiohttp` for lightning-fast concurrent source downloads.
-*   **💾 Streaming Engine:** Process millions of domains sequentially with minimal memory footprint (`~50 MB` overhead for large lists) and aggressive garbage collection (`gc.collect()`).
-*   **🌐 Smart Rate Limiter:** Protects upstream sources with a sliding-window rate limiter and respects `429 Too Many Requests` HTTP response hints.
-*   **🛠️ Robust Domain Validation:** Strict cleanup rules discarding IPs, regex fragments, handling comments (`#`), and matching wildcard subdomains seamlessly.
-*   **🧱 Multi-Format Plugin System:** Exports simultaneously to `hosts` format (`0.0.0.0 domain.com`), standard `domains` list, and `AdBlock Plus` format (`||domain.com^`).
-*   **🔄 Resilience & Safety:** Features local multi-layered TTL-based JSON caching, automatic rolling file logging, process lock via PID tracking, and graceful shutdown signal handlers (`SIGINT`/`SIGTERM`).
+A production-ready, highly optimized, and asynchronous DNS Blocklist Manager written in Python. It aggregates remote blocklists, sanitizes domain names, applies custom filtering rules (blacklists, whitelists, and wildcard matching), and exports data into both standard `hosts` format and plain domain lists.
 
 ---
 
-## 🏗️ Directory Structure
+## Key Features
 
-The manager initializes and expects the following structure relative to the runtime environment:
+*   **Asynchronous Architecture:** Built on top of `asyncio` and `aiohttp` for lightning-fast concurrent source downloads.
+*   **Smart Caching Engine:** Includes a time-to-live (TTL) cache system to minimize bandwidth usage and reduce remote server load.
+*   **Advanced Domain Sanitation:** Automatically strips prefixes (`http://`, `https://`, `||`, IP mappings) and strictly validates domains via regex according to RFC standards.
+*   **Dynamic Filtering Rules:** Multi-tier processing using plain whitelists, blacklists, and flexible wildcard exclusion patterns.
+*   **Concurrence Protection:** Built-in PID management to prevent concurrent executions of the script.
+*   **Production Logging:** Outputs ANSI color-coded stream logs alongside automated rotating file backups.
+
+---
+
+## File and Directory Structure
+
+The manager organizes its assets dynamically inside the workspace directory using the following hierarchy:
 
 ```text
-├── .cache/                     # Local TTL cache storage
-│   └── domains_cache.json
-├── backup/                     # Automatic rolling blocklist backups
-├── lists/
-│   ├── whitelist.txt           # Exact domain exclusions
-│   ├── blacklist.txt           # Explicit manual additions
-│   └── wildcard_whitelist.txt  # Wildcard rules (e.g., *.ads.com, doubleclick*)
-├── logs/
-│   └── dns_blocker.log         # Detailed rotating logs
-├── hosts.txt                   # Compiled main output (Hosts format)
-└── stats.json                  # Generation breakdown metrics
+├── blocklist.txt              # Primary generated file (hosts format: 0.0.0.0 domain.com)
+├── domains.txt                # Plaintext generated list (one domain per line)
+├── whitelist.txt              # User-defined domains to ALWAYS allow
+├── blacklist.txt              # User-defined domains to ALWAYS block
+├── wildcard_whitelist.txt    # User-defined wildcard matching rules for exemptions
+├── stats.json                 # Execution runtime and reduction performance metrics
+├── backup/                    # Automatically managed directory for timestamped historical blocklists
+├── logs/                      # Application logging tracking history (dns_blocker.log)
+└── .cache/                    # Expiry-controlled serialization directory (domains.json)
