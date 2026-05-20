@@ -1,36 +1,32 @@
 # DNS Blocklist Manager
 
 [![Python Version](https://img.shields.io/badge/python-3.8+-blue.svg?style=flat-square)](https://www.python.org/)
-[![Version](https://img.shields.io/badge/version-8.1.0--production-green.svg?style=flat-square)](https://github.com/)
+[![Version](https://img.shields.io/badge/version-8.2.0--production-green.svg?style=flat-square)](https://github.com/)
 [![License](https://img.shields.io/badge/license-MIT-purple.svg?style=flat-square)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-linux%20%7C%20macos-lightgrey.svg?style=flat-square)](https://apple.com)
+[![Platform](https://img.shields.io/badge/platform-linux%20%7C%20macos%20%7C%20windows-lightgrey.svg?style=flat-square)](https://github.com/)
 
-A production-ready, highly optimized, and asynchronous DNS Blocklist Manager written in Python. It aggregates remote blocklists, sanitizes domain names, applies custom filtering rules (blacklists, whitelists, and wildcard matching), and exports data into both standard `hosts` format and plain domain lists.
+An asynchronous, production-ready DNS blocklist aggregator and sanitizer written in Python. Version `8.2.0` introduces targeted performance fixes for seamless `hosts.txt` updates, optimized sequential stream-flushing to handle massive domain sheets, and a default force-refresh engine to ensure you are always serving the most up-to-date threat intelligence vectors.
 
 ---
 
-## Key Features
+## What's New in v8.2.0
 
-*   **Asynchronous Architecture:** Built on top of `asyncio` and `aiohttp` for lightning-fast concurrent source downloads.
-*   **Smart Caching Engine:** Includes a time-to-live (TTL) cache system to minimize bandwidth usage and reduce remote server load.
-*   **Advanced Domain Sanitation:** Automatically strips prefixes (`http://`, `https://`, `||`, IP mappings) and strictly validates domains via regex according to RFC standards.
-*   **Dynamic Filtering Rules:** Multi-tier processing using plain whitelists, blacklists, and flexible wildcard exclusion patterns.
-*   **Concurrence Protection:** Built-in PID management to prevent concurrent executions of the script.
-*   **Production Logging:** Outputs ANSI color-coded stream logs alongside automated rotating file backups.
+*   **Fixed Hosts Exporting:** Re-engineered write hooks targeting the dedicated `hosts.txt` output file with dynamic buffer flushes every 100k records to minimize peak RAM footprints.
+*   **Bypassed Caching by Default:** Set `enable_cache` to `False` natively, clearing old schemas upon execution to prioritize fresh updates over stale metrics.
+*   **Backoff Retries:** Upstream fetching now features an exponential retry backoff structure (`2 ** attempt`) to gracefully manage minor remote server throttling.
 
 ---
 
 ## File and Directory Structure
 
-The manager organizes its assets dynamically inside the workspace directory using the following hierarchy:
+The manager dynamically organizes its workspace inside the runtime directory:
 
 ```text
-├── blocklist.txt              # Primary generated file (hosts format: 0.0.0.0 domain.com)
-├── domains.txt                # Plaintext generated list (one domain per line)
-├── whitelist.txt              # User-defined domains to ALWAYS allow
-├── blacklist.txt              # User-defined domains to ALWAYS block
-├── wildcard_whitelist.txt    # User-defined wildcard matching rules for exemptions
-├── stats.json                 # Execution runtime and reduction performance metrics
-├── backup/                    # Automatically managed directory for timestamped historical blocklists
-├── logs/                      # Application logging tracking history (dns_blocker.log)
-└── .cache/                    # Expiry-controlled serialization directory (domains.json)
+├── hosts.txt                  # Primary production output file (Format: 0.0.0.0 domain.com)
+├── whitelist.txt              # User-defined exceptions (domains to ALWAYS allow)
+├── blacklist.txt              # User-defined inclusions (domains to ALWAYS block)
+├── wildcard_whitelist.txt    # Substring matching pattern list for macro bypasses
+├── stats.json                 # Output metadata and performance reduction reports
+├── backup/                    # Historical rotation directory storing timestamped hosts.txt files
+├── logs/                      # Rotating error and trace system logs (dns_blocker.log)
+└── .cache/                    # Storage directory for schema serialization (disabled by default)
