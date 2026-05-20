@@ -1,41 +1,41 @@
-# DNS Blocklist Manager — Production Elite Edition
+# 🚀 DNS Blocklist Manager (Production Elite Edition)
 
-![Java Version](https://img.shields.io/badge/Java-21%2B-orange?style=for-the-badge&logo=openjdk)
-![Version](https://img.shields.io/badge/Version-1.0.0--elite-blue?style=for-the-badge)
-![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
-![Status](https://img.shields.io/badge/Status-Stable-brightgreen?style=for-the-badge)
+[![Java Version](https://img.shields.io/badge/Java-21%2B-orange.svg?style=flat-square&logo=openjdk)](https://openjdk.org/)
+[![Release](https://img.shields.io/badge/Version-2.0.0-blue.svg?style=flat-square)](../../releases)
+[![License](https://img.shields.io/badge/License-MIT-green.svg?style=flat-square)](LICENSE)
+[![Platform](https://img.shields.io/badge/Platform-Cross__Platform-blueviolet.svg?style=flat-square)]()
 
-A fast, highly resilient, and zero-dependency DNS blocklist downloader and processor built on modern Java. It runs asynchronous downloads via **Java Virtual Threads**, parses and cleans bad inputs, checks matches against explicit and wildcard user rules, and manages execution with a strict PID system instance lock file.
-
----
-
-## 🔥 Key Features
-
-*   **Virtual Threads Parallel Execution:** Spawns lightweight tasks via `Executors.newVirtualThreadPerTaskExecutor()` to download and process remote sources simultaneously with minimal overhead.
-*   **Robust Fault Tolerance Engine:** Features a progressive exponential retry algorithm (`MAX_RETRIES = 3`) paired with automatic redirect tracking to gracefully bypass temporary server hiccups.
-*   **Advanced Normalization Engine:** Strips inline comments (`#`), legacy host mappings (`0.0.0.0`, `127.0.0.1`), network rules modifiers (`||`, `^`), and protocols (`http://`, `https://`) with sub-path parsing.
-*   **High Performance Multi-Tier Filtering:** Automatically reads individual local target rules:
-    *   `whitelist.txt`: Keeps mission-critical paths accessible.
-    *   `wildcard_whitelist.txt`: Drops patterns matching arbitrary structures (e.g., `*badstuff*`).
-    *   `blacklist.txt`: Intercepts and manually locks explicit nodes.
-*   **Persistent Binary Core Cache:** Avoids repetitive downloads by utilizing a fast, serialized object dump cache (`.cache/domains.txt`) with an integrated 24-hour expiration TTL window.
-*   **Instance Locking via PID Tracking:** Employs explicit cross-platform environment system file verification loops to avoid parallel thread collision states, making it safe for automatic scheduled chronjob setups.
+`DNSBlocklistManager` is a high-performance, enterprise-grade Java utility designed to fetch, parse, clean, filter, and compile DNS blocklists. Utilizing modern Java features like **Virtual Threads** and concurrent collection types, it effortlessly compiles millions of domains into optimized formats ready for deployment in Pi-hole, AdGuard Home, or native operating system `hosts` files.
 
 ---
 
-## 🛠 Directory Layout & Operational Spaces
+## ✨ Features
 
-The manager bootstraps and maps files into the following execution environment tree structure:
+*   **⚡ Ultra-Fast Processing:** Uses modern Java **Virtual Threads** (`Executors.newVirtualThreadPerTaskExecutor()`) to perform concurrent non-blocking I/O fetches and handles high-volume domain filtering in parallel streams.
+*   **🛠 Smart Domain Sanitization & Validation:** Automated cleanup of inputs from multiple raw blocklist formats (removes comments, processes `0.0.0.0` or `127.0.0.1` prefixes, handles AdBlock styles like `||example.com^`, and scrubs protocol schemes).
+*   **💾 Intelligent Local Caching:** Built-in Serialization cache mechanism with an automatic 24-hour Time-to-Live (TTL) configuration to prevent redundant upstream bandwidth usage.
+*   **🛡 Advanced Filtering Triad:** Support for custom user-defined execution control files:
+    *   **Strict Whitelist** (`whitelist.txt`)
+    *   **Wildcard Regex Whitelist** (`wildcard_whitelist.txt`)
+    *   **Overriding Blacklist** (`blacklist.txt`)
+*   **🔒 Run-Safe Execution (PID Locking):** Native process instance locking via OS-level PID check to avoid split-brain directory access or corrupted files during concurrent cron or daemon triggers.
+*   **📊 Structured Performance Analytics:** Automatically exports an operational breakdown file (`stats.json`) containing download stats and unique blocking metrics.
+
+---
+
+## 📂 Project Structure
+
+The manager initializes and operates within the following working directory layout:
 
 ```text
-├── .cache/
-│   └── domains.txt              # Binary serialized object dump cache 
-├── backup/
-│   └── hosts_YYYYMMDD_HHMMSS.txt# Automatically versioned target system backups
 ├── lists/
-│   ├── whitelist.txt            # Explicit safe domains (Always allowed)
-│   ├── wildcard_whitelist.txt   # Dynamic safe patterns (e.g., *google*, *.internal)
-│   └── blacklist.txt            # Explicit manual override blocks
-├── domains.txt                  # Raw newline-separated unique domain lists
-├── hosts.txt                    # Standard 0.0.0.0 hosts configuration mapping
-└── stats.json                   # Output breakdown telemetry data metrics
+│   ├── whitelist.txt            # Explicitly allowed domains (skipped from blocking)
+│   ├── wildcard_whitelist.txt   # RegEx patterns or direct domain matches to bypass
+│   └── blacklist.txt            # Domains forced into the final generation
+├── backup/
+│   └── hosts_YYYYMMDD_HHMMSS.txt# Automatically versioned historical blocklists
+├── .cache/
+│   └── domains.ser              # Binary serial cached file for performance checks
+├── hosts.txt                    # Compiled blocklist in standard 0.0.0.0 mapping format
+├── domains.txt                  # Compiled blocklist containing line-by-line domain naming
+└── stats.json                   # Structured JSON report with metrics and metadata
