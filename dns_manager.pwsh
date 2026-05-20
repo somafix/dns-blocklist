@@ -5,7 +5,7 @@
 .DESCRIPTION
     HaGeZi PRO blocklist downloader with whitelist/blacklist support,
     atomic operations, exponential backoff, and security hardening.
-    Version 7.0.0 - Elite Refactoring Edition
+    Version 7.1.0 - Production-Ready Refactoring
 .AUTHOR
     Security Architecture Team
 .NOTES
@@ -50,7 +50,6 @@ class Domain {
         if ([string]::IsNullOrWhiteSpace($input)) { return $null }
         if ($input.Length -gt 512) { return $null }
         
-        # Pipeline-style processing
         $result = $input
         $result = $this->RemoveComments($result)
         $result = $this->TrimAndLower($result)
@@ -64,7 +63,8 @@ class Domain {
     
     hidden [string] RemoveComments([string]$s) {
         $idx = $s.IndexOf('#')
-        return $idx -ge 0 ? $s.Substring(0, $idx) : $s
+        if ($idx -ge 0) { return $s.Substring(0, $idx) }
+        return $s
     }
     
     hidden [string] TrimAndLower([string]$s) {
@@ -82,7 +82,8 @@ class Domain {
     }
     
     hidden [string] StripAdblockSuffixes([string]$s) {
-        if ($s.EndsWith('^') -or $s.EndsWith('/')) {
+        if ($s.EndsWith('^', [StringComparison]::Ordinal) -or 
+            $s.EndsWith('/', [StringComparison]::Ordinal)) {
             return $s.Substring(0, $s.Length - 1)
         }
         return $s
@@ -90,7 +91,8 @@ class Domain {
     
     hidden [string] FilterIpAddresses([string]$s) {
         $ipPattern = '^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$'
-        return $s -match $ipPattern ? $null : $s
+        if ($s -match $ipPattern) { return $null }
+        return $s
     }
     
     hidden [string] ValidateDomainFormat([string]$s) {
@@ -110,7 +112,7 @@ class Domain {
 
 class Configuration {
     static [hashtable] $Instance = @{
-        Version = '7.0.0'
+        Version = '7.1.0'
         Sources = @(
             @{
                 Name = 'HaGeZi PRO'
@@ -131,7 +133,7 @@ class Configuration {
             TimeoutSeconds = 30
             MaxRetries = 3
             BackoffBaseSeconds = 2
-            UserAgent = "DNS-Blocklist-Manager/7.0.0"
+            UserAgent = "DNS-Blocklist-Manager/7.1.0"
         }
         Paths = @{
             OutputHosts = 'hosts.txt'
@@ -191,7 +193,6 @@ class SecurityContext {
     }
 }
 
-# Initialize security context
 [SecurityContext]::Initialize()
 
 # -----------------------------------------------------------------------------
@@ -202,27 +203,29 @@ class Logger {
     static [string] $LogPath
     static [System.Collections.Concurrent.ConcurrentQueue[string]] $Queue
     static [System.Threading.Timer] $FlushTimer
-    static [int] $MaxLineLength = 2000
+    static [bool] $Initialized = $false
     
     static [void] Initialize() {
+        if ([Logger]::$Initialized) { return }
+        
         $config = [Configuration]::Get()
         $relativePath = $config.Paths.Log
         [Logger]::LogPath = [SecurityContext]::ResolvePath($relativePath)
         [Logger]::Queue = [System.Collections.Concurrent.ConcurrentQueue[string]]::new()
         
-        # Ensure directory exists
         $dir = Split-Path [Logger]::LogPath -Parent
         if (-not (Test-Path $dir)) {
             New-Item -ItemType Directory -Path $dir -Force | Out-Null
         }
         
-        # Async flush timer (every 5 seconds)
         $callback = { [Logger]::Flush() }
-        $timer = [System.Threading.Timer]::new($callback, $null, 5000, 5000)
-        [Logger]::$FlushTimer = $timer
+        [Logger]::$FlushTimer = [System.Threading.Timer]::new($callback, $null, 5000, 5000)
+        [Logger]::$Initialized = $true
     }
     
     static [void] Flush() {
+        if (-not [Logger]::$Initialized) { return }
+        
         $entries = [System.Collections.Generic.List[string]]::new()
         $item = $null
         while ([Logger]::Queue.TryDequeue([ref]$item)) {
@@ -234,7 +237,10 @@ class Logger {
         try {
             [System.IO.File]::AppendAllLines([Logger]::LogPath, $entries, [System.Text.Encoding]::UTF8)
             [Logger]::RotateIfNeeded()
-        } catch { }
+        }
+        catch {
+            Write-Host "[LOG_ERROR] Failed to flush log entries" -ForegroundColor Red
+        }
     }
     
     static [void] RotateIfNeeded() {
@@ -250,30 +256,31 @@ class Logger {
         for ($i = $maxBackups; $i -ge 1; $i--) {
             $old = "$([Logger]::LogPath).$i"
             $new = "$([Logger]::LogPath).$($i+1)"
-            if (Test-Path $old) { Move-Item $old $new -Force -ErrorAction SilentlyContinue }
+            if (Test-Path $old) { 
+                Move-Item $old $new -Force -ErrorAction SilentlyContinue 
+            }
         }
-        Move-Item [Logger]::LogPath "$([Logger]::LogPath).1" -Force
+        Move-Item [Logger]::LogPath "$([Logger]::LogPath).1" -Force -ErrorAction SilentlyContinue
     }
     
     static [string] Redact([string]$message) {
-        # Mask sensitive patterns
         $message = $message -replace '(password|passwd|token|secret|key|api[_-]?key)(=?|:?\s*)(\S+)', '$1=***REDACTED***'
         $message = $message -replace '\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b', '[IP]'
-        $message = $message -replace '\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b', '[GUID]'
         
-        if ($message.Length -gt [Logger]::MaxLineLength) {
-            $message = $message.Substring(0, [Logger]::MaxLineLength) + '... [TRUNCATED]'
+        if ($message.Length -gt [Configuration]::Get().Limits.MaxLogLineLength) {
+            $message = $message.Substring(0, [Configuration]::Get().Limits.MaxLogLineLength) + '...'
         }
         
         return $message
     }
     
     static [void] Write([string]$level, [string]$message) {
+        if (-not [Logger]::$Initialized) { return }
+        
         $timestamp = Get-Date -Format 'yyyy-MM-dd HH:mm:ss.fff'
         $redacted = [Logger]::Redact($message)
         $logLine = "[$timestamp] [$($level.PadRight(7))] $redacted"
         
-        # Console output with colors
         $color = @{
             'INFO' = 'Gray'
             'WARN' = 'Yellow'
@@ -281,20 +288,34 @@ class Logger {
             'DEBUG' = 'DarkGray'
         }[$level] ?? 'White'
         
-        Write-Host "[$level] $message" -ForegroundColor $color
+        $consolePrefix = @{
+            'INFO' = 'INFO'
+            'WARN' = 'WARN'
+            'ERROR' = 'ERR'
+            'DEBUG' = 'DEBUG'
+        }[$level] ?? $level
         
-        # Queue for async write
+        Write-Host "[$consolePrefix] $message" -ForegroundColor $color
+        
         [Logger]::Queue.Enqueue($logLine)
     }
     
     static [void] Info([string]$m) { [Logger]::Write('INFO', $m) }
     static [void] Warn([string]$m) { [Logger]::Write('WARN', $m) }
     static [void] Error([string]$m) { [Logger]::Write('ERROR', $m) }
-    static [void] Debug([string]$m) { if ($global:Verbose) { [Logger]::Write('DEBUG', $m) } }
+    static [void] Debug([string]$m) { 
+        if ($global:Verbose) { [Logger]::Write('DEBUG', $m) } 
+    }
     
     static [void] Shutdown() {
-        [Logger]::$FlushTimer.Dispose()
+        if (-not [Logger]::$Initialized) { return }
+        
+        try {
+            [Logger]::$FlushTimer.Dispose()
+        }
+        catch { }
         [Logger]::Flush()
+        [Logger]::$Initialized = $false
     }
 }
 
@@ -304,13 +325,14 @@ class Logger {
 
 class HttpClient {
     static [System.Net.Http.HttpClient] $Client
+    static [bool] $Initialized = $false
     
     static [void] Initialize() {
+        if ([HttpClient]::$Initialized) { return }
+        
         $config = [Configuration]::Get()
         $handler = [System.Net.Http.HttpClientHandler]::new()
-        $handler.ServerCertificateCustomValidationCallback = { $true }  # REMOVE IN PROD
         
-        # Proxy support
         if ($env:HTTP_PROXY) {
             $handler.Proxy = [System.Net.WebProxy]::new($env:HTTP_PROXY)
             $handler.UseProxy = $true
@@ -319,13 +341,13 @@ class HttpClient {
         [HttpClient]::$Client = [System.Net.Http.HttpClient]::new($handler)
         [HttpClient]::$Client.Timeout = [TimeSpan]::FromSeconds($config.Network.TimeoutSeconds)
         [HttpClient]::$Client.DefaultRequestHeaders.UserAgent.ParseAdd($config.Network.UserAgent)
+        [HttpClient]::$Initialized = $true
     }
     
     static [string] DownloadWithRetry([string]$url, [string]$name) {
         $config = [Configuration]::Get()
         $maxRetries = $config.Network.MaxRetries
-        $maxSizeMB = $config.Limits.MaxDownloadSizeMB
-        $maxBytes = $maxSizeMB * 1MB
+        $maxBytes = $config.Limits.MaxDownloadSizeMB * 1MB
         
         for ($attempt = 1; $attempt -le $maxRetries; $attempt++) {
             try {
@@ -333,15 +355,18 @@ class HttpClient {
                 
                 $response = [HttpClient]::$Client.GetAsync($url, [System.Net.Http.HttpCompletionOption]::ResponseHeadersRead).Result
                 
-                # Check content length
+                if (-not $response.IsSuccessStatusCode) {
+                    throw "HTTP $($response.StatusCode): $($response.ReasonPhrase)"
+                }
+                
                 $contentLength = $response.Content.Headers.ContentLength
                 if ($contentLength -gt $maxBytes) {
-                    throw "Response too large: $([math]::Round($contentLength/1MB, 2))MB > ${maxSizeMB}MB"
+                    throw "Response too large: $([math]::Round($contentLength/1MB, 2))MB > $($config.Limits.MaxDownloadSizeMB)MB"
                 }
                 
                 $bytes = $response.Content.ReadAsByteArrayAsync().Result
                 if ($bytes.Length -gt $maxBytes) {
-                    throw "Download exceeded ${maxSizeMB}MB limit"
+                    throw "Download exceeded $($config.Limits.MaxDownloadSizeMB)MB limit"
                 }
                 
                 [Logger]::Info("✓ $name : $([math]::Round($bytes.Length/1KB, 1))KB")
@@ -366,7 +391,13 @@ class HttpClient {
     }
     
     static [void] Shutdown() {
-        [HttpClient]::$Client.Dispose()
+        if (-not [HttpClient]::$Initialized) { return }
+        
+        try {
+            [HttpClient]::$Client.Dispose()
+        }
+        catch { }
+        [HttpClient]::$Initialized = $false
     }
 }
 
@@ -411,7 +442,7 @@ class ProcessManager {
         }
         catch {
             [Logger]::Warn("PID lock failed: $($_.Exception.Message)")
-            return $true  # Non-blocking failure
+            return $true
         }
     }
     
@@ -420,7 +451,8 @@ class ProcessManager {
             if (Test-Path [ProcessManager]::PidFile) {
                 Remove-Item [ProcessManager]::PidFile -Force -ErrorAction SilentlyContinue
             }
-        } catch { }
+        }
+        catch { }
     }
 }
 
@@ -476,7 +508,7 @@ class BlocklistEngine {
             foreach ($line in $lines) {
                 $domain = [Domain]::new($line)
                 if ($domain.IsValid -and -not $target.Contains($domain.Value)) {
-                    $target.Add($domain.Value) | Out-Null
+                    $null = $target.Add($domain.Value)
                     $count++
                 }
             }
@@ -505,7 +537,7 @@ class BlocklistEngine {
             
             $domain = [Domain]::new($line)
             if ($domain.IsValid) {
-                $this.Domains.Add($domain.Value) | Out-Null
+                $null = $this.Domains.Add($domain.Value)
             }
         }
         $reader.Close()
@@ -555,7 +587,6 @@ class BlocklistEngine {
             $writer.WriteLine("# ==========================================")
             $writer.WriteLine()
             
-            # Sort and write
             $sorted = $domains | Sort-Object
             foreach ($domain in $sorted) {
                 $writer.WriteLine("0.0.0.0 $domain")
@@ -591,7 +622,7 @@ class BackupManager {
         
         $backupDir = [SecurityContext]::ResolvePath($config.Paths.BackupDir)
         if (-not (Test-Path $backupDir)) {
-            New-Item -ItemType Directory -Path $backupDir -Force | Out-Null
+            $null = New-Item -ItemType Directory -Path $backupDir -Force
         }
         
         $timestamp = Get-Date -Format 'yyyyMMdd_HHmmss'
@@ -613,31 +644,26 @@ class BackupManager {
 
 function Invoke-Pipeline {
     try {
-        # Header
         Write-Host @"
 ╔══════════════════════════════════════════════════════════════════════╗
-║     DNS BLOCKLIST MANAGER v$([Configuration]::GetVersion()) - ELITE EDITION     ║
+║     DNS BLOCKLIST MANAGER v$([Configuration]::GetVersion()) - PRODUCTION      ║
 ║     HaGeZi PRO → hosts.txt | Security Hardened | Async Logging      ║
 ╚══════════════════════════════════════════════════════════════════════╝
 "@ -ForegroundColor Cyan
         
-        # Validate environment
         [SecurityContext]::ValidateEnvironment()
         
         if (-not [SecurityContext]::IsAdministrator) {
             [Logger]::Warn("Not running as administrator (some features limited)")
         }
         
-        # Acquire process lock
         if (-not [ProcessManager]::AcquireLock()) {
             return 1
         }
         
-        # Phase 1: Backup
         [Logger]::Info("┌─ [1/5] 📦 Backup phase")
         [BackupManager]::CreateBackup()
         
-        # Phase 2: Download
         [Logger]::Info("├─ [2/5] 🌐 Download phase")
         $config = [Configuration]::Get()
         $source = $config.Sources[0]
@@ -647,27 +673,25 @@ function Invoke-Pipeline {
             throw "Download failed, aborting"
         }
         
-        # Phase 3: Parse
         [Logger]::Info("├─ [3/5] 🔧 Processing phase")
         $engine = [BlocklistEngine]::new()
         $engine.LoadCustomLists()
         $engine.ProcessContent($content)
         
-        # Phase 4: Filter
         [Logger]::Info("├─ [4/5] 🔍 Filtering phase")
         $filtered = $engine.ApplyFilters()
         
-        # Phase 5: Export
         [Logger]::Info("└─ [5/5] 💾 Export phase")
         $engine.ExportToHosts($filtered)
         
-        # Success summary
+        $outputSize = [math]::Round((Get-Item $([SecurityContext]::ResolvePath($config.Paths.OutputHosts))).Length / 1MB, 2)
+        
         Write-Host @"
 ╔══════════════════════════════════════════════════════════════════════╗
 ║                         ✅ BUILD SUCCESSFUL                          ║
 ╠══════════════════════════════════════════════════════════════════════╣
 ║  Total blocked domains: $($filtered.Count.ToString('N0').PadLeft(28)) ║
-║  File size:            $([math]::Round((Get-Item $([SecurityContext]::ResolvePath($config.Paths.OutputHosts))).Length / 1MB, 2).ToString().PadLeft(28)) MB ║
+║  File size:            $($outputSize.ToString().PadLeft(28)) MB ║
 ╚══════════════════════════════════════════════════════════════════════╝
 "@ -ForegroundColor Green
         
@@ -689,11 +713,9 @@ function Invoke-Pipeline {
 # 10. ENTRY POINT
 # -----------------------------------------------------------------------------
 
-# Initialize subsystems
 [Logger]::Initialize()
 [HttpClient]::Initialize()
 [ProcessManager]::Initialize()
 
-# Run pipeline
 $exitCode = Invoke-Pipeline
 exit $exitCode
