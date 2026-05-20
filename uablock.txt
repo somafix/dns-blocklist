@@ -1,83 +1,132 @@
-# 15 украинских рекламных агенций
-0.0.0.0 uamaster.com
-0.0.0.0 roman.ua
-0.0.0.0 wedex.com
-0.0.0.0 inweb.ua
-0.0.0.0 promodo.com
-0.0.0.0 wezom.com
-0.0.0.0 netrocket.com
-0.0.0.0 panem.com
-0.0.0.0 kiwiagency.com
-0.0.0.0 redchameleon.com
-0.0.0.0 kit.agency
-0.0.0.0 braintank.com
-0.0.0.0 adloonix.com
-0.0.0.0 epom.com
-0.0.0.0 cryptotrafficmarket.com
-
-# Крупные платформы аналитики
+# === Аналитика и трекеры (полные домены) ===
+0.0.0.0 cometly.com
+0.0.0.0 app.cometly.com
+0.0.0.0 api.cometly.com
+0.0.0.0 triplewhale.com
+0.0.0.0 app.triplewhale.com
+0.0.0.0 cdn.triplewhale.com
+0.0.0.0 northbeam.io
+0.0.0.0 app.northbeam.io
+0.0.0.0 api.northbeam.io
+0.0.0.0 hyros.com
+0.0.0.0 app.hyros.com
+0.0.0.0 track.hyros.com
 0.0.0.0 google-analytics.com
-0.0.0.0 analytics.google.com
+0.0.0.0 www.google-analytics.com
+0.0.0.0 ssl.google-analytics.com
+0.0.0.0 stats.g.doubleclick.net
 0.0.0.0 googletagmanager.com
-0.0.0.0 doubleclick.net
-0.0.0.0 facebook.com
-0.0.0.0 connect.facebook.net
-0.0.0.0 graph.facebook.com
-0.0.0.0 tiktok.com
-0.0.0.0 analytics.tiktok.com
-0.0.0.0 linkedin.com
-0.0.0.0 ads.linkedin.com
-0.0.0.0 twitter.com
-0.0.0.0 ads.twitter.com
-0.0.0.0 youtube.com
-0.0.0.0 ytimg.com
-0.0.0.0 googlevideo.com
+0.0.0.0 www.googletagmanager.com
+0.0.0.0 supermetrics.com
+0.0.0.0 api.supermetrics.com
+0.0.0.0 whatagraph.com
+0.0.0.0 app.whatagraph.com
 
-# Украинские трекеры
-0.0.0.0 hotlog.ru
-0.0.0.0 yandex.ru
-0.0.0.0 yandex.ua
-0.0.0.0 liveinternet.ru
-0.0.0.0 brand24.com
-0.0.0.0 determ.com
+# === Антифрод и кликпротекторы ===
+0.0.0.0 clickpatrol.net
+0.0.0.0 api.clickpatrol.net
+0.0.0.0 clickcease.com
+0.0.0.0 track.clickcease.com
+0.0.0.0 lunio.ai
+0.0.0.0 cdn.lunio.ai
+0.0.0.0 doubleverify.com
+0.0.0.0 ads.doubleverify.com
+0.0.0.0 ias.com
+0.0.0.0 cdn.ias.com
+0.0.0.0 perimeterx.com
+0.0.0.0 api.perimeterx.com
+0.0.0.0 improvely.com
+0.0.0.0 track.improvely.com
+0.0.0.0 fraud0.com
+0.0.0.0 api.fraud0.com
+0.0.0.0 clixtell.com
+0.0.0.0 pixel.clixtell.com
 
-# Email маркетинг
-0.0.0.0 sendpulse.com
-0.0.0.0 esputnik.com
-0.0.0.0 mailchimp.com
-0.0.0.0 klaviyo.com
-0.0.0.0 getresponse.com
-
-# Поведенческое отслеживание
-0.0.0.0 hotjar.com
-0.0.0.0 crazyegg.com
-0.0.0.0 fullstory.com
-0.0.0.0 logrocket.com
-0.0.0.0 inspectlet.com
-
-# Fingerprinting
-0.0.0.0 fingerprintjs.com
-0.0.0.0 maxmind.com
-0.0.0.0 sift.com
-0.0.0.0 turnstile.one
-0.0.0.0 cloudflare.com
-
-# Ad Networks
-0.0.0.0 openx.com
-0.0.0.0 pubmatic.com
-0.0.0.0 criteo.com
-0.0.0.0 outbrain.com
+# === Нативная реклама и спай-инструменты ===
+0.0.0.0 poweradspy.com
+0.0.0.0 cdn.poweradspy.com
 0.0.0.0 taboola.com
+0.0.0.0 cdn.taboola.com
+0.0.0.0 trc.taboola.com
+0.0.0.0 outbrain.com
+0.0.0.0 widget.outbrain.com
+0.0.0.0 track.outbrain.com
 
-# Data Brokers
-0.0.0.0 clearbit.com
-0.0.0.0 zoominfo.com
-0.0.0.0 apollo.io
-0.0.0.0 rocketreach.co
-0.0.0.0 hunter.io
+# === Рекламные сети (соцсети, поиск, DSP) ===
+0.0.0.0 facebook.com
+0.0.0.0 www.facebook.com
+0.0.0.0 connect.facebook.net
+0.0.0.0 instagram.com
+0.0.0.0 www.instagram.com
+0.0.0.0 cdninstagram.com
+0.0.0.0 google.com
+0.0.0.0 www.google.com
+0.0.0.0 googleadservices.com
+0.0.0.0 googleads.g.doubleclick.net
+0.0.0.0 pagead2.googlesyndication.com
+0.0.0.0 tiktok.com
+0.0.0.0 www.tiktok.com
+0.0.0.0 ads.tiktok.com
+0.0.0.0 business.tiktok.com
+0.0.0.0 reddit.com
+0.0.0.0 www.reddit.com
+0.0.0.0 events.redditmedia.com
+0.0.0.0 linkedin.com
+0.0.0.0 www.linkedin.com
+0.0.0.0 px.ads.linkedin.com
+0.0.0.0 quora.com
+0.0.0.0 www.quora.com
+0.0.0.0 quora.com/log
 
-# .UA домены
-0.0.0.0 ads.ua
-0.0.0.0 analytics.ua
-0.0.0.0 tracker.ua
-0.0.0.0 pixel.ua
+# === Программатик и рекламные биржи ===
+0.0.0.0 openx.net
+0.0.0.0 pubmatic.com
+0.0.0.0 rubiconproject.com
+0.0.0.0 appnexus.com
+0.0.0.0 criteo.com
+0.0.0.0 casalemedia.com
+0.0.0.0 indexww.com
+0.0.0.0 sovrn.com
+0.0.0.0 rhythmone.com
+
+# === Криптобиржи и байдеры (угроза трейдинг-трафика) ===
+0.0.0.0 binance.com
+0.0.0.0 www.binance.com
+0.0.0.0 coinbase.com
+0.0.0.0 www.coinbase.com
+0.0.0.0 kraken.com
+0.0.0.0 www.kraken.com
+0.0.0.0 bybit.com
+0.0.0.0 www.bybit.com
+0.0.0.0 okx.com
+0.0.0.0 www.okx.com
+0.0.0.0 huobi.com
+0.0.0.0 www.huobi.com
+0.0.0.0 dex-tradingview.com
+0.0.0.0 coingecko.com
+0.0.0.0 coinmarketcap.com
+
+# === CDN и шпионские скрипты ===
+0.0.0.0 cloudflareinsights.com
+0.0.0.0 cdn.segment.com
+0.0.0.0 cdn.mxpnl.com
+0.0.0.0 js.intercomcdn.com
+0.0.0.0 widget.intercom.io
+0.0.0.0 cdn.rollbar.com
+0.0.0.0 cdn.sentry.io
+
+# === Дополнительно (коллтрекинг, MMP, MMM) ===
+0.0.0.0 callrail.com
+0.0.0.0 track.callrail.com
+0.0.0.0 branch.io
+0.0.0.0 api2.branch.io
+0.0.0.0 appsflyer.com
+0.0.0.0 events.appsflyer.com
+0.0.0.0 adjust.com
+0.0.0.0 app.adjust.com
+0.0.0.0 kochava.com
+0.0.0.0 cdn.kochava.com
+0.0.0.0 singular.net
+0.0.0.0 sdk.singular.net
+0.0.0.0 tenjin.io
+0.0.0.0 gateway.tenjin.io
