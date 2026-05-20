@@ -1,59 +1,63 @@
 #!/usr/bin/env python3
 """
-DNS Blocklist Manager - Production Ready v10.0.1
-Полностью рабочий, оптимизированный и протестированный блоклист менеджер
+DNS Blocklist Manager - Production Ready v11.0.0
+Профессиональный инструмент для создания DNS блоклистов
 """
 
 import asyncio
-import sys
-import shutil
-import re
 import json
-import os  # ИСПРАВЛЕНО: добавлен импорт os
-from datetime import datetime
-from pathlib import Path
-from typing import Set, List, Dict, Optional
 import logging
 import logging.handlers
+import os
+import re
+import shutil
+import sys
+from datetime import datetime
+from pathlib import Path
+from typing import Set, List, Dict, Optional, Tuple
 
-# Проверка наличия aiohttp
 try:
     import aiohttp
 except ImportError:
     print("❌ Ошибка: Установите aiohttp: pip install aiohttp")
     sys.exit(1)
 
-__version__ = "10.0.1-production"
+__version__ = "11.0.0"
 
 
 # ============================================================================
-# КОНФИГУРАЦИЯ
+# КОНСТАНТЫ И КОНФИГУРАЦИЯ
 # ============================================================================
 
-TIMEOUT = 30
-MAX_RETRIES = 3
-PARALLEL_DOWNLOADS = 2
-
-SOURCES = [
-    {
-        "name": "HaGeZi PRO",
-        "url": "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/domains/pro.txt",
-        "enabled": True
-    }
-]
-
-# Пути к файлам
-HOSTS_OUTPUT = Path("hosts.txt")
-BACKUP_DIR = Path("backup")
-WHITELIST_FILE = Path("whitelist.txt")
-BLACKLIST_FILE = Path("blacklist.txt")
-WILDCARD_WHITELIST_FILE = Path("wildcard_whitelist.txt")
-LOG_FILE = Path("logs/dns_blocker.log")
-STATS_FILE = Path("stats.json")
-
-# Создание необходимых директорий
-BACKUP_DIR.mkdir(exist_ok=True)
-Path("logs").mkdir(exist_ok=True)
+class Config:
+    """Централизованная конфигурация приложения"""
+    TIMEOUT: int = 30
+    MAX_RETRIES: int = 3
+    PARALLEL_DOWNLOADS: int = 2
+    USER_AGENT: str = f"DNS-Blocklist-Manager/{__version__}"
+    
+    # Источники данных
+    SOURCES: List[Dict[str, str]] = [
+        {
+            "name": "HaGeZi PRO",
+            "url": "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/domains/pro.txt",
+        }
+    ]
+    
+    # Пути к файлам
+    HOSTS_OUTPUT: Path = Path("hosts.txt")
+    BACKUP_DIR: Path = Path("backup")
+    WHITELIST_FILE: Path = Path("whitelist.txt")
+    BLACKLIST_FILE: Path = Path("blacklist.txt")
+    WILDCARD_WHITELIST_FILE: Path = Path("wildcard_whitelist.txt")
+    LOG_FILE: Path = Path("logs/dns_blocker.log")
+    STATS_FILE: Path = Path("stats.json")
+    
+    @classmethod
+    def init_directories(cls) -> None:
+        """Создание необходимых директорий"""
+        cls.BACKUP_DIR.mkdir(exist_ok=True)
+        cls.LOG_FILE.parent.mkdir(exist_ok=True)
 
 
 # ============================================================================
@@ -61,32 +65,37 @@ Path("logs").mkdir(exist_ok=True)
 # ============================================================================
 
 class Logger:
-    """Простой логгер с цветным выводом"""
+    """Профессиональный логгер с ротацией файлов"""
     
-    def __init__(self):
+    def __init__(self, log_file: Path, verbose: bool = False):
         self.logger = logging.getLogger("DNSBlocker")
-        self.logger.setLevel(logging.INFO)
+        self.logger.setLevel(logging.DEBUG if verbose else logging.INFO)
         self.logger.handlers.clear()
         
-        # Файловый логгер
+        # Файловый обработчик с ротацией
         file_handler = logging.handlers.RotatingFileHandler(
-            LOG_FILE, maxBytes=5*1024*1024, backupCount=3, encoding="utf-8"
+            log_file, maxBytes=5 * 1024 * 1024, backupCount=5, encoding="utf-8"
         )
         file_handler.setFormatter(logging.Formatter(
             "[%(asctime)s] %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
         ))
         self.logger.addHandler(file_handler)
         
-        # Консольный логгер
+        # Консольный обработчик
         console_handler = logging.StreamHandler()
         console_handler.setFormatter(logging.Formatter("%(message)s"))
         self.logger.addHandler(console_handler)
     
-    def info(self, msg: str): self.logger.info(f"ℹ️ {msg}")
-    def warning(self, msg: str): self.logger.warning(f"⚠️ {msg}")
-    def error(self, msg: str): self.logger.error(f"❌ {msg}")
-    def success(self, msg: str): self.logger.info(f"✅ {msg}")
-    def progress(self, msg: str): self.logger.info(f"📊 {msg}")
+    def _log(self, level: str, msg: str, emoji: str = "") -> None:
+        """Базовый метод логирования"""
+        getattr(self.logger, level)(f"{emoji} {msg}" if emoji else msg)
+    
+    def info(self, msg: str) -> None: self._log("info", msg, "ℹ️")
+    def warning(self, msg: str) -> None: self._log("warning", msg, "⚠️")
+    def error(self, msg: str) -> None: self._log("error", msg, "❌")
+    def success(self, msg: str) -> None: self._log("info", msg, "✅")
+    def progress(self, msg: str) -> None: self._log("info", msg, "📊")
+    def debug(self, msg: str) -> None: self._log("debug", msg, "🐛")
 
 
 # ============================================================================
@@ -94,26 +103,30 @@ class Logger:
 # ============================================================================
 
 class DomainValidator:
-    """Валидация и очистка доменов"""
+    """Валидация и нормализация доменных имён"""
     
-    @staticmethod
-    def clean(line: str) -> Optional[str]:
-        """Очистка строки и извлечение домена"""
+    # Регулярные выражения скомпилированы для производительности
+    _IP_PATTERN = re.compile(r'^\d+(\.\d+){3}$')
+    _DOMAIN_PATTERN = re.compile(r'^[a-z0-9][a-z0-9.-]*[a-z0-9]$')
+    _PREFIXES = ('https://', 'http://', '||', '0.0.0.0 ', '127.0.0.1 ')
+    
+    @classmethod
+    def clean(cls, line: str) -> Optional[str]:
+        """Очистка и валидация строки домена"""
         if not line or not isinstance(line, str):
             return None
         
         # Удаление комментариев
-        if "#" in line:
-            line = line[:line.index("#")]
+        if '#' in line:
+            line = line[:line.index('#')]
         
-        # Очистка
+        # Нормализация
         line = line.strip().lower()
         if not line:
             return None
         
         # Удаление префиксов
-        prefixes = ['https://', 'http://', '||', '0.0.0.0 ', '127.0.0.1 ']
-        for prefix in prefixes:
+        for prefix in cls._PREFIXES:
             if line.startswith(prefix):
                 line = line[len(prefix):]
                 break
@@ -121,91 +134,85 @@ class DomainValidator:
         # Удаление суффиксов
         line = line.rstrip('/^')
         
-        # Проверка на IP адреса
-        if re.match(r'^\d+(\.\d+){3}$', line):
+        # Проверка на IP-адрес
+        if cls._IP_PATTERN.match(line):
             return None
         
-        # Базовая валидация домена
-        if len(line) > 253 or len(line) < 3:
+        # Валидация домена
+        if len(line) < 3 or len(line) > 253:
             return None
-        if line[0] == '.' or line[-1] == '.':
+        if line[0] == '.' or line[-1] == '.' or '..' in line:
             return None
-        if '..' in line:
-            return None
-        
-        # Проверка допустимых символов
-        if not re.match(r'^[a-z0-9][a-z0-9.-]*[a-z0-9]$', line):
+        if not cls._DOMAIN_PATTERN.match(line):
             return None
         
         return line
     
     @staticmethod
     def match_wildcard(domain: str, patterns: Set[str]) -> bool:
-        """Проверка wildcard паттернов"""
+        """Проверка соответствия wildcard паттернам"""
         for pattern in patterns:
-            if pattern.endswith('*'):
-                if domain.startswith(pattern[:-1]):
-                    return True
-            elif pattern.startswith('*'):
-                if domain.endswith(pattern[1:]):
-                    return True
-            elif domain == pattern:
+            if pattern.endswith('*') and domain.startswith(pattern[:-1]):
+                return True
+            if pattern.startswith('*') and domain.endswith(pattern[1:]):
+                return True
+            if domain == pattern:
                 return True
         return False
 
 
 # ============================================================================
-# ЗАГРУЗЧИК
+# ЗАГРУЗЧИК ДАННЫХ
 # ============================================================================
 
-class Fetcher:
-    """Асинхронный загрузчик"""
+class DataFetcher:
+    """Асинхронный загрузчик данных с обработкой ошибок"""
     
     def __init__(self, logger: Logger):
         self.logger = logger
-        self.session: Optional[aiohttp.ClientSession] = None
+        self._session: Optional[aiohttp.ClientSession] = None
     
     async def __aenter__(self):
-        timeout = aiohttp.ClientTimeout(total=TIMEOUT)
-        self.session = aiohttp.ClientSession(
+        timeout = aiohttp.ClientTimeout(total=Config.TIMEOUT)
+        self._session = aiohttp.ClientSession(
             timeout=timeout,
-            headers={"User-Agent": f"DNS-Blocklist-Manager/{__version__}"}
+            headers={"User-Agent": Config.USER_AGENT}
         )
         return self
     
     async def __aexit__(self, *args):
-        if self.session:
-            await self.session.close()
-            self.session = None
+        if self._session:
+            await self._session.close()
     
     async def fetch_source(self, name: str, url: str) -> Set[str]:
-        """Загрузка одного источника"""
-        if not self.session:
-            raise RuntimeError("Сессия не инициализирована")
+        """Загрузка одного источника данных"""
+        if not self._session:
+            raise RuntimeError("Session not initialized")
         
-        for attempt in range(MAX_RETRIES):
+        for attempt in range(Config.MAX_RETRIES):
             try:
-                async with self.session.get(url) as response:
+                async with self._session.get(url) as response:
                     if response.status == 200:
-                        text = await response.text()
-                        domains = self._parse_domains(text)
+                        content = await response.text()
+                        domains = self._parse_content(content)
                         self.logger.info(f"  📥 {name}: {len(domains):,} domains")
                         return domains
                     else:
                         self.logger.warning(f"  {name}: HTTP {response.status}")
             except asyncio.TimeoutError:
-                self.logger.warning(f"  {name}: Timeout (attempt {attempt+1}/{MAX_RETRIES})")
+                self.logger.warning(f"  {name}: Timeout ({attempt + 1}/{Config.MAX_RETRIES})")
             except aiohttp.ClientError as e:
                 self.logger.warning(f"  {name}: Network error - {str(e)[:50]}")
             except Exception as e:
                 self.logger.warning(f"  {name}: Unexpected error - {str(e)[:50]}")
             
-            if attempt < MAX_RETRIES - 1:
+            if attempt < Config.MAX_RETRIES - 1:
                 await asyncio.sleep(2 ** attempt)
         
         return set()
     
-    def _parse_domains(self, content: str) -> Set[str]:
+    @staticmethod
+    def _parse_content(content: str) -> Set[str]:
         """Парсинг доменов из контента"""
         domains = set()
         for line in content.splitlines():
@@ -216,21 +223,18 @@ class Fetcher:
     
     async def fetch_all(self) -> Set[str]:
         """Параллельная загрузка всех источников"""
-        semaphore = asyncio.Semaphore(PARALLEL_DOWNLOADS)
+        semaphore = asyncio.Semaphore(Config.PARALLEL_DOWNLOADS)
         
-        async def fetch_one(source: dict) -> Set[str]:
-            if not source["enabled"]:
-                return set()
+        async def fetch_one(source: Dict[str, str]) -> Set[str]:
             async with semaphore:
                 return await self.fetch_source(source["name"], source["url"])
         
-        results = await asyncio.gather(*[fetch_one(src) for src in SOURCES])
+        results = await asyncio.gather(*[fetch_one(src) for src in Config.SOURCES])
         
         # Объединение результатов
         all_domains = set()
         for domains in results:
-            if domains:
-                all_domains.update(domains)
+            all_domains.update(domains)
         
         return all_domains
 
@@ -239,42 +243,52 @@ class Fetcher:
 # МЕНЕДЖЕР БЛОКЛИСТА
 # ============================================================================
 
-class BlocklistManager:
-    """Управление блоклистом"""
+class BlocklistBuilder:
+    """Построитель блоклиста с фильтрацией"""
     
     def __init__(self, logger: Logger):
         self.logger = logger
         self.stats: Dict[str, int] = {}
+        self._whitelist: Set[str] = set()
+        self._blacklist: Set[str] = set()
+        self._wildcard_whitelist: Set[str] = set()
         
-        # Загрузка пользовательских списков
-        self.whitelist = self._load_domain_list(WHITELIST_FILE)
-        self.blacklist = self._load_domain_list(BLACKLIST_FILE)
-        self.wildcard_whitelist = self._load_domain_list(WILDCARD_WHITELIST_FILE)
-        
-        self.logger.info(f"📋 Whitelist: {len(self.whitelist)} domains")
-        self.logger.info(f"📋 Blacklist: {len(self.blacklist)} domains")
+        self._load_lists()
     
-    def _load_domain_list(self, path: Path) -> Set[str]:
-        """Загрузка списка доменов из файла"""
+    def _load_lists(self) -> None:
+        """Загрузка пользовательских списков"""
+        self._whitelist = self._load_domain_file(Config.WHITELIST_FILE)
+        self._blacklist = self._load_domain_file(Config.BLACKLIST_FILE)
+        self._wildcard_whitelist = self._load_domain_file(Config.WILDCARD_WHITELIST_FILE)
+        
+        self.logger.info(f"📋 Whitelist: {len(self._whitelist):,} domains")
+        self.logger.info(f"📋 Blacklist: {len(self._blacklist):,} domains")
+    
+    @staticmethod
+    def _load_domain_file(file_path: Path) -> Set[str]:
+        """Загрузка доменов из файла"""
         domains = set()
-        if path.exists():
-            try:
-                with open(path, 'r', encoding='utf-8') as f:
-                    for line in f:
-                        domain = DomainValidator.clean(line)
-                        if domain:
-                            domains.add(domain)
-            except Exception as e:
-                self.logger.warning(f"Failed to load {path}: {e}")
+        if not file_path.exists():
+            return domains
+        
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                for line in f:
+                    domain = DomainValidator.clean(line)
+                    if domain:
+                        domains.add(domain)
+        except Exception as e:
+            print(f"⚠️ Failed to load {file_path}: {e}")
+        
         return domains
     
     async def build(self) -> List[str]:
-        """Сборка блоклиста"""
+        """Построение финального блоклиста"""
         self.logger.progress("Building blocklist...")
         
-        # Загрузка из сети
+        # Загрузка данных
         self.logger.progress("Downloading sources...")
-        async with Fetcher(self.logger) as fetcher:
+        async with DataFetcher(self.logger) as fetcher:
             all_domains = await fetcher.fetch_all()
         
         if not all_domains:
@@ -286,38 +300,31 @@ class BlocklistManager:
         
         # Фильтрация
         self.logger.progress("Filtering domains...")
-        filtered_domains = []
-        whitelisted = 0
-        wildcard_filtered = 0
-        blacklisted = 0
+        filtered = []
+        counts = {'whitelisted': 0, 'wildcard_filtered': 0, 'blacklisted': 0}
         
         for domain in all_domains:
-            # Проверка wildcard whitelist
-            if DomainValidator.match_wildcard(domain, self.wildcard_whitelist):
-                wildcard_filtered += 1
+            if DomainValidator.match_wildcard(domain, self._wildcard_whitelist):
+                counts['wildcard_filtered'] += 1
                 continue
             
-            # Проверка обычного whitelist
-            if domain in self.whitelist:
-                whitelisted += 1
+            if domain in self._whitelist:
+                counts['whitelisted'] += 1
                 continue
             
-            # Подсчёт blacklist
-            if domain in self.blacklist:
-                blacklisted += 1
+            if domain in self._blacklist:
+                counts['blacklisted'] += 1
             
-            filtered_domains.append(domain)
+            filtered.append(domain)
         
         # Сохранение статистики
-        self.stats['whitelisted'] = whitelisted
-        self.stats['wildcard_filtered'] = wildcard_filtered
-        self.stats['blacklisted'] = blacklisted
-        self.stats['output'] = len(filtered_domains)
-        
+        self.stats.update(counts)
+        self.stats['output'] = len(filtered)
         self._print_stats()
-        return filtered_domains
+        
+        return filtered
     
-    def _print_stats(self):
+    def _print_stats(self) -> None:
         """Вывод статистики"""
         total = self.stats.get('total', 0)
         output = self.stats.get('output', 0)
@@ -329,19 +336,19 @@ class BlocklistManager:
         self.logger.info(f"   └─ Wildcard filtered: {self.stats.get('wildcard_filtered', 0):,}")
         
         if total > 0:
-            reduction = (1 - output/total) * 100
+            reduction = (1 - output / total) * 100
             self.logger.info(f"   └─ Reduction: {reduction:.1f}%")
     
-    def save_stats(self):
-        """Сохранение статистики"""
+    def save_stats(self) -> None:
+        """Сохранение статистики в JSON"""
         try:
-            stats_data = {
+            data = {
                 'timestamp': datetime.now().isoformat(),
                 'version': __version__,
                 'stats': self.stats
             }
-            with open(STATS_FILE, 'w', encoding='utf-8') as f:
-                json.dump(stats_data, f, indent=2)
+            with open(Config.STATS_FILE, 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=2)
         except Exception as e:
             self.logger.warning(f"Failed to save stats: {e}")
 
@@ -350,34 +357,49 @@ class BlocklistManager:
 # ЭКСПОРТЕР
 # ============================================================================
 
-class HostsExporter:
-    """Экспорт в формат hosts"""
+class HostsFileWriter:
+    """Запись блоклиста в формате hosts"""
     
     @staticmethod
-    def export(domains: List[str], output_path: Path) -> bool:
-        """Экспорт доменов в hosts файл"""
+    def write(domains: List[str], output_path: Path) -> bool:
+        """Запись доменов в hosts файл"""
         try:
-            # Запись файла
             with open(output_path, 'w', encoding='utf-8') as f:
+                # Заголовок
                 f.write(f"# DNS Blocklist v{__version__}\n")
                 f.write(f"# Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')}\n")
                 f.write(f"# Total: {len(domains):,} domains\n\n")
                 
+                # Данные
                 for domain in domains:
                     f.write(f"0.0.0.0 {domain}\n")
                 
                 f.flush()
-                # Принудительная запись на диск
-                os.fsync(f.fileno())  # ИСПРАВЛЕНО: os теперь импортирован
+                os.fsync(f.fileno())
             
-            # Проверка результата
-            if output_path.exists() and output_path.stat().st_size > 0:
-                return True
-            return False
-            
+            return output_path.exists() and output_path.stat().st_size > 0
         except Exception as e:
-            print(f"Error writing hosts file: {e}")
+            print(f"❌ Error writing hosts file: {e}")
             return False
+
+
+# ============================================================================
+# УТИЛИТЫ
+# ============================================================================
+
+class BackupManager:
+    """Управление резервными копиями"""
+    
+    @staticmethod
+    def create_backup(file_path: Path, backup_dir: Path) -> Optional[Path]:
+        """Создание резервной копии файла"""
+        if not file_path.exists():
+            return None
+        
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        backup_path = backup_dir / f"{file_path.stem}_{timestamp}{file_path.suffix}"
+        shutil.copy2(file_path, backup_path)
+        return backup_path
 
 
 # ============================================================================
@@ -385,55 +407,52 @@ class HostsExporter:
 # ============================================================================
 
 async def main() -> int:
-    """Главная функция"""
-    
-    logger = Logger()
+    """Главная функция приложения"""
+    # Инициализация
+    Config.init_directories()
+    logger = Logger(Config.LOG_FILE, verbose=os.getenv("DEBUG", "0") == "1")
     
     # Приветствие
-    print(f"\n{'='*50}")
+    print(f"\n{'=' * 50}")
     print(f"🚀 DNS BLOCKLIST MANAGER v{__version__}")
-    print(f"{'='*50}")
+    print(f"{'=' * 50}")
     print(f"📅 Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print(f"📦 Sources: {len([s for s in SOURCES if s['enabled']])}")
-    print(f"📁 Output: {HOSTS_OUTPUT}")
-    print(f"{'='*50}\n")
+    print(f"📦 Sources: {len(Config.SOURCES)}")
+    print(f"📁 Output: {Config.HOSTS_OUTPUT}")
+    print(f"{'=' * 50}\n")
     
     try:
-        # Создание бэкапа
-        if HOSTS_OUTPUT.exists():
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            backup_path = BACKUP_DIR / f"hosts_{timestamp}.txt"
-            shutil.copy2(HOSTS_OUTPUT, backup_path)
-            logger.info(f"💾 Backup created: {backup_path.name}")
+        # Резервное копирование
+        backup = BackupManager.create_backup(Config.HOSTS_OUTPUT, Config.BACKUP_DIR)
+        if backup:
+            logger.info(f"💾 Backup created: {backup.name}")
         
-        # Сборка блоклиста
-        manager = BlocklistManager(logger)
-        domains = await manager.build()
+        # Построение блоклиста
+        builder = BlocklistBuilder(logger)
+        domains = await builder.build()
         
         if not domains:
             logger.error("No domains to export")
             return 1
         
-        # Экспорт в hosts файл
+        # Запись файла
         logger.progress("Writing hosts.txt...")
-        success = HostsExporter.export(domains, HOSTS_OUTPUT)
-        
-        if not success:
+        if not HostsFileWriter.write(domains, Config.HOSTS_OUTPUT):
             logger.error("Failed to write hosts.txt")
             return 1
         
         # Сохранение статистики
-        manager.save_stats()
+        builder.save_stats()
         
         # Финальный вывод
-        file_size = HOSTS_OUTPUT.stat().st_size / 1024 / 1024
-        print(f"\n{'='*50}")
-        print(f"✅ BUILD COMPLETED")
-        print(f"{'='*50}")
-        print(f"📊 Blocked: {len(domains):,} domains")
+        file_size = Config.HOSTS_OUTPUT.stat().st_size / 1024 / 1024
+        print(f"\n{'=' * 50}")
+        print(f"✅ BUILD COMPLETED SUCCESSFULLY")
+        print(f"{'=' * 50}")
+        print(f"📊 Blocked domains: {len(domains):,}")
         print(f"💾 File size: {file_size:.2f} MB")
-        print(f"📁 Path: {HOSTS_OUTPUT.absolute()}")
-        print(f"{'='*50}\n")
+        print(f"📁 Output path: {Config.HOSTS_OUTPUT.absolute()}")
+        print(f"{'=' * 50}\n")
         
         return 0
         
@@ -442,8 +461,9 @@ async def main() -> int:
         return 130
     except Exception as e:
         logger.error(f"Critical error: {e}")
-        import traceback
-        traceback.print_exc()
+        if os.getenv("DEBUG"):
+            import traceback
+            traceback.print_exc()
         return 1
 
 
@@ -451,11 +471,10 @@ async def main() -> int:
 # ТОЧКА ВХОДА
 # ============================================================================
 
-def main_cli():
-    """CLI точка входа"""
+def cli_main() -> None:
+    """CLI точка входа с обработкой сигналов"""
     try:
-        exit_code = asyncio.run(main())
-        sys.exit(exit_code)
+        sys.exit(asyncio.run(main()))
     except KeyboardInterrupt:
         print("\n⚠️ Interrupted by user")
         sys.exit(130)
@@ -463,5 +482,6 @@ def main_cli():
         print(f"❌ Fatal error: {e}")
         sys.exit(1)
 
+
 if __name__ == "__main__":
-    main_cli()
+    cli_main()
