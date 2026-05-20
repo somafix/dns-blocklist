@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-DNS Blocklist Manager - Production Ready v8.1.0
-Полностью рабочий, безопасный и оптимизированный блоклист менеджер
+DNS Blocklist Manager - Working Version v8.2.0
+Исправлено обновление hosts.txt
 """
 
 import asyncio
@@ -14,17 +14,15 @@ import logging
 import logging.handlers
 import atexit
 import json
-import signal
-import hashlib
 from contextlib import suppress
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Set, Optional, Dict, List, Iterable
+from typing import Set, Optional, Dict, List
 from collections import defaultdict
 import time
 
-__version__ = "8.1.0-production"
+__version__ = "8.2.0-production"
 
 
 # ============================================================================
@@ -45,8 +43,8 @@ class Config:
     timeout: int = 30
     max_retries: int = 3
     parallel_downloads: int = 3
-    enable_cache: bool = True
-    cache_ttl_hours: int = 24
+    enable_cache: bool = False  # ОТКЛЮЧАЕМ КЭШ для принудительного обновления
+    cache_ttl_hours: int = 0    # Нулевой TTL
     
     sources: List[Source] = field(default_factory=lambda: [
         Source(
@@ -54,23 +52,18 @@ class Config:
             url="https://raw.githubusercontent.com/hagezi/dns-blocklists/main/domains/pro.txt",
             max_size_mb=50
         ),
-        Source(
-            name="oisd full",
-            url="https://big.oisd.nl/domains",
-            max_size_mb=30
-        )
     ])
 
-# Загрузка конфигурации из переменных окружения
 def load_config() -> Config:
-    """Загрузка конфигурации с валидацией"""
+    """Загрузка конфигурации"""
     config = Config()
     with suppress(Exception):
         if os.getenv("BLOCKLIST_TIMEOUT"):
             config.timeout = int(os.getenv("BLOCKLIST_TIMEOUT"))
         if os.getenv("BLOCKLIST_PARALLEL"):
             config.parallel_downloads = int(os.getenv("BLOCKLIST_PARALLEL"))
-        if os.getenv("BLOCKLIST_CACHE") == "0":
+        # Принудительное отключение кэша через переменную окружения
+        if os.getenv("NO_CACHE", "1") == "1":
             config.enable_cache = False
     return config
 
@@ -83,7 +76,7 @@ CONFIG = load_config()
 
 class Paths:
     """Централизованное управление путями"""
-    OUTPUT = Path("blocklist.txt")
+    OUTPUT_HOSTS = Path("hosts.txt")  # ИСПРАВЛЕНО: правильное имя файла
     BACKUP_DIR = Path("backup")
     WHITELIST = Path("whitelist.txt")
     BLACKLIST = Path("blacklist.txt")
@@ -212,58 +205,56 @@ class DomainValidator:
 
 
 # ============================================================================
-# КЭШ
+# КЭШ (упрощённый)
 # ============================================================================
 
 class Cache:
-    """Кэш с TTL"""
+    """Простой кэш с возможностью очистки"""
     
-    def __init__(self, cache_file: Path, ttl_hours: int = 24):
+    def __init__(self, cache_file: Path, ttl_hours: int = 0):
         self.cache_file = cache_file
-        self.ttl = timedelta(hours=ttl_hours)
-        self.data: Dict[str, List[str]] = {}
-        self._load()
+        self.ttl_hours = ttl_hours
     
-    def _load(self):
-        """Загрузка кэша"""
+    def clear(self):
+        """Очистка кэша"""
+        if self.cache_file.exists():
+            self.cache_file.unlink()
+    
+    def get(self, key: str) -> Optional[Set[str]]:
+        """Получение из кэша (только если TTL > 0)"""
+        if self.ttl_hours <= 0:
+            return None
+        
         if not self.cache_file.exists():
-            return
+            return None
         
         try:
             with open(self.cache_file, 'r', encoding='utf-8') as f:
                 data = json.load(f)
-                if not isinstance(data, dict):
-                    return
-                
                 timestamp = data.get('timestamp')
                 if timestamp:
                     ts = datetime.fromisoformat(timestamp)
-                    if datetime.now() - ts < self.ttl:
-                        self.data = data.get('domains', {})
+                    if datetime.now() - ts < timedelta(hours=self.ttl_hours):
+                        return set(data.get('domains', []))
         except Exception:
             pass
+        
+        return None
     
-    def save(self):
-        """Сохранение кэша"""
+    def set(self, key: str, domains: Set[str]):
+        """Сохранение в кэш (только если TTL > 0)"""
+        if self.ttl_hours <= 0:
+            return
+        
         try:
             data = {
                 'timestamp': datetime.now().isoformat(),
-                'domains': self.data
+                'domains': list(domains)[:5_000_000]
             }
             with open(self.cache_file, 'w', encoding='utf-8') as f:
                 json.dump(data, f, indent=2)
         except Exception:
             pass
-    
-    def get(self, key: str) -> Optional[Set[str]]:
-        """Получение из кэша"""
-        if key in self.data:
-            return set(self.data[key])
-        return None
-    
-    def set(self, key: str, domains: Set[str]):
-        """Сохранение в кэш"""
-        self.data[key] = list(domains)[:5_000_000]  # Лимит 5M доменов
 
 
 # ============================================================================
@@ -293,15 +284,13 @@ class Fetcher:
         """Загрузка одного источника"""
         for attempt in range(CONFIG.max_retries):
             try:
+                self.logger.debug(f"Downloading {source.name}...")
                 async with self.session.get(source.url) as resp:
                     if resp.status == 200:
                         text = await resp.text()
                         domains = self._parse(text)
                         self.logger.info(f"  📥 {source.name}: {len(domains):,} domains")
                         return domains
-                    elif resp.status == 404:
-                        self.logger.error(f"  {source.name}: Not found (404)")
-                        return None
                     else:
                         self.logger.warning(f"  {source.name}: HTTP {resp.status}")
             except asyncio.TimeoutError:
@@ -310,7 +299,7 @@ class Fetcher:
                 self.logger.warning(f"  {source.name}: {str(e)[:50]}")
             
             if attempt < CONFIG.max_retries - 1:
-                await asyncio.sleep(CONFIG.max_retries * 2)
+                await asyncio.sleep(2 ** attempt)
         
         return None
     
@@ -338,6 +327,7 @@ class Fetcher:
         for result in results:
             if isinstance(result, set):
                 all_domains.update(result)
+                self.logger.debug(f"Merged: {len(all_domains):,} total")
         
         return all_domains
 
@@ -373,20 +363,26 @@ class BlocklistManager:
                         domains.add(domain)
         return domains
     
-    async def build(self, use_cache: bool = True) -> List[str]:
+    async def build(self, force_refresh: bool = False) -> List[str]:
         """Сборка блоклиста"""
         self.logger.progress("Building blocklist...")
         
+        # Очистка кэша если нужно принудительное обновление
+        cache = Cache(Paths.CACHE_FILE, CONFIG.cache_ttl_hours)
+        if force_refresh or not CONFIG.enable_cache:
+            self.logger.info("🔄 Force refresh mode - ignoring cache")
+            cache.clear()
+        
         # Попытка загрузки из кэша
         all_domains = None
-        if use_cache:
-            cache = Cache(Paths.CACHE_FILE, CONFIG.cache_ttl_hours)
+        if CONFIG.enable_cache and not force_refresh:
             all_domains = cache.get("combined")
             if all_domains:
-                self.logger.info(f"📀 Cache: {len(all_domains):,} domains")
+                self.logger.info(f"📀 Cache hit: {len(all_domains):,} domains")
         
         # Загрузка из сети
-        if not all_domains:
+        if all_domains is None:
+            self.logger.progress("Downloading from sources...")
             async with Fetcher(self.logger) as fetcher:
                 all_domains = await fetcher.fetch_all(CONFIG.sources)
             
@@ -395,10 +391,9 @@ class BlocklistManager:
                 return []
             
             # Сохранение в кэш
-            if use_cache:
-                cache = Cache(Paths.CACHE_FILE, CONFIG.cache_ttl_hours)
+            if CONFIG.enable_cache:
                 cache.set("combined", all_domains)
-                cache.save()
+                self.logger.info("💾 Saved to cache")
         
         self.stats['total'] = len(all_domains)
         self.logger.info(f"📊 Total unique: {len(all_domains):,}")
@@ -423,6 +418,10 @@ class BlocklistManager:
                 self.stats['blacklisted'] += 1
             
             filtered.append(domain)
+            
+            # Прогресс (каждые 100k)
+            if len(filtered) % 100000 == 0:
+                self.logger.debug(f"Filtered: {len(filtered):,}/{len(all_domains):,}")
         
         self.stats['output'] = len(filtered)
         self._print_stats()
@@ -437,7 +436,6 @@ class BlocklistManager:
         self.logger.info("📈 Statistics:")
         self.logger.info(f"   ├─ Input: {total:,}")
         self.logger.info(f"   ├─ Output: {output:,}")
-        self.logger.info(f"   ├─ Filtered: {total - output:,}")
         
         if total > 0:
             reduction = (1 - output/total) * 100
@@ -450,11 +448,6 @@ class BlocklistManager:
                 'timestamp': datetime.now().isoformat(),
                 'version': __version__,
                 'stats': dict(self.stats),
-                'config': {
-                    'timeout': CONFIG.timeout,
-                    'parallel': CONFIG.parallel_downloads,
-                    'sources': len(CONFIG.sources)
-                }
             }
             with open(Paths.STATS_FILE, 'w', encoding='utf-8') as f:
                 json.dump(stats, f, indent=2)
@@ -470,59 +463,33 @@ class HostsExporter:
     """Экспорт в формат hosts"""
     
     @staticmethod
-    def export(domains: List[str], output_path: Path) -> None:
+    def export(domains: List[str], output_path: Path) -> bool:
         """Экспорт в hosts файл"""
-        with open(output_path, 'w', encoding='utf-8') as f:
-            f.write(f"# DNS Blocklist v{__version__}\n")
-            f.write(f"# Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')}\n")
-            f.write(f"# Total: {len(domains):,} domains\n\n")
-            
-            for domain in domains:
-                f.write(f"0.0.0.0 {domain}\n")
-
-class DomainsExporter:
-    """Экспорт в plain domains формат"""
-    
-    @staticmethod
-    def export(domains: List[str], output_path: Path) -> None:
-        """Экспорт в список доменов"""
-        with open(output_path, 'w', encoding='utf-8') as f:
-            for domain in domains:
-                f.write(f"{domain}\n")
-
-
-# ============================================================================
-# PID МЕНЕДЖЕР
-# ============================================================================
-
-class PIDManager:
-    """Управление PID файлом"""
-    
-    def __init__(self, pid_file: Path):
-        self.pid_file = pid_file
-        self.pid = os.getpid()
-    
-    def acquire(self) -> bool:
-        """Захват блокировки"""
-        if self.pid_file.exists():
-            try:
-                old_pid = int(self.pid_file.read_text().strip())
-                os.kill(old_pid, 0)
-                print(f"❌ Process already running (PID: {old_pid})")
-                return False
-            except (OSError, ValueError):
-                self.pid_file.unlink()
-        
-        self.pid_file.write_text(str(self.pid))
-        return True
-    
-    def release(self):
-        """Освобождение блокировки"""
         try:
-            if self.pid_file.exists():
-                self.pid_file.unlink()
-        except Exception:
-            pass
+            # Принудительная перезапись
+            with open(output_path, 'w', encoding='utf-8', buffering=8192) as f:
+                # Заголовок
+                f.write(f"# DNS Blocklist v{__version__}\n")
+                f.write(f"# Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')}\n")
+                f.write(f"# Total: {len(domains):,} domains\n")
+                f.write(f"# Format: 0.0.0.0 domain.com\n\n")
+                
+                # Запись доменов
+                for i, domain in enumerate(domains):
+                    f.write(f"0.0.0.0 {domain}\n")
+                    
+                    # Flush каждые 100k доменов
+                    if i > 0 and i % 100000 == 0:
+                        f.flush()
+            
+            # Проверка что файл создан
+            if output_path.exists() and output_path.stat().st_size > 0:
+                return True
+            return False
+            
+        except Exception as e:
+            print(f"Error writing hosts file: {e}")
+            return False
 
 
 # ============================================================================
@@ -532,67 +499,60 @@ class PIDManager:
 async def main() -> int:
     """Главная функция"""
     
-    # PID проверка
-    pid_manager = PIDManager(Paths.PID_FILE)
-    if not pid_manager.acquire():
-        return 1
-    atexit.register(pid_manager.release)
-    
     # Логгер
     logger = Logger(Paths.LOG_FILE, verbose=os.getenv("DEBUG", "0") == "1")
     
     # Приветствие
-    print(f"\n{'='*50}")
+    print(f"\n{'='*60}")
     print(f"🚀 DNS BLOCKLIST MANAGER v{__version__}")
-    print(f"{'='*50}")
+    print(f"{'='*60}")
     print(f"📅 Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"📦 Sources: {len([s for s in CONFIG.sources if s.enabled])}")
-    print(f"{'='*50}\n")
+    print(f"💾 Cache: {'OFF' if not CONFIG.enable_cache else f'ON ({CONFIG.cache_ttl_hours}h)'}")
+    print(f"📁 Output: {Paths.OUTPUT_HOSTS}")
+    print(f"{'='*60}\n")
     
     try:
         # Инициализация
         manager = BlocklistManager(logger)
         
-        # Бэкап
-        logger.progress("Creating backup...")
-        if Paths.OUTPUT.exists():
+        # Бэкап старого файла
+        if Paths.OUTPUT_HOSTS.exists():
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            backup_path = Paths.BACKUP_DIR / f"blocklist_{timestamp}.txt"
-            shutil.copy2(Paths.OUTPUT, backup_path)
-            logger.info(f"Backup: {backup_path.name}")
+            backup_path = Paths.BACKUP_DIR / f"hosts_{timestamp}.txt"
+            shutil.copy2(Paths.OUTPUT_HOSTS, backup_path)
+            logger.info(f"💾 Backup created: {backup_path.name}")
         
-        # Сборка блоклиста
-        domains = await manager.build(use_cache=CONFIG.enable_cache)
+        # Сборка блоклиста (force refresh = cache disabled)
+        force_refresh = not CONFIG.enable_cache
+        domains = await manager.build(force_refresh=force_refresh)
         
         if not domains:
             logger.error("No domains to export")
             return 1
         
-        # Экспорт
-        logger.progress("Exporting...")
+        # Экспорт в hosts.txt
+        logger.progress("Writing hosts.txt...")
+        success = HostsExporter.export(domains, Paths.OUTPUT_HOSTS)
         
-        # Hosts формат
-        HostsExporter.export(domains, Paths.OUTPUT)
-        size_mb = Paths.OUTPUT.stat().st_size / 1024 / 1024
-        logger.info(f"  • hosts: {size_mb:.2f} MB")
-        
-        # Domains формат
-        domains_path = Paths.OUTPUT.parent / "domains.txt"
-        DomainsExporter.export(domains, domains_path)
-        size_mb = domains_path.stat().st_size / 1024 / 1024
-        logger.info(f"  • domains: {size_mb:.2f} MB")
+        if success:
+            size_mb = Paths.OUTPUT_HOSTS.stat().st_size / 1024 / 1024
+            logger.success(f"hosts.txt created: {size_mb:.2f} MB ({len(domains):,} domains)")
+        else:
+            logger.error("Failed to write hosts.txt")
+            return 1
         
         # Статистика
         manager.save_stats()
         
         # Финальный вывод
-        print(f"\n{'='*50}")
-        print(f"✅ BUILD COMPLETED")
-        print(f"{'='*50}")
-        print(f"📊 Blocked domains: {len(domains):,}")
-        print(f"💾 Memory: ~{len(domains) * 40 / 1024 / 1024:.1f} MB")
-        print(f"📁 Output: {Paths.OUTPUT}")
-        print(f"{'='*50}\n")
+        print(f"\n{'='*60}")
+        print(f"✅ BUILD COMPLETED SUCCESSFULLY")
+        print(f"{'='*60}")
+        print(f"📊 Total blocked: {len(domains):,} domains")
+        print(f"📁 Output file: {Paths.OUTPUT_HOSTS.absolute()}")
+        print(f"📏 File size: {size_mb:.2f} MB")
+        print(f"{'='*60}\n")
         
         return 0
         
