@@ -1,117 +1,22 @@
-# ========== ОСНОВНЫЕ РЕКЛАМНЫЕ СЕТИ (БЕЗОПАСНО) ==========
 0.0.0.0 doubleclick.net
 0.0.0.0 googleadservices.com
 0.0.0.0 googlesyndication.com
-0.0.0.0 google-analytics.com
-0.0.0.0 googletagmanager.com
-0.0.0.0 googletagservices.com
 0.0.0.0 app-measurement.com
 0.0.0.0 crashlytics.com
-# googleapis.com — НЕ БЛОКИРОВАТЬ
-# gstatic.com — НЕ БЛОКИРОВАТЬ
-
-# ========== ММП / ТРЕКЕРЫ ==========
-0.0.0.0 app.appsflyer.com
 0.0.0.0 appsflyer.com
-0.0.0.0 appsflyersdk.com
 0.0.0.0 adjust.com
-0.0.0.0 branch.io
-0.0.0.0 singular.net
 0.0.0.0 amplitude.com
 0.0.0.0 mixpanel.com
-0.0.0.0 braze.com
-0.0.0.0 clevertap-prod.com
-0.0.0.0 gameanalytics.com
-0.0.0.0 revenuecat.com
-0.0.0.0 onesignal.com
-0.0.0.0 sentry.io
-0.0.0.0 newrelic.com
-0.0.0.0 appcenter.ms
-0.0.0.0 clarity.ms
-0.0.0.0 ip-api.com
-0.0.0.0 ipify.org
-0.0.0.0 youappi.com
-0.0.0.0 remerge.io
-0.0.0.0 bigabid.com
-0.0.0.0 bigabidserv.com
-
-# ========== AD NETWORKS ==========
 0.0.0.0 applovin.com
-0.0.0.0 applvn.com
-0.0.0.0 ironsrc.com
-0.0.0.0 supersonicads.com
 0.0.0.0 unity3d.com
 0.0.0.0 vungle.com
 0.0.0.0 chartboost.com
-0.0.0.0 fyber.com
-0.0.0.0 inner-active.mobi
-0.0.0.0 mintegral.com
-0.0.0.0 rayjump.com
-0.0.0.0 mtgglobals.com
-0.0.0.0 pangle.io
-0.0.0.0 sgsnssdk.com
-0.0.0.0 i18n-pglstatp.com
-0.0.0.0 tiktokpangle.us
-0.0.0.0 news-cdn.site
-0.0.0.0 kickoffo.site
-0.0.0.0 inmense.site
-0.0.0.0 dollphoin.site
-0.0.0.0 bigo.tv
-0.0.0.0 bigo.sg
-0.0.0.0 bigolive.tv
 0.0.0.0 yandex.net
 0.0.0.0 yandex.ru
-0.0.0.0 yandexadexchange.net
 0.0.0.0 amazon-adsystem.com
-0.0.0.0 cloudfront.net
-0.0.0.0 media-amazon.com
-0.0.0.0 adobedtm.com
-0.0.0.0 moat.com
-0.0.0.0 moatads.com
 0.0.0.0 criteo.com
 0.0.0.0 inmobi.com
-0.0.0.0 inmobicdn.net
-0.0.0.0 smaato.net
-0.0.0.0 moloco.com
-0.0.0.0 adsmoloco.com
-0.0.0.0 bidmachine.io
 0.0.0.0 mopub.com
 0.0.0.0 exoclick.com
-0.0.0.0 exosrv.com
-0.0.0.0 juicyads.com
-0.0.0.0 trafficfactory.biz
-0.0.0.0 flurry.com
-0.0.0.0 tapjoy.com
-0.0.0.0 nend.net
-0.0.0.0 maio.jp
-0.0.0.0 zucks.net
-0.0.0.0 vpon.com
-0.0.0.0 line.me
-0.0.0.0 lgad.com
-0.0.0.0 skplanet.com
-0.0.0.0 amazonaws.com
-
-# ========== КИТАЙСКИЕ ТРЕКЕРЫ ==========
-0.0.0.0 qq.com
-0.0.0.0 aliyuncs.com
-0.0.0.0 umetrip.com
-0.0.0.0 chelaile.net.cn
-0.0.0.0 atrace.chelaile.net.cn
-0.0.0.0 logs.chelaile.net.cn
-
-# ========== OEM ТЕЛЕМЕТРИЯ ==========
-0.0.0.0 metrics.data.mi.com
-0.0.0.0 analytics.mi.com
-0.0.0.0 tracking.miui.com
-0.0.0.0 data.mistat.xiaomi.com
-0.0.0.0 samsungads.com
-0.0.0.0 di.samsung.com
-0.0.0.0 metrics.cloud.huawei.com
-0.0.0.0 logservice.cloud.huawei.com
-
-# ========== META / INSTAGRAM (только реклама и трекинг) ==========
-# Сам Instagram работает — эти домены нужны только для рекламы/аналитики
-0.0.0.0 graph.facebook.com
 0.0.0.0 facebook.com
-0.0.0.0 facebook.net
-# fbcdn.net — НЕ БЛОКИРОВАТЬ (ломает загрузку фото/видео)
+0.0.0.0 graph.facebook.com
