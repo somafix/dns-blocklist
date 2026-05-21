@@ -1,0 +1,150 @@
+# ==================== 1. Трекеры (MMP) — Бьем в сердце аналитики ====================
+# Осторожно! Следующие 4 группы могут ломать переходы по ссылкам из соцсетей и приложений. Если не хочешь проблем — закомментируй их (# в начале строки).
+
+# AppsFlyer (Главный шпион)
+0.0.0.0 app.appsflyer.com
+0.0.0.0 adsdk.appsflyer.com
+0.0.0.0 www.appsflyer.com
+0.0.0.0 conative.appsflyer.com
+0.0.0.0 events.appsflyer.com
+
+# Adjust (Клоун вонючий)
+0.0.0.0 adjust.com
+0.0.0.0 app.adjust.com
+0.0.0.0 s2s.adjust.com
+0.0.0.0 adjust.network
+0.0.0.0 adjust.world
+
+# Branch (Главный вор ссылок)
+0.0.0.0 branch.io
+0.0.0.0 api2.branch.io
+0.0.0.0 branchesdk.com
+0.0.0.0 cdn.branch.io
+0.0.0.0 link.branch.io
+
+# Kochava, Singular, Tenjin и другие мрази
+0.0.0.0 kochava.com
+0.0.0.0 control.kochava.com
+0.0.0.0 p.kochava.com
+0.0.0.0 singulad.net
+0.0.0.0 sdk.singular.net
+0.0.0.0 api.singular.net
+0.0.0.0 tenjin.io
+0.0.0.0 cdn.tenjin.io
+0.0.0.0 airbridge.io
+0.0.0.0 mixpanel.com
+0.0.0.0 api.mixpanel.com
+0.0.0.0 amplitude.com
+
+# ==================== 2. Ad Networks & SDK (Крупные площадки) ====================
+
+# Google AdMob (Зло с пометкой Google)
+0.0.0.0 doubleclick.net
+0.0.0.0 googleadservices.com
+0.0.0.0 adservice.google.com
+0.0.0.0 admob.com
+0.0.0.0 apps.admob.com
+0.0.0.0 googleads.g.doubleclick.net
+0.0.0.0 pagead2.googlesyndication.com
+0.0.0.0 googlesyndication.com
+
+# Meta Audience Network (Зуки)
+0.0.0.0 fbcdn.net
+0.0.0.0 graph.facebook.com
+0.0.0.0 analytics.facebook.com
+0.0.0.0 facebook.com/tr
+
+# AppLovin
+0.0.0.0 applovin.com
+0.0.0.0 da.applovin.com
+0.0.0.0 sdks.applovin.com
+0.0.0.0 applvn.com
+
+# Unity Ads и IronSource (Игровой ад)
+0.0.0.0 unity3d.com
+0.0.0.0 ads.unity3d.com
+0.0.0.0 cdnalpn.unityads.unity3d.com
+0.0.0.0 ironsrc.com
+0.0.0.0 sdk.ironsrc.com
+0.0.0.0 supersonic.com
+
+# Vungle, Chartboost, InMobi
+0.0.0.0 vungle.com
+0.0.0.0 *.vungle.com
+0.0.0.0 chartboost.com
+0.0.0.0 *.chartboost.com
+0.0.0.0 inmobi.com
+0.0.0.0 *.inmobi.com
+
+# ==================== 3. Вендорская телеметрия (Xiaomi, Samsung, Huawei) ====================
+# Если ты на пользовательской прошивке или кастомном ПЗУ, можешь удалить эти 3 блока. Но на стоке они шлют данные 24/7.
+
+# Xiaomi
+0.0.0.0 metrics.data.mi.com
+0.0.0.0 analytics.mi.com
+0.0.0.0 tracking.miui.com
+0.0.0.0 data.mistat.xiaomi.com
+0.0.0.0 ad.xiaomi.com
+0.0.0.0 api.ad.xiaomi.com
+0.0.0.0 de.pandora.xiaomi.com
+0.0.0.0 sdkconfig.ad.xiaomi.com
+
+# Samsung
+0.0.0.0 samsungads.com
+0.0.0.0 ads.samsungads.com
+0.0.0.0 ttx.samsungads.com
+0.0.0.0 di.samsung.com
+0.0.0.0 a.samsungads.com
+0.0.0.0 nyt.samsungads.com
+
+# Huawei
+0.0.0.0 metrics.cloud.huawei.com
+0.0.0.0 logservice.cloud.huawei.com
+0.0.0.0 datacollector.dt.hicloud.com
+0.0.0.0 connect.android.hicloud.com
+
+# ==================== 4. Мусорные трекеры и помойки ====================
+
+0.0.0.0 mmstat.com
+0.0.0.0 metric.gstatic.com
+0.0.0.0 firebase-settings.crashlytics.com
+0.0.0.0 reports.crashlytics.com
+0.0.0.0 onesignal.com
+0.0.0.0 api.onesignal.com
+0.0.0.0 clevertap.com
+0.0.0.0 w55c.net
+0.0.0.0 criteo.com
+0.0.0.0 casalemedia.com
+0.0.0.0 pubmatic.com
+0.0.0.0 openx.net
+0.0.0.0 rubiconproject.com
+0.0.0.0 indexww.com
+0.0.0.0 contextweb.com
+0.0.0.0 sovrn.com
+0.0.0.0 adform.net
+0.0.0.0 tidaltv.com
+0.0.0.0 smartadserver.com
+0.0.0.0 adsafeprotected.com
+0.0.0.0 scorecardresearch.com
+0.0.0.0 moat.com
+0.0.0.0 moatads.com
+
+# ==================== 5. Новая школа (2025-2026) — Отдельные рекорды ====================
+
+0.0.0.0 bidmachine.io
+0.0.0.0 dt.com
+0.0.0.0 mintegral.com
+0.0.0.0 pangle.io
+0.0.0.0 ogury.co
+0.0.0.0 ironbeast.com
+0.0.0.0 hyprmx.com
+
+# Азиатский сектор (китайские штуки)
+0.0.0.0 china-caa.org
+0.0.0.0 cnaa123.com
+0.0.0.0 shuzilm.cn
+0.0.0.0 zxid-api.mobileservice.cn
+
+# Мошеннические сети (для особо paranoid)
+0.0.0.0 low5.org
+0.0.0.0 genisys.ai
