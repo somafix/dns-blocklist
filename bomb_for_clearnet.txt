@@ -1,4 +1,4 @@
-# ==================== ЯДРО — БЕЗ ЭТОГО РЕКЛАМЫ НЕТ ====================
+# ========== ОСНОВНЫЕ РЕКЛАМНЫЕ СЕТИ (БЕЗОПАСНО) ==========
 0.0.0.0 doubleclick.net
 0.0.0.0 googleadservices.com
 0.0.0.0 googlesyndication.com
@@ -7,11 +7,10 @@
 0.0.0.0 googletagservices.com
 0.0.0.0 app-measurement.com
 0.0.0.0 crashlytics.com
-0.0.0.0 firebaseio.com
-0.0.0.0 googleapis.com
-0.0.0.0 gstatic.com
+# googleapis.com — НЕ БЛОКИРОВАТЬ
+# gstatic.com — НЕ БЛОКИРОВАТЬ
 
-# ==================== ММП / ТРЕКЕРЫ (46 штук) ====================
+# ========== ММП / ТРЕКЕРЫ ==========
 0.0.0.0 app.appsflyer.com
 0.0.0.0 appsflyer.com
 0.0.0.0 appsflyersdk.com
@@ -36,8 +35,7 @@
 0.0.0.0 bigabid.com
 0.0.0.0 bigabidserv.com
 
-# ==================== AD NETWORKS (82 штуки) ====================
-# AppLovin & Co
+# ========== AD NETWORKS ==========
 0.0.0.0 applovin.com
 0.0.0.0 applvn.com
 0.0.0.0 ironsrc.com
@@ -47,19 +45,13 @@
 0.0.0.0 chartboost.com
 0.0.0.0 fyber.com
 0.0.0.0 inner-active.mobi
-
-# Mintegral / Mobvista
 0.0.0.0 mintegral.com
 0.0.0.0 rayjump.com
 0.0.0.0 mtgglobals.com
-
-# ByteDance / Pangle / TikTok
 0.0.0.0 pangle.io
 0.0.0.0 sgsnssdk.com
 0.0.0.0 i18n-pglstatp.com
 0.0.0.0 tiktokpangle.us
-
-# BIGO Ads (7 доменов!)
 0.0.0.0 news-cdn.site
 0.0.0.0 kickoffo.site
 0.0.0.0 inmense.site
@@ -67,33 +59,22 @@
 0.0.0.0 bigo.tv
 0.0.0.0 bigo.sg
 0.0.0.0 bigolive.tv
-
-# Yandex
 0.0.0.0 yandex.net
 0.0.0.0 yandex.ru
 0.0.0.0 yandexadexchange.net
-
-# Amazon
 0.0.0.0 amazon-adsystem.com
-0.0.0.0 amazonaws.com
 0.0.0.0 cloudfront.net
 0.0.0.0 media-amazon.com
-
-# Adobe / Oracle / Criteo
 0.0.0.0 adobedtm.com
 0.0.0.0 moat.com
 0.0.0.0 moatads.com
 0.0.0.0 criteo.com
-
-# InMobi / Smaato / Moloco / BidMachine
 0.0.0.0 inmobi.com
 0.0.0.0 inmobicdn.net
 0.0.0.0 smaato.net
 0.0.0.0 moloco.com
 0.0.0.0 adsmoloco.com
 0.0.0.0 bidmachine.io
-
-# Остальные сети
 0.0.0.0 mopub.com
 0.0.0.0 exoclick.com
 0.0.0.0 exosrv.com
@@ -108,8 +89,9 @@
 0.0.0.0 line.me
 0.0.0.0 lgad.com
 0.0.0.0 skplanet.com
+0.0.0.0 amazonaws.com
 
-# ==================== КИТАЙСКИЙ СПЕЦНАЗ (если есть приложения оттуда) ====================
+# ========== КИТАЙСКИЕ ТРЕКЕРЫ ==========
 0.0.0.0 qq.com
 0.0.0.0 aliyuncs.com
 0.0.0.0 umetrip.com
@@ -117,7 +99,7 @@
 0.0.0.0 atrace.chelaile.net.cn
 0.0.0.0 logs.chelaile.net.cn
 
-# ==================== OEM ТЕЛЕМЕТРИЯ ====================
+# ========== OEM ТЕЛЕМЕТРИЯ ==========
 0.0.0.0 metrics.data.mi.com
 0.0.0.0 analytics.mi.com
 0.0.0.0 tracking.miui.com
@@ -127,8 +109,9 @@
 0.0.0.0 metrics.cloud.huawei.com
 0.0.0.0 logservice.cloud.huawei.com
 
-# ==================== META / FACEBOOK ====================
+# ========== META / INSTAGRAM (только реклама и трекинг) ==========
+# Сам Instagram работает — эти домены нужны только для рекламы/аналитики
+0.0.0.0 graph.facebook.com
 0.0.0.0 facebook.com
 0.0.0.0 facebook.net
-0.0.0.0 fbcdn.net
-0.0.0.0 graph.facebook.com
+# fbcdn.net — НЕ БЛОКИРОВАТЬ (ломает загрузку фото/видео)
