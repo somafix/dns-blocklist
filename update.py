@@ -13,9 +13,9 @@ import re
 import shutil
 import sys
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
-from typing import Set, List, Dict, Optional, Tuple, Callable, Any
+from typing import Set, List, Dict, Optional, Tuple, Any
 
 try:
     import aiohttp
@@ -24,7 +24,13 @@ except ImportError:
     print("❌ Ошибка: Установите aiohttp: pip install aiohttp")
     sys.exit(1)
 
-__version__ = "11.0.0"
+__version__ = "11.0.1"
+
+# Для совместимости с Python < 3.11
+try:
+    UTC = timezone.UTC
+except AttributeError:
+    UTC = timezone(timedelta(0))
 
 
 # ============================================================================
@@ -141,7 +147,6 @@ class DomainValidator:
     _IP_PATTERN = re.compile(r'^\d{1,3}(\.\d{1,3}){3}$')
     _DOMAIN_PATTERN = re.compile(r'^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$')
     _PREFIXES = ('https://', 'http://', '||', '0.0.0.0 ', '127.0.0.1 ')
-    _WILDCARD_PATTERN = re.compile(r'^(\*\.)|(\.\*)$')
     
     @classmethod
     def clean(cls, line: str) -> Optional[str]:
@@ -406,7 +411,7 @@ class BlocklistBuilder:
         """Сохранение статистики в JSON"""
         try:
             data = {
-                'timestamp': datetime.now(timezone.UTC).isoformat(),
+                'timestamp': datetime.now(UTC).isoformat(),
                 'version': __version__,
                 'stats': self.stats.to_dict()
             }
@@ -434,9 +439,9 @@ class HostsFileWriter:
         try:
             output_path.write_text(
                 f"# DNS Blocklist v{__version__}\n"
-                f"# Generated: {datetime.now(timezone.UTC).strftime('%Y-%m-%d %H:%M:%S UTC')}\n"
+                f"# Generated: {datetime.now(UTC).strftime('%Y-%m-%d %H:%M:%S UTC')}\n"
                 f"# Total: {len(domains):,} domains\n"
-                f"# Last update: {datetime.now(timezone.UTC).isoformat()}\n\n"
+                f"# Last update: {datetime.now(UTC).isoformat()}\n\n"
                 + ''.join(f"0.0.0.0 {domain}\n" for domain in domains),
                 encoding='utf-8'
             )
