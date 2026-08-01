@@ -1,36 +1,47 @@
-# DNS Blocklist Manager
+# 🛡️ DNS Blocklist Manager
 
-![Version](https://img.shields.io/badge/version-11.0.1-blue.svg)
-![Python](https://img.shields.io/badge/python-3.8+-blue.svg)
-![License](https://img.shields.io/badge/license-MIT-green.svg)
-![Status](https://img.shields.io/badge/status-production-brightgreen.svg)
+<div align="center">
 
-A professional, high-performance tool designed to aggregate, filter, and generate custom DNS blocklists in `hosts` format.
+[![Python Version](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
+[![Version](https://img.shields.io/badge/version-12.0.0-green.svg)](https://github.com/)
+[![License](https://img.shields.io/badge/license-MIT-purple.svg)](LICENSE)
+[![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-brightgreen.svg)](https://github.com/)
 
-## Features
+*Production Ready v12.0.0 — High Availability DNS blocklist generator with automatic failover capabilities.*
 
-*   **Asynchronous Processing:** High-speed network operations using `aiohttp` for parallel downloads.
-*   **Custom Filtering:** Support for individual whitelisting, blacklisting, and wildcard domain filtering.
-*   **Production Ready:** Includes robust logging with file rotation, automatic backup management, and detailed build statistics.
-*   **Reliable:** Built-in retry mechanisms and rigorous domain validation.
-*   **Lightweight:** No external databases required; works directly with text-based list management.
+</div>
 
-## Installation
+---
 
-1.  **Clone the repository:**
-    ```bash
-    git clone <repository-url>
-    cd dns-blocklist-manager
-    ```
+## 📋 Overview
 
-2.  **Install dependencies:**
-    ```bash
-    pip install aiohttp
-    ```
+**DNS Blocklist Manager** is a robust, asynchronous Python utility designed to compile, filter, and maintain large-scale DNS blocklists formatted for hosts files (`0.0.0.0 domain`). 
 
-## Usage
+It provides enterprise-grade reliability features, including automated source tracking, a built-in multi-source failover mechanism, comprehensive logging with rotation, wildcard pattern management, and strict domain validation.
 
-Run the script directly from your terminal:
+---
 
-```bash
-python3 main.py
+## ✨ Key Features
+
+- **🔄 High Availability & Failover:** Automatically tests primary blocklist sources (HaGeZi, OISD, StevenBlack, AdGuard, EasyList, etc.). If a source goes down, it seamlessly switches to an available mirror or fallback provider and caches the working state.
+- **⚡ Fully Asynchronous:** Leverages `asyncio` and `aiohttp` for non-blocking, parallel fetching and high-performance processing.
+- **🧹 Advanced Domain Filtering:** Cleans and normalizes entries, stripping out invalid inputs, IP addresses, wildcards, and comments while preventing duplicate entries.
+- **📝 Custom Lists Support:** Seamlessly integrates standard whitelists, blacklists, and wildcard whitelist patterns (`*.example.com`).
+- **📊 Detailed Statistics & Logging:** Built-in rotating file logger with visual emojis and JSON statistics output tracking filtering metrics and reduction rates.
+- **🛡️ Safe Operations:** Automatically creates secure timestampsed backups of existing output files before overwriting.
+
+---
+
+## ⚙️ Requirements
+
+- Python **3.11+**
+- `aiohttp` package
+
+---
+
+## 🚀 Installation
+
+1. Clone or download the script file.
+2. Install the required external dependency:
+   ```bash
+   pip install aiohttp
